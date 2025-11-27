@@ -1,5 +1,5 @@
 {
-  "name": "@openmrs/esm-dha-workflow-app",
+  "name": "@ampath/esm-dha-workflow-app",
   "version": "4.0.0",
   "license": "MPL-2.0",
   "description": "An OpenMRS seed application for building microfrontends",

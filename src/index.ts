@@ -7,7 +7,7 @@
 import { getAsyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
 import { configSchema } from './config-schema';
 
-const moduleName = '@openmrs/esm-template-app';
+const moduleName = '@ampath/esm-dha-workflow-app';
 
 const options = {
   featureName: 'Consulation Workflow',
