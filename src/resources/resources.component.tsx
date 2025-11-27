@@ -15,7 +15,7 @@ function Resources() {
         <Card
           title={t('getStarted', 'Get started')}
           subtitle={t('getStartedExplainer', 'Create a frontend module from this template') + '.'}
-          link="https://github.com/openmrs/openmrs-esm-template-app/generate"
+          link="https://github.com/openmrs/openmrs-esm-home-app/generate"
         />
         <Card
           title={t('frontendDocs', 'Frontend docs')}

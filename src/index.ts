@@ -10,7 +10,7 @@ import { configSchema } from './config-schema';
 const moduleName = '@openmrs/esm-template-app';
 
 const options = {
-  featureName: 'root-world',
+  featureName: 'Consulation Workflow',
   moduleName,
 };
 
@@ -38,12 +38,9 @@ export function startupApp() {
  * `/openmrs/spa/root`.
  */
 export const root = getAsyncLifecycle(() => import('./root.component'), options);
+export const registry = getAsyncLifecycle(() => import('./registry/registry.component'), options);
 
-/**
- * The following are named exports for the extensions defined in this frontend modules. See the `routes.json` file to see how these are used.
- */
-export const redBox = getAsyncLifecycle(() => import('./boxes/extensions/red-box.component'), options);
-
-export const blueBox = getAsyncLifecycle(() => import('./boxes/extensions/blue-box.component'), options);
-
-export const brandBox = getAsyncLifecycle(() => import('./boxes/extensions/brand-box.component'), options);
+export const workflowRegistryLink = getAsyncLifecycle(() => import('./widgets/workflow-registry-link.extension'), {
+  featureName: 'workflow-registry-link',
+  moduleName,
+});

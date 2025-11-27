@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { RootPage } from '../pages';
 
-test('Template app loads and displays all core components', async ({ page }) => {
+test('Home app loads and displays all core components', async ({ page }) => {
   const rootPage = new RootPage(page);
   await rootPage.goto();
 

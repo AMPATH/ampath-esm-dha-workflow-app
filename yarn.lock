@@ -3459,6 +3459,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openmrs/esm-patient-common-lib@npm:*":
+  version: 11.3.0
+  resolution: "@openmrs/esm-patient-common-lib@npm:11.3.0"
+  dependencies:
+    "@carbon/react": "npm:^1.83.0"
+    lodash-es: "npm:^4.17.21"
+    uuid: "npm:^8.3.2"
+  peerDependencies:
+    "@openmrs/esm-framework": 8.x
+    react: 18.x
+    single-spa: 6.x
+  checksum: 10/31ae8a24636bbb1b2d18465a6236f8519b728c63c4b78013c18d7f07a0cc3155a55a5ad336f3c9434c5e2efb6fc2b2ef1c0eca34fbc36bc1ed01c4ba39e948b3
+  languageName: node
+  linkType: hard
+
 "@openmrs/esm-react-utils@npm:8.0.1-pre.3529":
   version: 8.0.1-pre.3529
   resolution: "@openmrs/esm-react-utils@npm:8.0.1-pre.3529"
@@ -3557,6 +3572,7 @@ __metadata:
   dependencies:
     "@carbon/react": "npm:^1.83.0"
     "@openmrs/esm-framework": "npm:next"
+    "@openmrs/esm-patient-common-lib": "npm:*"
     "@openmrs/esm-styleguide": "npm:next"
     "@playwright/test": "npm:^1.52.0"
     "@swc/cli": "npm:^0.3.12"
@@ -3605,6 +3621,7 @@ __metadata:
     webpack-cli: "npm:^6.0.1"
   peerDependencies:
     "@openmrs/esm-framework": "*"
+    "@openmrs/esm-patient-common-lib": "*"
     dayjs: 1.x
     react: 18.x
     react-i18next: 16.x
