@@ -31,6 +31,11 @@ export function startupApp() {
   defineConfigSchema(moduleName, configSchema);
 }
 
+export const navLinks = getAsyncLifecycle(() => import('./side-nav-menu/nav-links'), {
+  featureName: 'side-nav-workflow-link',
+  moduleName,
+});
+
 /**
  * This named export tells the app shell that the default export of `root.component.tsx`
  * should be rendered when the route matches `root`. The full route

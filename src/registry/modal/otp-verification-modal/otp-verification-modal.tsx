@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { type RequestCustomOtpDto } from '../../types';
-import { Button, Modal, ModalBody, TextInput } from '@carbon/react';
+import { Button, InlineLoading, Modal, ModalBody, TextInput } from '@carbon/react';
 import styles from './otp-verification-modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { requestCustomOtp, validateCustomOtp } from '../../registry.resource';
+import { maskValue } from '../../utils/mask-data';
 
 interface OtpVerificationModalpProps {
   requestCustomOtpDto: RequestCustomOtpDto;
@@ -79,6 +80,9 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
       setLoading(false);
     }
   };
+  const registerOnAfyaYangu = () => {
+    window.open('https://afyayangu.go.ke/', '_blank');
+  };
 
   const onSubmit = () => {};
   return (
@@ -88,8 +92,8 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
         size="md"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={onSubmit}
-        primaryButtonText=""
+        onRequestSubmit={registerOnAfyaYangu}
+        primaryButtonText="Register on Afya Yangu"
         secondaryButtonText="Cancel"
       >
         <ModalBody>
@@ -102,7 +106,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
               <div className={styles.contentHeader}>
                 {otpStatus === 'DRAFT' ? (
                   <>
-                    <h6>Send Code to Phone {phoneNumber}</h6>
+                    <h6>Send Code to Phone {maskValue(phoneNumber)}</h6>
                   </>
                 ) : (
                   <></>
@@ -135,7 +139,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
               {otpStatus === 'DRAFT' ? (
                 <>
                   <Button kind="primary" onClick={handleSendOtp}>
-                    Send OTP
+                    {loading ? <InlineLoading description="Sending OTP..." /> : 'Send OTP'}
                   </Button>
                 </>
               ) : (
@@ -145,7 +149,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
               {otpStatus === 'OTP_SENT' ? (
                 <>
                   <Button kind="primary" onClick={handleVerifyOtp}>
-                    Verify
+                    {loading ? <InlineLoading description="Verifying OTP..." /> : 'Verify'}
                   </Button>
                 </>
               ) : (

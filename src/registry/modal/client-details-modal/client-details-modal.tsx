@@ -16,6 +16,9 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, open, o
   if (!client) {
     return <>No Client data</>;
   }
+  const registerOnAfyaYangu = () => {
+    window.open('https://afyayangu.go.ke/', '_blank');
+  };
   return (
     <>
       <Modal
@@ -23,8 +26,8 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, open, o
         size="md"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={onSubmit}
-        primaryButtonText=""
+        onRequestSubmit={registerOnAfyaYangu}
+        primaryButtonText="Register on Afya Yangu"
         secondaryButtonText="Cancel"
       >
         <ModalBody>
