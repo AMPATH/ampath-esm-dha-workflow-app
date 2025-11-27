@@ -1,19 +1,28 @@
 {
   "$schema": "https://json.openmrs.org/routes.schema.json",
   "backendDependencies": {},
-   "extensions": [
+  "pages": [
+    {
+      "component": "root",
+      "route": "workflow",
+      "online": true,
+      "offline": true
+    }
+  ],
+  "extensions": [
     {
       "component": "workflowRegistryLink",
       "name": "workflow-registry-link",
       "slot": "app-menu-slot",
       "online": true,
       "offline": true
-    }
-  ],
-  "pages": [
+    },
     {
-      "component": "registry",
-      "route": "workflow"
+      "component": "navLinks",
+      "name": "side-nav-workflow-link",
+      "slot": "global-nav-menu-slot",
+      "online": true,
+      "offline": true
     }
   ]
 }

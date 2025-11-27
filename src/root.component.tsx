@@ -15,24 +15,21 @@ import Greeter from './greeter/greeter.component';
 import PatientGetter from './patient-getter/patient-getter.component';
 import Resources from './resources/resources.component';
 import styles from './root.scss';
+import { useConfig, useLeftNav } from '@openmrs/esm-framework';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import RegistryComponent from './registry/registry.component';
 
 const Root: React.FC = () => {
   const { t } = useTranslation();
-
   return (
-    <div className={styles.container}>
-      <h3 className={styles.welcome}>{t('welcomeText', 'Welcome to the O3 Template app')}</h3>
-      <p className={styles.explainer}>
-        {t('explainer', 'The following examples demonstrate some key features of the O3 framework')}.
-      </p>
-      {/* Greeter: demonstrates the configuration system */}
-      <Greeter />
-      {/* Boxes: demonstrates the extension system */}
-      <Boxes />
-      {/* PatientGetter: demonstrates data fetching */}
-      <PatientGetter />
-      <Resources />
-    </div>
+    <main className="omrs-main-content">
+      <BrowserRouter basename={window.spaBase}>
+        <Routes>
+          <Route path="/workflow" element={<RegistryComponent />} />
+          <Route path="/workflow/registry" element={<RegistryComponent />} />
+        </Routes>
+      </BrowserRouter>
+    </main>
   );
 };
 
