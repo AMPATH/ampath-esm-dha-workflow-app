@@ -16,13 +16,6 @@
       "slot": "app-menu-slot",
       "online": true,
       "offline": true
-    },
-    {
-      "component": "navLinks",
-      "name": "side-nav-workflow-link",
-      "slot": "global-nav-menu-slot",
-      "online": true,
-      "offline": true
     }
   ]
 }
