@@ -4,7 +4,7 @@
   "pages": [
     {
       "component": "root",
-      "route": "workflow",
+      "route": "home",
       "online": true,
       "offline": true
     }
@@ -19,8 +19,8 @@
     },
     {
       "component": "navLinks",
-      "name": "side-nav-workflow-link",
-      "slot": "global-nav-menu-slot",
+      "name": "side-nav-workflow-links",
+      "slot": "dha-workflow-slot",
       "online": true,
       "offline": true
     }

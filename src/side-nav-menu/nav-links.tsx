@@ -1,23 +1,22 @@
-import { SideNavMenuItem } from '@carbon/react';
 import React from 'react';
+import { ConfigurableLink } from '@openmrs/esm-framework';
+import classNames from 'classnames';
+import { navLinksConfig } from './nav-link-config';
 
 interface NavLinksProps {}
 const NavLinks: React.FC<NavLinksProps> = () => {
   return (
     <>
-      <SideNavMenuItem id="1" href="workflow/registry">
-        Dashboard
-      </SideNavMenuItem>
-      <SideNavMenuItem id="2" href="workflow/registry">
-        Registration
-      </SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Appointments</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Triage</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Consultation</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Laboratory</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Bookings</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Reports</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">Registers</SideNavMenuItem>
+      {navLinksConfig.map((n) => {
+        return (
+          <ConfigurableLink
+            to={`${window.getOpenmrsSpaBase()}home/${n.to}`}
+            className={classNames('cds--side-nav__link', '')}
+          >
+            {n.title}
+          </ConfigurableLink>
+        );
+      })}
     </>
   );
 };

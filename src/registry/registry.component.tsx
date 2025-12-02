@@ -107,11 +107,6 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     */
     <>
       <div className={styles.registryLayout}>
-        <div className={styles.sideNavLayout}>
-          <SideNav isFixedNav expanded={true} aria-label="Side navigation">
-            <NavLinks />
-          </SideNav>
-        </div>
         <div className={styles.mainContent}>
           <div className={styles.registryHeader}>
             <h4>Client Registry</h4>

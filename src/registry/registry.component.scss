@@ -5,15 +5,10 @@
     row-gap: 10px;
     padding: 2% 2%;
 }
-.sideNavLayout{
-    display: flex;
-    flex-direction: column;
-    width: 20%;
-}
 .mainContent{
   display: flex;
   flex-direction: column;
-  width: 80%;
+  width: 100%;
 }
 .registryHeader{
     display: flex;
