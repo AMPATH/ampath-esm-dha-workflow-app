@@ -21,7 +21,7 @@ export const navLinksConfig = [
   },
   {
     to: 'laboratory',
-    title: 'Laboratoty',
+    title: 'Laboratory',
   },
   {
     to: 'bookings',
@@ -34,5 +34,9 @@ export const navLinksConfig = [
   {
     to: 'registers',
     title: 'Registers',
+  },
+  {
+    to: 'pharmacy',
+    title: 'Pharmacy',
   },
 ];
