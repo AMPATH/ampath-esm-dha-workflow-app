@@ -23,6 +23,18 @@
       "slot": "dha-workflow-slot",
       "online": true,
       "offline": true
+    },
+    {
+      "name": "metrics-card-patients-in-waiting",
+      "component": "waitingPatientsExtension",
+      "slot": "clinic-metrics-slot",
+      "order": 1
+    },
+    {
+      "name": "metrics-card-patients-attended-to",
+      "component": "attendedToPatientsExtension",
+      "slot": "clinic-metrics-slot",
+      "order": 2
     }
   ]
 }

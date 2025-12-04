@@ -1,7 +1,14 @@
 import React from 'react';
-interface ConsultationProps {}
+import MetricsContainer from '../metrics/metrics-container.component';
+import ConsultationRooms from './consultation-room.component';
+
+interface ConsultationProps { }
 const Consultation: React.FC<ConsultationProps> = () => {
-  return <>Consultation</>;
+  return (<>
+    <MetricsContainer />
+    <ConsultationRooms />
+  </>
+  );
 };
 
 export default Consultation;
