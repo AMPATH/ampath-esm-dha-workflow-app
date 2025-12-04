@@ -15,6 +15,7 @@ const Root: React.FC = () => {
           <Route path="" element={<RegistryComponent />} />
           <Route path="registry" element={<RegistryComponent />} />
           <Route path="consultation" element={<Consultation />} />
+          <Route path="*" element={<RegistryComponent />} />
         </Routes>
       </main>
       <WorkspaceContainer contextKey="home" />

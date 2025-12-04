@@ -17,11 +17,10 @@ import React, { useState } from 'react';
 import styles from './registry.component.scss';
 import { type HieClient, IDENTIFIER_TYPES, type IdentifierType, type RequestCustomOtpDto } from './types';
 import { fetchClientRegistryData } from './registry.resource';
-import { showSnackbar, useLeftNav, useSession } from '@openmrs/esm-framework';
+import { showSnackbar, useSession } from '@openmrs/esm-framework';
 import OtpVerificationModal from './modal/otp-verification-modal/otp-verification-modal';
 import { maskExceptFirstAndLast, maskValue } from './utils/mask-data';
 import ClientDetailsModal from './modal/client-details-modal/client-details-modal';
-import NavLinks from '../side-nav-menu/nav-links';
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const [identifierType, setIdentifierType] = useState<IdentifierType>('National ID');
@@ -101,6 +100,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const handleClientDetailsSubmit = () => {
     return;
   };
+  const handleEmergencyRegistration = () => {
+    window.location.href = `${window.spaBase}/patient-registration`;
+  };
   return (
     /*
       To be refactored ton use gloab-nav-slot
@@ -134,10 +136,27 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                   placeholder={`Enter ${identifierType.toLowerCase()} value`}
                 />
               </div>
+            </div>
+            <div className={styles.formRow}>
               <div className={styles.formControl}>
-                <Button kind="primary" onClick={handleSearchPatient} disabled={loading}>
-                  {loading ? <InlineLoading description="Searching..." /> : 'Search'}
-                </Button>
+                <div className={styles.formBtn}>
+                  <Button
+                    className={styles.registrySearchBtn}
+                    kind="primary"
+                    onClick={handleSearchPatient}
+                    disabled={loading}
+                  >
+                    {loading ? <InlineLoading description="Searching..." /> : 'Search'}
+                  </Button>
+                  <Button
+                    className={styles.registrySearchBtn}
+                    kind="secondary"
+                    onClick={handleEmergencyRegistration}
+                    disabled={loading}
+                  >
+                    Emergency Registration
+                  </Button>
+                </div>
               </div>
             </div>
             {client ? (
