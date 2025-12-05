@@ -35,7 +35,7 @@
     margin-top: 15px;
     display: flex;
     flex-direction: column;
-    width: 50%;
+    width: 80%;
     row-gap: 10px;
 }
 .btnContainer{
@@ -69,4 +69,15 @@
 }
 .registrySearchBtn{
     height: 30px;
+}
+.principalDependantSection{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    margin-top: 15px;
+}
+.dependantCard{
+    display: flex;
+    flex-direction: row;
+    width: 30%;
 }

@@ -24,13 +24,16 @@ import ClientDetailsModal from './modal/client-details-modal/client-details-moda
 import { searchPatientByCrNumber } from '../resources/patient-search.resource';
 import SendToTriageModal from './modal/send-to-triage/send-to-triage.modal';
 import { useNavigate } from 'react-router-dom';
+import { hieClientRespData } from './mock-client';
+import { formatDependantDisplayData } from './utils/format-dependant-display-data';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const [identifierType, setIdentifierType] = useState<IdentifierType>('National ID');
   const [identifierValue, setIdentifierValue] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [client, setClient] = useState<HieClient>();
+  const [client, setClient] = useState<HieClient>(hieClientRespData[0] as HieClient);
+  const [selectedDependant, setSelectedDependant] = useState<HieClient>();
   const [amrsPatients, setAmrsPatient] = useState<Patient[]>();
   const [selectedPatient, setSelectedPatient] = useState<string>('principal');
   const [displayOtpModal, setDisplayOtpModal] = useState<boolean>(false);
@@ -208,104 +211,98 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                       </div>
                     </div>
                   </div>
-                  {selectedPatient === 'principal' ? (
-                    <>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>CR</TableHeader>
-                            <TableHeader>Phone No</TableHeader>
-                            <TableHeader>ID No</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell>
-                              {client.first_name} {maskExceptFirstAndLast(client.middle_name)}{' '}
-                              {maskExceptFirstAndLast(client.last_name)}
-                            </TableCell>
-                            <TableCell>{maskValue(client.id)}</TableCell>
-                            <TableCell>{maskValue(client.phone)}</TableCell>
-                            <TableCell>{maskValue(client.identification_number)}</TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </>
-                  ) : (
-                    <></>
-                  )}
-                  {selectedPatient === 'dependants' ? (
-                    <>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableHeader>Name</TableHeader>
-                            <TableHeader>CR</TableHeader>
-                            <TableHeader>Relationship</TableHeader>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
+                  <div className={styles.principalDependantSection}>
+                    {selectedPatient === 'principal' ? (
+                      <>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableHeader>Name</TableHeader>
+                              <TableHeader>CR</TableHeader>
+                              <TableHeader>Phone No</TableHeader>
+                              <TableHeader>ID No</TableHeader>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            <TableRow>
+                              <TableCell>
+                                {client.first_name} {maskExceptFirstAndLast(client.middle_name)}{' '}
+                                {maskExceptFirstAndLast(client.last_name)}
+                              </TableCell>
+                              <TableCell>{maskValue(client.id)}</TableCell>
+                              <TableCell>{maskValue(client.phone)}</TableCell>
+                              <TableCell>{maskValue(client.identification_number)}</TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+                      </>
+                    ) : (
+                      <></>
+                    )}
+                    {selectedPatient === 'dependants' ? (
+                      <>
+                        <RadioButtonGroup
+                          defaultSelected=""
+                          helperText=""
+                          invalidText=""
+                          legendText=""
+                          name="dependant-group"
+                        >
                           {client.dependants.map((d) => {
                             const dependant = d.result[0];
                             const relationship = d.relationship;
                             return (
-                              <>
-                                <TableRow>
-                                  <TableCell>
-                                    {dependant.first_name} {maskExceptFirstAndLast(dependant.middle_name)}{' '}
-                                    {maskExceptFirstAndLast(dependant.last_name)}
-                                  </TableCell>
-                                  <TableCell>{maskValue(dependant.id)}</TableCell>
-                                  <TableCell>{relationship}</TableCell>
-                                </TableRow>
-                              </>
+                              <RadioButton
+                                id={dependant.id}
+                                labelText={formatDependantDisplayData(dependant, relationship)}
+                                value={dependant.id}
+                              />
                             );
                           })}
-                        </TableBody>
-                      </Table>
-                    </>
-                  ) : (
-                    <></>
-                  )}
+                        </RadioButtonGroup>
+                      </>
+                    ) : (
+                      <></>
+                    )}
 
-                  {displayOtpModal ? (
-                    <OtpVerificationModal
-                      requestCustomOtpDto={requestCustomOtpDto}
-                      phoneNumber={client.phone}
-                      open={displayOtpModal}
-                      onModalClose={handleModelClose}
-                    />
-                  ) : (
-                    <></>
-                  )}
-
-                  {client && displayClientDetailsModal ? (
-                    <>
-                      <ClientDetailsModal
-                        client={client}
-                        open={displayClientDetailsModal}
-                        onModalClose={onClientDetailsModalClose}
-                        onSubmit={handleClientDetailsSubmit}
-                        onSendClientToTriage={handleSendClientToTriage}
-                      />{' '}
-                    </>
-                  ) : (
-                    <></>
-                  )}
-
-                  {client && displaytriageModal ? (
-                    <>
-                      <SendToTriageModal
-                        patients={amrsPatients}
-                        open={displaytriageModal}
-                        onModalClose={onSendToTriageModalClose}
-                        onSubmit={handleSendToTriageModalSubmit}
+                    {displayOtpModal ? (
+                      <OtpVerificationModal
+                        requestCustomOtpDto={requestCustomOtpDto}
+                        phoneNumber={client.phone}
+                        open={displayOtpModal}
+                        onModalClose={handleModelClose}
                       />
-                    </>
-                  ) : (
-                    <></>
-                  )}
+                    ) : (
+                      <></>
+                    )}
+
+                    {client && displayClientDetailsModal ? (
+                      <>
+                        <ClientDetailsModal
+                          client={client}
+                          open={displayClientDetailsModal}
+                          onModalClose={onClientDetailsModalClose}
+                          onSubmit={handleClientDetailsSubmit}
+                          onSendClientToTriage={handleSendClientToTriage}
+                        />{' '}
+                      </>
+                    ) : (
+                      <></>
+                    )}
+
+                    {client && displaytriageModal ? (
+                      <>
+                        <SendToTriageModal
+                          patients={amrsPatients}
+                          open={displaytriageModal}
+                          onModalClose={onSendToTriageModalClose}
+                          onSubmit={handleSendToTriageModalSubmit}
+                        />
+                      </>
+                    ) : (
+                      <></>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : (
