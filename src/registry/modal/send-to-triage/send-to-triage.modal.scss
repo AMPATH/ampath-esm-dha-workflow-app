@@ -3,6 +3,7 @@
     flex-direction: column;
     width: 100%;
     row-gap: 5px;
+    margin-top: 15px;
 }
 .formRow{
    display: flex;
@@ -17,6 +18,12 @@
    row-gap: 5px;
 }
 .actionSection{
+    display: flex;
+    flex-direction: row;
+    column-gap: 5px;
+    margin-top: 15px;
+}
+.patientAction{
     display: flex;
     flex-direction: row;
     column-gap: 5px;

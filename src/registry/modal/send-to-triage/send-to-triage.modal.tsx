@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   Button,
   Checkbox,
-  Dropdown,
   InlineLoading,
   Modal,
   ModalBody,
@@ -16,15 +15,8 @@ import {
   TableRow,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import {
-  type VisitType,
-  type Patient,
-  useVisitTypes,
-  useSession,
-  showSnackbar,
-  type Visit,
-} from '@openmrs/esm-framework';
-import { type CreateVisitDto, type QueueEntryDto, type ServiceQueue } from '../../types';
+import { type Patient, useVisitTypes, useSession, showSnackbar } from '@openmrs/esm-framework';
+import { type HieClient, type CreateVisitDto, type QueueEntryDto, type ServiceQueue } from '../../types';
 import { createQueueEntry, fetchServiceQueuesByLocationUuid } from '../../../resources/queue.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
 import { createVisit } from '../../../resources/visit.resource';
@@ -34,9 +26,20 @@ interface SendToTriageModalProps {
   open: boolean;
   onModalClose: (modalCloseResp?: { success: boolean }) => void;
   onSubmit: () => void;
+  client: HieClient;
+  onCreateAmrsPatient: (client: HieClient) => void;
+  onManualRegistration: () => void;
 }
 
-const SendToTriageModal: React.FC<SendToTriageModalProps> = ({ patients, open, onModalClose, onSubmit }) => {
+const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
+  patients,
+  open,
+  onModalClose,
+  onSubmit,
+  client,
+  onCreateAmrsPatient,
+  onManualRegistration,
+}) => {
   const [selectedPatient, setSelectedPatient] = useState<Patient>();
   const [selectedVisitType, setSelectedVisitType] = useState<string>();
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>();
@@ -164,6 +167,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({ patients, open, o
       subtitle: subtitle,
     });
   };
+
   return (
     <>
       <Modal
@@ -180,73 +184,94 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({ patients, open, o
             <div className={styles.sectionHeader}>
               <h4 className={styles.sectionTitle}>Send To Triage</h4>
             </div>
-            <div className={styles.sectionContent}>
-              <div className={styles.patientSelect}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableHeader>No</TableHeader>
-                      <TableHeader>Name</TableHeader>
-                      <TableHeader>DOB</TableHeader>
-                      <TableHeader>Select Patient</TableHeader>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {patients.map((p, index) => (
-                      <TableRow key={p.uuid}>
-                        <TableCell>{index + 1}</TableCell>
-                        <TableCell>{p.person.preferredName.display}</TableCell>
-                        <TableCell>{p.person.birthdate}</TableCell>
-                        <TableCell>
-                          <Checkbox id={p.uuid} labelText="" onChange={() => onPatientSelect(p)} />
-                        </TableCell>
+            {patients.length > 0 ? (
+              <div className={styles.sectionContent}>
+                <div className={styles.patientSelect}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableHeader>No</TableHeader>
+                        <TableHeader>Name</TableHeader>
+                        <TableHeader>Gender</TableHeader>
+                        <TableHeader>Select Patient</TableHeader>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <div className={styles.formSection}>
-                <div className={styles.formRow}>
-                  <div className={styles.formControl}>
-                    <Select id="visit-type" labelText="Select a Visit Type" onChange={visitTypeChangeHandler}>
-                      <SelectItem value="" text="Select" />;
-                      {visitTypes &&
-                        visitTypes.map((vt) => {
-                          return <SelectItem value={vt.uuid} text={vt.display} />;
-                        })}
-                    </Select>
+                    </TableHead>
+                    <TableBody>
+                      {patients.map((p, index) => (
+                        <TableRow key={p.uuid}>
+                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>{p.person.preferredName.display}</TableCell>
+                          <TableCell>{p.person.gender}</TableCell>
+                          <TableCell>
+                            <Checkbox id={p.uuid} labelText="" onChange={() => onPatientSelect(p)} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className={styles.formSection}>
+                  <div className={styles.formRow}>
+                    <div className={styles.formControl}>
+                      <Select id="visit-type" labelText="Select a Visit Type" onChange={visitTypeChangeHandler}>
+                        <SelectItem value="" text="Select" />;
+                        {visitTypes &&
+                          visitTypes.map((vt) => {
+                            return <SelectItem value={vt.uuid} text={vt.display} />;
+                          })}
+                      </Select>
+                    </div>
+                    <div className={styles.formControl}>
+                      <Select id="service" labelText="Select a Service" onChange={serviceChangeHandler}>
+                        <SelectItem value="" text="Select" />;
+                        {serviceQueues &&
+                          serviceQueues.map((sq) => {
+                            return <SelectItem value={sq.uuid} text={sq.display} />;
+                          })}
+                      </Select>
+                    </div>
                   </div>
-                  <div className={styles.formControl}>
-                    <Select id="service" labelText="Select a Service" onChange={serviceChangeHandler}>
-                      <SelectItem value="" text="Select" />;
-                      {serviceQueues &&
-                        serviceQueues.map((sq) => {
-                          return <SelectItem value={sq.uuid} text={sq.display} />;
-                        })}
-                    </Select>
+                  <div className={styles.formRow}>
+                    <div className={styles.formControl}>
+                      <Select
+                        id="priority"
+                        labelText="Select Priority"
+                        onChange={($event) => priorityChangeHandler($event.target.value)}
+                      >
+                        <SelectItem value="" text="Select" />;
+                        <SelectItem value={QUEUE_PRIORITIES_UUIDS.NORMAL_PRIORITY_UUID} text="NORMAL" />;
+                        <SelectItem value={QUEUE_PRIORITIES_UUIDS.EMERGENCY_PRIORITY_UUID} text="EMERGENCY" />;
+                      </Select>
+                    </div>
                   </div>
                 </div>
-                <div className={styles.formRow}>
-                  <div className={styles.formControl}>
-                    <Select
-                      id="priority"
-                      labelText="Select Priority"
-                      onChange={($event) => priorityChangeHandler($event.target.value)}
-                    >
-                      <SelectItem value="" text="Select" />;
-                      <SelectItem value={QUEUE_PRIORITIES_UUIDS.NORMAL_PRIORITY_UUID} text="NORMAL" />;
-                      <SelectItem value={QUEUE_PRIORITIES_UUIDS.EMERGENCY_PRIORITY_UUID} text="EMERGENCY" />;
-                    </Select>
-                  </div>
-                </div>
               </div>
-            </div>
+            ) : (
+              <></>
+            )}
             <div className={styles.actionSection}>
-              <div className={styles.btnContainer}>
-                <Button kind="primary" onClick={sendToTriage}>
-                  {loading ? <InlineLoading description="Sending To Triage..." /> : 'Send To Triage'}
-                </Button>
-              </div>
+              {patients.length > 0 ? (
+                <div className={styles.btnContainer}>
+                  <Button kind="primary" onClick={sendToTriage}>
+                    {loading ? <InlineLoading description="Sending To Triage..." /> : 'Send To Triage'}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className={styles.patientAction}>
+                    <div className={styles.btnContainer}>
+                      <Button kind="primary" onClick={() => onCreateAmrsPatient(client)}>
+                        Automatically Register in AMRS
+                      </Button>
+                    </div>
+                    <div className={styles.btnContainer}>
+                      <Button kind="secondary" onClick={onManualRegistration}>
+                        Manually Register
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </ModalBody>

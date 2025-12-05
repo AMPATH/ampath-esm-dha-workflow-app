@@ -1,4 +1,4 @@
-import { Location, type Patient } from '@openmrs/esm-framework';
+import { type Location, type Patient } from '@openmrs/esm-framework';
 
 export type IdentifierType = 'National ID' | 'Alien ID' | 'Passport' | 'Mandate Number' | 'Refugee ID';
 
@@ -9,6 +9,12 @@ export const IDENTIFIER_TYPES: IdentifierType[] = [
   'Mandate Number',
   'Refugee ID',
 ];
+
+export enum OtpStatus {
+  Draft = 'DRAFT',
+  Sent = 'SENT',
+  Verified = 'VERIFIED',
+}
 
 export interface ValidateCustomOtpResponse {
   message: string;
@@ -65,6 +71,7 @@ export enum HieIdentificationType {
   MandateNumber = 'Mandate Number',
   Cr = 'id',
   TemporaryDependantID = 'Temporary Dependant ID',
+  BirthCertificate = 'Birth Certificate',
 }
 
 export interface HieIdentifications {
@@ -220,4 +227,55 @@ export type CreateVisitDto = {
   startDatetime: null | string;
   stopDatetime: null | string;
   patient: string;
+};
+
+export interface GlobalError {
+  code: string;
+  message: string;
+}
+
+export interface AmrsErrorResponse {
+  message: string;
+  error: {
+    error: {
+      message: string;
+      code: string;
+      globalErrors?: GlobalError[];
+      fieldErrors?: any;
+    };
+  };
+}
+
+export interface CreatePersonDto {
+  gender?: string;
+  birthdate?: string;
+  dead?: boolean;
+  deathDate?: string;
+  names?: {
+    givenName?: string;
+    middleName?: string;
+    familyName?: string;
+  }[];
+  addresses?: {
+    country?: string;
+    address1?: string;
+    address2?: string;
+    address4?: string;
+    address7?: string;
+    address10?: string;
+    countyDistrict?: string;
+    stateProvince?: string;
+    cityVillage?: string;
+    longitude?: string;
+    latitude?: string;
+  }[];
+  attributes?: {
+    value: string | number;
+    attributeType: string;
+  }[];
+}
+
+export type CreatePatientDto = {
+  person: CreatePersonDto;
+  identifiers?: any;
 };

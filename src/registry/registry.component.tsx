@@ -4,7 +4,6 @@ import {
   InlineLoading,
   RadioButton,
   RadioButtonGroup,
-  SideNav,
   Table,
   TableBody,
   TableCell,
@@ -24,17 +23,18 @@ import ClientDetailsModal from './modal/client-details-modal/client-details-moda
 import { searchPatientByCrNumber } from '../resources/patient-search.resource';
 import SendToTriageModal from './modal/send-to-triage/send-to-triage.modal';
 import { useNavigate } from 'react-router-dom';
-import { hieClientRespData } from './mock-client';
 import { formatDependantDisplayData } from './utils/format-dependant-display-data';
+import { registerHieClientInAmrs } from '../resources/hie-amrs-automatic-registration.service';
+import { getErrorMessages } from './utils/error-handler';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const [identifierType, setIdentifierType] = useState<IdentifierType>('National ID');
   const [identifierValue, setIdentifierValue] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [client, setClient] = useState<HieClient>(hieClientRespData[0] as HieClient);
+  const [principal, setPrincipal] = useState<HieClient>();
   const [selectedDependant, setSelectedDependant] = useState<HieClient>();
-  const [amrsPatients, setAmrsPatient] = useState<Patient[]>();
+  const [amrsPatients, setAmrsPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<string>('principal');
   const [displayOtpModal, setDisplayOtpModal] = useState<boolean>(false);
   const [displayClientDetailsModal, setDisplayClientDetailsModal] = useState<boolean>(false);
@@ -63,7 +63,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       if (patients.length === 0) throw new Error('No matching patient found in Client Registry.');
 
       const patient = patients[0];
-      setClient(patient);
+      setPrincipal(patient);
       showAlert('success', 'Client Data Loaded', 'Patient fetched successfully');
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch client data';
@@ -102,7 +102,6 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   };
   const handleModelClose = () => {
     setDisplayOtpModal(false);
-    setDisplayClientDetailsModal(true);
   };
   const onClientDetailsModalClose = () => {
     setDisplayClientDetailsModal(false);
@@ -113,11 +112,24 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const handleEmergencyRegistration = () => {
     window.location.href = `${window.spaBase}/patient-registration`;
   };
+  const handleManualRegistration = () => {
+    setDisplaytriageModal(false);
+    handleEmergencyRegistration();
+  };
   const handleSendClientToTriage = async (crId: string) => {
     onClientDetailsModalClose();
     const resp = await searchPatientByCrNumber(crId);
     if (resp.totalCount > 0) {
-      setAmrsPatient(resp.results);
+      showAlert(
+        'success',
+        `${resp.totalCount} ${resp.totalCount > 0 ? 'Patients' : 'Patient'} found in the system with ${crId}`,
+        '',
+      );
+      setAmrsPatients(resp.results);
+      setDisplaytriageModal(true);
+    } else {
+      showAlert('error', 'Patient not found in the system', '');
+      setAmrsPatients([]);
       setDisplaytriageModal(true);
     }
   };
@@ -128,6 +140,59 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     }
   };
   const handleSendToTriageModalSubmit = () => {};
+  const getPatient = (): HieClient => {
+    if (selectedPatient === 'principal') {
+      return principal;
+    } else if (selectedPatient === 'dependants') {
+      return selectedDependant;
+    } else {
+      return principal;
+    }
+  };
+  const handleSelectedDependant = (dependantId: string) => {
+    const dependants = principal.dependants;
+    if (dependants.length > 0) {
+      const dependant = dependants.find((d) => {
+        return d.result[0].id === dependantId;
+      });
+      if (dependant) {
+        setSelectedDependant(dependant.result[0] as unknown as HieClient);
+      }
+    }
+  };
+  const createAmrsPatient = async (client: HieClient) => {
+    try {
+      const resp = await registerHieClientInAmrs(selectedDependant, locationUuid);
+      if (resp) {
+        showAlert('success', 'Patient created succesfully', '');
+        setAmrsPatients([resp]);
+      }
+    } catch (e) {
+      const errorResp = e['responseBody'] ?? e.message;
+      showAlert('error', 'Error Creating Patient', '');
+      const errors = getErrorMessages(errorResp);
+      if (errors && errors.length > 0) {
+        for (let error of errors) {
+          showAlert('error', error, '');
+        }
+      }
+    }
+  };
+  const handleCancel = () => {
+    setPrincipal(null);
+    setSelectedDependant(null);
+    setAmrsPatients([]);
+    setSelectedPatient(null);
+    setIdentifierValue('');
+    setIdentifierType('National ID');
+    setDisplayClientDetailsModal(false);
+    setDisplayOtpModal(false);
+    setDisplaytriageModal(false);
+  };
+  const handleOtpSuccessfullVerification = () => {
+    setDisplayOtpModal(false);
+    setDisplayClientDetailsModal(true);
+  };
   return (
     <>
       <div className={styles.registryLayout}>
@@ -170,18 +235,13 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                   >
                     {loading ? <InlineLoading description="Searching..." /> : 'Search'}
                   </Button>
-                  <Button
-                    className={styles.registrySearchBtn}
-                    kind="secondary"
-                    onClick={handleEmergencyRegistration}
-                    disabled={loading}
-                  >
+                  <Button className={styles.registrySearchBtn} kind="secondary" onClick={handleEmergencyRegistration}>
                     Emergency Registration
                   </Button>
                 </div>
               </div>
             </div>
-            {client ? (
+            {principal ? (
               <div className={styles.formRow}>
                 <div className={styles.hieData}>
                   <div className={styles.selectionHeader}>
@@ -207,7 +267,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                         </Button>
                       </div>
                       <div className={styles.btnContainer}>
-                        <Button kind="secondary">Cancel</Button>
+                        <Button kind="secondary" onClick={handleCancel}>
+                          Cancel
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -226,12 +288,12 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                           <TableBody>
                             <TableRow>
                               <TableCell>
-                                {client.first_name} {maskExceptFirstAndLast(client.middle_name)}{' '}
-                                {maskExceptFirstAndLast(client.last_name)}
+                                {principal.first_name} {maskExceptFirstAndLast(principal.middle_name)}{' '}
+                                {maskExceptFirstAndLast(principal.last_name)}
                               </TableCell>
-                              <TableCell>{maskValue(client.id)}</TableCell>
-                              <TableCell>{maskValue(client.phone)}</TableCell>
-                              <TableCell>{maskValue(client.identification_number)}</TableCell>
+                              <TableCell>{maskValue(principal.id)}</TableCell>
+                              <TableCell>{maskValue(principal.phone)}</TableCell>
+                              <TableCell>{maskValue(principal.identification_number)}</TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -247,8 +309,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                           invalidText=""
                           legendText=""
                           name="dependant-group"
+                          onChange={(dependantId) => handleSelectedDependant(dependantId as string)}
                         >
-                          {client.dependants.map((d) => {
+                          {principal.dependants.map((d) => {
                             const dependant = d.result[0];
                             const relationship = d.relationship;
                             return (
@@ -268,18 +331,19 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                     {displayOtpModal ? (
                       <OtpVerificationModal
                         requestCustomOtpDto={requestCustomOtpDto}
-                        phoneNumber={client.phone}
+                        phoneNumber={principal.phone}
                         open={displayOtpModal}
                         onModalClose={handleModelClose}
+                        onOtpSuccessfullVerification={handleOtpSuccessfullVerification}
                       />
                     ) : (
                       <></>
                     )}
 
-                    {client && displayClientDetailsModal ? (
+                    {principal && displayClientDetailsModal ? (
                       <>
                         <ClientDetailsModal
-                          client={client}
+                          client={getPatient()}
                           open={displayClientDetailsModal}
                           onModalClose={onClientDetailsModalClose}
                           onSubmit={handleClientDetailsSubmit}
@@ -290,13 +354,16 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                       <></>
                     )}
 
-                    {client && displaytriageModal ? (
+                    {principal && displaytriageModal ? (
                       <>
                         <SendToTriageModal
+                          client={getPatient()}
                           patients={amrsPatients}
                           open={displaytriageModal}
                           onModalClose={onSendToTriageModalClose}
                           onSubmit={handleSendToTriageModalSubmit}
+                          onCreateAmrsPatient={createAmrsPatient}
+                          onManualRegistration={handleManualRegistration}
                         />
                       </>
                     ) : (

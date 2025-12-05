@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { type RequestCustomOtpDto } from '../../types';
+import { OtpStatus, type RequestCustomOtpDto } from '../../types';
 import { Button, InlineLoading, Modal, ModalBody, TextInput } from '@carbon/react';
 import styles from './otp-verification-modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
@@ -11,15 +11,17 @@ interface OtpVerificationModalpProps {
   phoneNumber: string;
   open: boolean;
   onModalClose: () => void;
+  onOtpSuccessfullVerification: () => void;
 }
 const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   requestCustomOtpDto,
   phoneNumber,
   open,
   onModalClose,
+  onOtpSuccessfullVerification,
 }) => {
   const [otp, setOtp] = useState('');
-  const [otpStatus, setOtpStatus] = useState<string>('DRAFT');
+  const [otpStatus, setOtpStatus] = useState<string>(OtpStatus.Draft);
   const [loading, setLoading] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>('');
 
@@ -32,7 +34,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
     try {
       const response = await requestCustomOtp(requestCustomOtpDto);
       setSessionId(response.sessionId);
-      setOtpStatus('OTP_SENT');
+      setOtpStatus(OtpStatus.Sent);
 
       showAlert('success', 'OTP sent successfully', `A code was sent to ${response.maskedPhone}`);
     } catch (err: any) {
@@ -62,7 +64,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
       const payload = { sessionId, otp, locationUuid: requestCustomOtpDto.locationUuid };
       await validateCustomOtp(payload);
 
-      setOtpStatus('OTP_VERIFIED');
+      setOtpStatus(OtpStatus.Verified);
 
       showSnackbar({
         kind: 'success',
@@ -104,7 +106,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
             </div>
             <div className={styles.sectionContent}>
               <div className={styles.contentHeader}>
-                {otpStatus === 'DRAFT' ? (
+                {otpStatus === OtpStatus.Draft ? (
                   <>
                     <h6>Send Code to Phone {maskValue(phoneNumber)}</h6>
                   </>
@@ -112,7 +114,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                   <></>
                 )}
 
-                {otpStatus === 'OTP_SENT' ? (
+                {otpStatus === OtpStatus.Sent ? (
                   <>
                     <TextInput
                       id="otp-input"
@@ -126,7 +128,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                   <></>
                 )}
 
-                {otpStatus === 'OTP_VERIFIED' ? (
+                {otpStatus === OtpStatus.Verified ? (
                   <>
                     <h6>OTP Verification Successfull!</h6>
                   </>
@@ -136,7 +138,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
               </div>
             </div>
             <div className={styles.sectionAction}>
-              {otpStatus === 'DRAFT' ? (
+              {otpStatus === OtpStatus.Draft ? (
                 <>
                   <Button kind="primary" onClick={handleSendOtp}>
                     {loading ? <InlineLoading description="Sending OTP..." /> : 'Send OTP'}
@@ -146,7 +148,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                 <></>
               )}
 
-              {otpStatus === 'OTP_SENT' ? (
+              {otpStatus === OtpStatus.Sent ? (
                 <>
                   <Button kind="primary" onClick={handleVerifyOtp}>
                     {loading ? <InlineLoading description="Verifying OTP..." /> : 'Verify'}
@@ -156,9 +158,9 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                 <></>
               )}
 
-              {otpStatus === 'OTP_VERIFIED' ? (
+              {otpStatus === OtpStatus.Verified ? (
                 <>
-                  <Button kind="primary" onClick={onModalClose}>
+                  <Button kind="primary" onClick={onOtpSuccessfullVerification}>
                     Continue
                   </Button>
                 </>
