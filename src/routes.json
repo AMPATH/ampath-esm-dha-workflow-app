@@ -36,5 +36,11 @@
       "slot": "clinic-metrics-slot",
       "order": 2
     }
+  ],
+  "modals": [
+    {
+      "name": "sign-off-queue-entry-modal",
+      "component": "signOffModal"
+    }
   ]
 }

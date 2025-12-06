@@ -51,3 +51,11 @@ export const workflowRegistryLink = getAsyncLifecycle(() => import('./widgets/wo
   featureName: 'workflow-registry-link',
   moduleName,
 });
+
+export const signOffModal = getAsyncLifecycle(
+  () => import('./modals/sign-off-modal'),
+  {
+    featureName: 'sign off',
+    moduleName,
+  },
+);

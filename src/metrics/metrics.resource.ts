@@ -40,7 +40,7 @@ import useSWR from 'swr';
 // }
 
 // Statuses: Waiting, Finished Service, In Service
-export function useServiceMetricsCount(status: string = 'Waiting', service: string = "e6b87ea8-7f7e-4fc9-ab5d-d50b228a536e") {
+export function useServiceMetricsCount(status: string = 'Waiting', service: string = "7f7ec7ad-cdd7-4ed9-bc2e-5c5bd9f065b2") {
   const currentUserSession = useSession();
   const location = currentUserSession?.sessionLocation?.uuid;
 
