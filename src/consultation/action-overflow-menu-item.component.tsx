@@ -10,11 +10,6 @@ export function ActionOverflowMenuItem({ actionKey, queueEntry }: { actionKey: Q
   const { t } = useTranslation();
   const actionPropsByKey = useActionPropsByKey();
 
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log("Called");
-  }, []);
-
   const actionProps = actionPropsByKey[actionKey];
   if (!actionProps) {
     console.error(`Service queue table configuration uses unknown action in 'action.overflowMenu': ${actionKey}`);
