@@ -63,39 +63,3 @@ export function useServiceMetricsCount(status: string = 'Waiting', service: stri
     isLoading
   };
 }
-
-export function useConsultationQueues(service: string = "7f7ec7ad-cdd7-4ed9-bc2e-5c5bd9f065b2", status: string = 'WAITING') {
-  const currentUserSession = useSession();
-  const location = currentUserSession?.sessionLocation?.uuid;
-
-  const customRepresentation =
-    'custom:(uuid,display,queue,status,patient:(uuid,display,person,identifiers:(uuid,display,identifier,identifierType)),' +
-    'visit:(uuid,display,startDatetime))'
-
-  const apiUrl =
-    `${restBaseUrl}/queue-entry?status=${status}&isEnded=false` +
-    (service ? `&service=${service}` : '') +
-    (location ? `&location=${location}` : '') +
-    `&v=${customRepresentation}`;
-
-  const { data, isLoading } = useSWR<
-    {
-      data: {
-        results: Array<{
-          patient: {
-            uuid: string;
-            display: string;
-          },
-          visit: {
-            uuid: string;
-            display: string;
-            startDatetime: string;
-          }
-        }>;
-      };
-    },
-    Error
-  >(service ? apiUrl : null, openmrsFetch);
-
-  return { data, isLoading };
-}

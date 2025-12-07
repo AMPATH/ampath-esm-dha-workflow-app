@@ -45,11 +45,11 @@ export const navLinks = getAsyncLifecycle(() => import('./side-nav-menu/nav-link
 export const root = getAsyncLifecycle(() => import('./root.component'), options);
 export const registry = getAsyncLifecycle(() => import('./registry/registry.component'), options);
 export const waitingPatientsExtension = getAsyncLifecycle(
-  () => import('./metrics/metrics-cards/waiting-patients.extension'),
+  () => import('./service-queues/metrics/metrics-cards/waiting-patients.extension'),
   options,
 );
 export const attendedToPatientsExtension = getAsyncLifecycle(
-  () => import('./metrics/metrics-cards/attended-patients.extension'),
+  () => import('./service-queues/metrics/metrics-cards/attended-patients.extension'),
   options,
 );
 

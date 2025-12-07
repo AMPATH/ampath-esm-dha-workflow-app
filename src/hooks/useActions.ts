@@ -1,7 +1,7 @@
-import { showModal, useConfig } from '@openmrs/esm-framework';
+import { restBaseUrl, showModal, useConfig } from '@openmrs/esm-framework';
 import { type ConfigObject, type QueueEntryAction } from '../config-schema';
 import { useMemo } from 'react';
-import { useMutateQueueEntries } from './useQueueEntries';
+import { useSWRConfig } from 'swr';
 import { type QueueEntry } from '../types/types';
 import { mapVisitQueueEntryProperties, serveQueueEntry } from '../service-queues/service-queues.resource';
 
@@ -12,6 +12,23 @@ type ActionProps = {
   showIf?: (queueEntry: QueueEntry) => boolean;
   isDelete?: boolean;
 };
+
+export function useMutateQueueEntries() {
+    const { mutate } = useSWRConfig();
+
+    return {
+        mutateQueueEntries: () => {
+            return mutate((key) => {
+                return (
+                    typeof key === 'string' &&
+                    (key.includes(`${restBaseUrl}/queue-entry`) || key.includes(`${restBaseUrl}/visit-queue-entry`))
+                );
+            }).then(() => {
+                window.dispatchEvent(new CustomEvent('queue-entry-updated'));
+            });
+        },
+    };
+}
 
 export function useActionPropsByKey() {
   const {

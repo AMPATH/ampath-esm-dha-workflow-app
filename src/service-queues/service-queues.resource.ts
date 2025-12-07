@@ -1,6 +1,8 @@
-import { type Encounter, formatDate, openmrsFetch, parseDate, restBaseUrl } from "@openmrs/esm-framework";
-import { type Identifer, type MappedEncounter, type MappedVisitQueueEntry, type QueueEntry } from "../types/types";
+import { type Encounter, formatDate, openmrsFetch, parseDate, restBaseUrl, useSession } from "@openmrs/esm-framework";
+import { type QueueEntryResponse, type Identifer, type MappedEncounter, type MappedVisitQueueEntry, type QueueEntry } from "../types/types";
 import dayjs from "dayjs";
+import useSWR from 'swr';
+import { useMemo } from "react";
 
 export function serveQueueEntry(servicePointName: string, ticketNumber: string, status: string) {
   const abortController = new AbortController();
@@ -60,3 +62,46 @@ export const mapVisitQueueEntryProperties = (
   identifiers: queueEntry.patient?.identifiers as Identifer[],
   queueComingFrom: queueEntry?.queueComingFrom?.name,
 });
+
+export function useQueueEntries(queue: string) {
+    // const queueEntryBaseUrl = `${restBaseUrl}/queue-entry?` +
+    // `isEnded=false&service=7f7ec7ad-cdd7-4ed9-bc2e-5c5bd9f065b2&location=18c343eb-b353-462a-9139-b16606e6b6c2`;
+    const queueEntryBaseUrl = `${restBaseUrl}/queue-entry?` +
+    `isEnded=false&queue=${queue}`;
+    const { data, isValidating, isLoading, error: pageError } = useSWR<QueueEntryResponse, Error>(queueEntryBaseUrl, openmrsFetch);
+
+    const queueEntries = useMemo(() => data, [data]);
+
+    return {
+        queueEntries,
+        isLoading
+    }
+}
+
+export function useQueues(service: string = "7f7ec7ad-cdd7-4ed9-bc2e-5c5bd9f065b2") {
+  const currentUserSession = useSession();
+  const location = currentUserSession?.sessionLocation?.uuid;
+
+  const customRepresentation =
+    'custom:(uuid,display,name)';
+
+  const apiUrl =
+    `${restBaseUrl}/queue?&service=${service}` +
+    (location ? `&location=${location}` : '') +
+    `&v=${customRepresentation}`;
+
+  const { data, isLoading } = useSWR<
+    {
+      data: {
+        results: Array<{
+          uuid: string;
+          display: string;
+          name: string;
+        }>;
+      };
+    },
+    Error
+  >(service ? apiUrl : null, openmrsFetch);
+
+  return { data, isLoading };
+}

@@ -4,8 +4,8 @@ import { WorkspaceContainer } from '@openmrs/esm-framework';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import RegistryComponent from './registry/registry.component';
 import LeftPanel from './left-panel/left-panel.component';
-import Consultation from './consultation/consultation';
 import Triage from './triage/triage.component';
+import ServiceQueue from './service-queues/service-queue';
 
 const Root: React.FC = () => {
   return (
@@ -15,7 +15,7 @@ const Root: React.FC = () => {
         <Routes>
           <Route path="" element={<RegistryComponent />} />
           <Route path="registry" element={<RegistryComponent />} />
-          <Route path="consultation" element={<Consultation />} />
+          <Route path="consultation" element={<ServiceQueue isTriage={false}/>} />
           <Route path="*" element={<RegistryComponent />} />
           <Route path="triage" element={<Triage />} />
         </Routes>

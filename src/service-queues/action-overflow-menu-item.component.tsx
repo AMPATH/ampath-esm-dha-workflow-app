@@ -1,19 +1,18 @@
-import { Button } from "@carbon/react";
-import { useLayoutType, isDesktop } from "@openmrs/esm-framework";
+import { OverflowMenuItem } from "@carbon/react";
 import { useTranslation } from "react-i18next";
+import React from "react";
 import { type QueueEntryAction } from "../config-schema";
 import { useActionPropsByKey } from "../hooks/useActions";
 import { type QueueEntry } from "../types/types";
-import React from "react";
+import styles from './service-queue.scss';
 
-export function ActionButton({ actionKey, queueEntry }: { actionKey: QueueEntryAction; queueEntry: QueueEntry }) {
+export function ActionOverflowMenuItem({ actionKey, queueEntry }: { actionKey: QueueEntryAction; queueEntry: QueueEntry }) {
   const { t } = useTranslation();
-  const layout = useLayoutType();
   const actionPropsByKey = useActionPropsByKey();
 
   const actionProps = actionPropsByKey[actionKey];
   if (!actionProps) {
-    console.error(`Service queue table configuration uses unknown action in 'action.buttons': ${actionKey}`);
+    console.error(`Service queue table configuration uses unknown action in 'action.overflowMenu': ${actionKey}`);
     return null;
   }
 
@@ -22,13 +21,14 @@ export function ActionButton({ actionKey, queueEntry }: { actionKey: QueueEntryA
   }
 
   return (
-    <Button
+    <OverflowMenuItem
       key={actionKey}
-      kind="ghost"
+      className={styles.menuItem}
       aria-label={t(actionProps.label, actionProps.text)}
+      hasDivider
+      isDelete={actionProps.isDelete}
       onClick={() => actionProps.onClick(queueEntry)}
-      size={isDesktop(layout) ? 'sm' : 'lg'}>
-      {t(actionProps.label, actionProps.text)}
-    </Button>
+      itemText={t(actionProps.label, actionProps.text)}
+    />
   );
 }
