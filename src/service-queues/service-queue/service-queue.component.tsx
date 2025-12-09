@@ -59,6 +59,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
     setDisplayMoveModal(false);
     setDisplayTransitionModal(false);
     setDisplayServeModal(false);
+    getEntryQueues();
   };
 
   const handleTransitionPatient = (queueEntry: QueueEntryResult) => {
