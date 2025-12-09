@@ -28,7 +28,10 @@ export default function AttendedToPatientsExtension() {
     <MetricsCard>
       <MetricsCardHeader title={t('patientsAttendedTo', 'Patients attended to')} />
       <MetricsCardBody>
-        <MetricsCardItem label={t('patients', 'Patients')} value={attendedToPatientsCount} />
+        <MetricsCardItem
+          label={t('patients', 'Patients')}
+          value={attendedToPatientsCount ? attendedToPatientsCount : '--'}
+        />
       </MetricsCardBody>
     </MetricsCard>
   );
