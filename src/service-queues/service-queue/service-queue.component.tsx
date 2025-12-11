@@ -11,6 +11,7 @@ import ServePatientModal from '../modals/serve/serve-patient.comppnent';
 import StatDetails from './stats/stat-details/stat-details.component';
 import SignOffEntryModal from '../modals/sign-off/sign-off.modal';
 import { endVisit } from '../../resources/visit.resource';
+import { QUEUE_SERVICE_UUIDS } from '../../shared/constants/concepts';
 
 interface ServiceQueueComponentProps {
   serviceTypeUuid: string;
@@ -176,6 +177,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
                           handleServePatient={handleServePatient}
                           handleSignOff={handleSignOff}
                           handleRemovePatient={handleRemovePatient}
+                          showComingFromCol={serviceTypeUuid !== QUEUE_SERVICE_UUIDS.TRIAGE_SERVICE_UUID}
                         />
                       }
                     </TabPanel>

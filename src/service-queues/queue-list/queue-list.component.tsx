@@ -23,6 +23,7 @@ interface QueueListProps {
   handleServePatient: (queueEntryResult: QueueEntryResult) => void;
   handleSignOff: (queueEntryResult: QueueEntryResult) => void;
   handleRemovePatient: (queueEntryResult: QueueEntryResult) => void;
+  showComingFromCol: boolean;
 }
 
 const QueueList: React.FC<QueueListProps> = ({
@@ -32,6 +33,7 @@ const QueueList: React.FC<QueueListProps> = ({
   handleServePatient,
   handleSignOff,
   handleRemovePatient,
+  showComingFromCol,
 }) => {
   const [checkIn, setCheckIn] = useState<boolean>(false);
   const handleCheckin = () => {
@@ -117,7 +119,7 @@ const QueueList: React.FC<QueueListProps> = ({
                       </>
                     )}
                   </TableCell>
-                  <TableCell>{val.queue_coming_from}</TableCell>
+                  <TableCell>{showComingFromCol ? val.queue_coming_from : ''}</TableCell>
                   <TableCell>{val.queue_entry_id}</TableCell>
                   <TableCell>
                     <Tag size="md" type={getTagTypeByStatus(val.status)}>
