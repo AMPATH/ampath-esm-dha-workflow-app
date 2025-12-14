@@ -1,7 +1,7 @@
 import { Type, validator } from '@openmrs/esm-framework';
 
 export const configSchema = {
-    concepts: {
+  concepts: {
     defaultPriorityConceptUuid: {
       _type: Type.ConceptUuid,
       _default: false,
@@ -77,6 +77,21 @@ export const configSchema = {
       _default: '5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     },
   },
+  subDomainUrl: {
+    _type: Type.String,
+    _description: 'Subdomain e.g training,staging',
+    _default: '',
+  },
+  etlBaseUrl: {
+    _type: Type.String,
+    _description: 'ETL Endpoint',
+    _default: '',
+  },
+  hieBaseUrl: {
+    _type: Type.String,
+    _description: 'HIE Endpoint',
+    _default: '',
+  },
 };
 
 export type Config = {
@@ -118,6 +133,9 @@ export interface ConfigObject {
   showRecommendedVisitTypeTab: boolean;
   visitQueueNumberAttributeUuid: string | null;
   visitTypeResourceUrl: string;
+  subDomainUrl: string;
+  etlBaseUrl: string;
+  hieBaseUrl: string;
   // vitals: VitalsConfigObject;
 }
 

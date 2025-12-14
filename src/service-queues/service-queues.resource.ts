@@ -9,8 +9,8 @@ import {
 import dayjs from 'dayjs';
 import useSWR from 'swr';
 import { useMemo } from 'react';
-import { ETL_BASE_URL } from '../shared/constants';
 import { type QueueEntryResult } from '../registry/types';
+import { getEtlBaseUrl } from '../shared/utils/get-base-url';
 
 export function serveQueueEntry(servicePointName: string, ticketNumber: string, status: string) {
   const abortController = new AbortController();
@@ -148,7 +148,8 @@ export async function getServiceQueueByLocationUuid(
   serviceUuid: string,
   locationUuid: string,
 ): Promise<QueueEntryResult[]> {
-  const queueEntryUrl = `${ETL_BASE_URL}/queue-entry`;
+  const etlBaseUrl = await getEtlBaseUrl();
+  const queueEntryUrl = `${etlBaseUrl}/queue-entry`;
   const params = {
     locationUuid: locationUuid,
     serviceUuid: serviceUuid,
