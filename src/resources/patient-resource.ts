@@ -2,6 +2,7 @@ import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import { type HieClient, type CreatePatientDto, HieIdentificationType } from '../registry/types';
 import { IdentifierTypesUuids } from './identifier-types';
 import { getAmrsIdentifierTypeUuid } from '../registry/utils/hie-client-adapter';
+import { getSubDomainUrl } from '../shared/utils/get-base-url';
 
 export async function createPatient(payload: CreatePatientDto) {
   return await openmrsFetch(`${restBaseUrl}/patient`, {
@@ -44,8 +45,9 @@ export function generateAmrsCreatePatientIdentifiersPayload(hieClient: HieClient
 }
 
 export async function generateAmrsUniversalIdentifier() {
+  const subDomainUrl = await getSubDomainUrl();
   const abortController = new AbortController();
-  const resp = await openmrsFetch(`https://staging.ampath.or.ke/amrs-id-generator/generateidentifier`, {
+  const resp = await openmrsFetch(`${subDomainUrl}/amrs-id-generator/generateidentifier`, {
     headers: {
       'Content-Type': 'application/json',
     },
