@@ -11,6 +11,7 @@ import PharmacyComponent from './pharmacy/pharmacy.component';
 import Consultation from './service-queues/consultation/consultation.component';
 import Dashboard from './dashboard/dashboard.component';
 import AccountingComponent from './accounting/accounting.component';
+import Bookings from './bookings/bookings.component';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -32,6 +33,7 @@ const Root: React.FC = () => {
           <Route path="pharmacy" element={<PharmacyComponent />} />
           <Route path="appointments" element={<AppointmentsComponent />} />
           <Route path="accounting" element={<AccountingComponent />} />
+          <Route path="bookings" element={<Bookings />} />
           <Route path="*" element={<RegistryComponent />} />
         </Routes>
       </main>

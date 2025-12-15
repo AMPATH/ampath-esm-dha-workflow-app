@@ -1,0 +1,22 @@
+.bookingsLayout{
+    display: flex;
+    flex-direction: column;
+    padding: 15px 15px;
+    row-gap: 5px;
+}
+.bookingsHeader{
+    display: flex;
+    flex-direction: row;
+    column-gap: 5px;
+    width: 100%;
+}
+.bookingsFilters{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.bookingsContent{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
