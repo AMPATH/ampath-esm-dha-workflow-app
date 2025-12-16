@@ -73,4 +73,14 @@ export const navLinksConfig = [
     to: 'bookings',
     title: 'Bookings',
   },
+  {
+    to: 'bookings',
+    title: 'Bookings',
+    children: [
+      {
+        to: 'daily',
+        title: 'Daily',
+      },
+    ],
+  },
 ];
