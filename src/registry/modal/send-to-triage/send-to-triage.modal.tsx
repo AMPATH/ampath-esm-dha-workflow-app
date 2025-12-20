@@ -18,7 +18,7 @@ import {
 import styles from './send-to-triage.modal.scss';
 import { type Patient, useVisitTypes, useSession, showSnackbar, type VisitType } from '@openmrs/esm-framework';
 import { type HieClient, type CreateVisitDto, type QueueEntryDto, type ServiceQueue } from '../../types';
-import { createQueueEntry, fetchServiceQueuesByLocationUuid } from '../../../resources/queue.resource';
+import { createQueueEntry, getFacilityServiceQueues } from '../../../resources/queue.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
 import { createVisit } from '../../../resources/visit.resource';
 
@@ -88,7 +88,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
           uuid: QUEUE_STATUS_UUIDS.WAITING_UUID,
         },
         priority: {
-          uuid: selectedPriority,
+          uuid: selectedPriority ?? QUEUE_PRIORITIES_UUIDS.NORMAL_PRIORITY_UUID,
         },
         queue: {
           uuid: selectedServiceQueue,
@@ -104,12 +104,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   };
   const onPatientSelect = (patient: Patient) => {
     setSelectedPatient(patient);
-  };
-  const getServiceQueues = async () => {
-    const resp = await fetchServiceQueuesByLocationUuid(locationUuid);
-    if (resp && resp.results) {
-      setServiceQueues(resp.results);
-    }
   };
   const visitTypeChangeHandler = (selectedVisitType: { selectedItem: { id: string; text: string } }) => {
     const vt = selectedVisitType.selectedItem.id;
@@ -178,6 +172,20 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       };
     });
   }
+  async function getServiceQueues() {
+    try {
+      const sqs = await getFacilityServiceQueues(locationUuid);
+      if (sqs.length > 0) {
+        setServiceQueues(sqs);
+      }
+    } catch (e) {
+      showSnackbar({
+        kind: 'error',
+        title: 'An error occurred while fetching service queues',
+        subtitle: e.message ?? 'An error occurred while fetching service queues, please try agin',
+      });
+    }
+  }
 
   return (
     <>
@@ -237,7 +245,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         <SelectItem value="" text="Select" />;
                         {serviceQueues &&
                           serviceQueues.map((sq) => {
-                            return <SelectItem value={sq.uuid} text={sq.display} />;
+                            return <SelectItem value={sq.uuid} text={`${sq.display} (${sq.location.display ?? ''})`} />;
                           })}
                       </Select>
                     </div>
