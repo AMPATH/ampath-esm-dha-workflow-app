@@ -6,6 +6,7 @@ import { showSnackbar } from '@openmrs/esm-framework';
 import { requestCustomOtp, validateCustomOtp } from '../../registry.resource';
 import { maskValue } from '../../utils/mask-data';
 import OTPInput from '../../../shared/ui/otp-input/otp-input.component';
+import Timer from '../../../shared/ui/timer/timer.component';
 
 interface OtpVerificationModalpProps {
   requestCustomOtpDto: RequestCustomOtpDto;
@@ -88,6 +89,11 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   };
 
   const onSubmit = () => {};
+  const handleTimeUp = () => {
+    if (OtpStatus.Sent) {
+      setOtpStatus(OtpStatus.Draft);
+    }
+  };
   return (
     <>
       <Modal
@@ -126,8 +132,13 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
               <div className={styles.otpSection}>
                 {otpStatus === OtpStatus.Sent ? (
                   <>
-                    <FormLabel>Enter OTP</FormLabel>
-                    <OTPInput otpLength={5} onChange={(value) => setOtp(value)} />
+                    <div className={styles.otpForm}>
+                      <FormLabel>Enter OTP</FormLabel>
+                      <OTPInput otpLength={5} onChange={(value) => setOtp(value)} />
+                    </div>
+                    <div className={styles.otpTimer}>
+                      <Timer durationInSeconds={60} resetTimer={() => {}} onTimeUp={handleTimeUp} />
+                    </div>
                   </>
                 ) : (
                   <></>

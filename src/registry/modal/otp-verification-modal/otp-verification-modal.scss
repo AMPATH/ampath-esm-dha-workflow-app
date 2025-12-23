@@ -13,7 +13,19 @@
 }
 .otpSection{
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   width: 100%;
+  column-gap: 15px;
+}
+.otpForm{
+  display: flex;
+  flex-direction: column;
+  width: 50%;
   row-gap: 15px;
+}
+.otpTimer{
+  display: flex;
+  flex-direction: column;
+  width: 50%;
+  padding-top: 6%;
 }

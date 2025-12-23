@@ -26,6 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { formatDependantDisplayData } from './utils/format-dependant-display-data';
 import { registerHieClientInAmrs } from '../resources/hie-amrs-automatic-registration.service';
 import { getErrorMessages } from './utils/error-handler';
+import Timer from '../shared/ui/timer/timer.component';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
