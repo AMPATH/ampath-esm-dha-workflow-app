@@ -14,6 +14,7 @@ import AccountingComponent from './accounting/accounting.component';
 import DailyBookings from './bookings/daily/daily-bookings.component';
 import MchTriage from './mch/queues/triage/mch-triage';
 import MchConsultation from './mch/queues/consultation/mch-consultation';
+import Mortuary from './mortuary/mortuary.component';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -38,6 +39,7 @@ const Root: React.FC = () => {
           <Route path="bookings/daily" element={<DailyBookings />} />
           <Route path="mch/triage" element={<MchTriage />} />
           <Route path="mch/consultation" element={<MchConsultation />} />
+          <Route path="mortuary" element={<Mortuary />} />
           <Route path="*" element={<RegistryComponent />} />
         </Routes>
       </main>
