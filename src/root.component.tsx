@@ -24,7 +24,7 @@ const Root: React.FC = () => {
     mode: 'normal',
   });
   return (
-    <BrowserRouter basename={`${window.spaBase}/home`}>
+    <BrowserRouter basename={`${window.spaBase}/dha-workflow`}>
       <LeftPanel />
       <main className={styles.container}>
         <Routes>
@@ -40,7 +40,6 @@ const Root: React.FC = () => {
           <Route path="mch/triage" element={<MchTriage />} />
           <Route path="mch/consultation" element={<MchConsultation />} />
           <Route path="mortuary" element={<Mortuary />} />
-          <Route path="*" element={<RegistryComponent />} />
         </Routes>
       </main>
       <WorkspaceContainer contextKey="home" />
