@@ -4,7 +4,7 @@
   "pages": [
     {
       "component": "root",
-      "route": "home",
+      "route": "dha-workflow",
       "online": true,
       "offline": true
     }
@@ -47,6 +47,24 @@
       "component": "triageAttendedToPatientsExtension",
       "slot": "triage-metrics-slot",
       "order": 2
+    },
+    {
+      "name": "registry-dashboard-link",
+      "component": "registryDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "client-registry",
+        "slot": "client-registry-dashboard-slot",
+        "title": "Registry"
+      },
+      "online": true,
+      "offline": true,
+      "order": 0
+    },
+    {
+      "component": "registryExtension",
+      "name": "client-registry",
+      "slot": "client-registry-dashboard-slot"
     }
   ],
   "modals": [

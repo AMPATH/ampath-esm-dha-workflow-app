@@ -22,11 +22,9 @@ import { maskExceptFirstAndLast, maskValue } from './utils/mask-data';
 import ClientDetailsModal from './modal/client-details-modal/client-details-modal';
 import { searchPatientByCrNumber } from '../resources/patient-search.resource';
 import SendToTriageModal from './modal/send-to-triage/send-to-triage.modal';
-import { useNavigate } from 'react-router-dom';
 import { formatDependantDisplayData } from './utils/format-dependant-display-data';
 import { registerHieClientInAmrs } from '../resources/hie-amrs-automatic-registration.service';
 import { getErrorMessages } from './utils/error-handler';
-import Timer from '../shared/ui/timer/timer.component';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -43,7 +41,6 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const [requestCustomOtpDto, setRequestCustomOtpDto] = useState<RequestCustomOtpDto>();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
-  const navigate = useNavigate();
 
   const handleSearchPatient = async () => {
     setLoading(true);
@@ -141,7 +138,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const onSendToTriageModalClose = (modalCloseResp?: { success: boolean }) => {
     setDisplaytriageModal(false);
     if (modalCloseResp && modalCloseResp.success) {
-      navigate('/triage');
+      window.location.href = `${window.spaBase}/home/triage`;
     }
   };
   const handleSendToTriageModalSubmit = () => {};
