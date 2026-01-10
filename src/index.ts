@@ -12,6 +12,7 @@ import { queueDashboardMeta } from './dashboard-meta/queue-dashboard.meta';
 import { pharmacyDashboardMeta } from './dashboard-meta/pharmacy-dashboard.meta';
 import { triageDashboardMeta } from './dashboard-meta/triage-dashboard.meta';
 import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboard.meta';
+import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -88,4 +89,11 @@ export const triageQueueExtension = getAsyncLifecycle(() => import('./triage/tri
 
 export const consultationDashboardLink = getSyncLifecycle(createDashboardLink(consultationDashboardMeta), options);
 
-export const consultationQueue = getAsyncLifecycle(() => import('./service-queues/consultation/consultation.component'), options);
+export const consultationQueue = getAsyncLifecycle(
+  () => import('./service-queues/consultation/consultation.component'),
+  options,
+);
+
+export const dhaWorkflowDashboardLink = getSyncLifecycle(createDashboardLink(dhaWorkflowDashboardMeta), options);
+
+export const dhaWorkflowDashboard = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
