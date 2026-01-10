@@ -66,19 +66,7 @@
       "name": "client-registry",
       "slot": "client-registry-dashboard-slot"
     },
-    {
-      "name": "pharmacy-dashboard-link",
-      "component": "pharmacyDashboardLink",
-      "slot": "homepage-dashboard-slot",
-      "meta": {
-        "name": "dispensing",
-        "slot": "dispensing-dashboard-slot",
-        "title": "Pharmacy"
-      },
-      "online": true,
-      "offline": true
-    },
-    {
+     {
       "name": "triage-dashboard-link",
       "component": "triageDashboardLink",
       "slot": "homepage-dashboard-slot",
@@ -94,6 +82,35 @@
       "component": "triageQueueExtension",
       "name": "triage",
       "slot": "triage-queue-dashboard-slot"
+    },
+    {
+      "name": "consultation-dashboard-link",
+      "component": "consultationDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "consultation",
+        "slot": "consultation-dashboard-slot",
+        "title": "Consultation"
+      },
+      "online":true,
+      "offline": false
+    },
+     {
+      "component": "consultationQueue",
+      "name": "consultation",
+      "slot": "consultation-dashboard-slot"
+    },
+    {
+      "name": "pharmacy-dashboard-link",
+      "component": "pharmacyDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "dispensing",
+        "slot": "dispensing-dashboard-slot",
+        "title": "Pharmacy"
+      },
+      "online": true,
+      "offline": true
     }
   ],
   "modals": [
