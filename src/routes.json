@@ -139,6 +139,23 @@
       "component": "registers",
       "name": "registers",
       "slot": "registers-dashboard-slot"
+    },
+    {
+      "name": "reports-dashboard-link",
+      "component": "reportsDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "reports",
+        "slot": "reports-dashboard-slot",
+        "title": "Reports"
+      },
+      "online":true,
+      "offline": false
+    },
+     {
+      "component": "reports",
+      "name": "Reports",
+      "slot": "reports-dashboard-slot"
     }
   ],
   "modals": [
