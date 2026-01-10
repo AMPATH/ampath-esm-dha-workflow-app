@@ -89,7 +89,7 @@
       "online":true,
       "offline": false
     },
-     {
+    {
       "component": "consultationQueue",
       "name": "consultation",
       "slot": "consultation-dashboard-slot"
@@ -135,7 +135,7 @@
       "online":true,
       "offline": false
     },
-     {
+    {
       "component": "registers",
       "name": "registers",
       "slot": "registers-dashboard-slot"
@@ -152,10 +152,27 @@
       "online":true,
       "offline": false
     },
-     {
+    {
       "component": "reports",
       "name": "Reports",
       "slot": "reports-dashboard-slot"
+    },
+    {
+      "name": "bookings-dashboard-link",
+      "component": "bookingsDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "bookings",
+        "slot": "bookings-dashboard-slot",
+        "title": "Bookings"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "bookings",
+      "name": "bookings",
+      "slot": "bookings-dashboard-slot"
     }
   ],
   "modals": [
