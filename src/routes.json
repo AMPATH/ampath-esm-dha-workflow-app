@@ -95,6 +95,23 @@
       "slot": "consultation-dashboard-slot"
     },
     {
+      "name": "mnch-dashboard-link",
+      "component": "mnchQueueDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "mnch",
+        "slot": "mnch-dashboard-slot",
+        "title": "MNCH"
+      },
+      "online": true,
+      "offline": true
+    },
+     {
+      "component": "mnchQueueDashboard",
+      "name": "mnch",
+      "slot": "mnch-dashboard-slot"
+    },
+    {
       "name": "pharmacy-dashboard-link",
       "component": "pharmacyDashboardLink",
       "slot": "homepage-dashboard-slot",
@@ -118,7 +135,7 @@
       "online":true,
       "offline": false
     },
-     {
+    {
       "component": "accountingDashboard",
       "name": "accounting",
       "slot": "accounting-dashboard-slot"
