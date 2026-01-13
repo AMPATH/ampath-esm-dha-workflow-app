@@ -19,3 +19,14 @@ export const maskExceptFirstAndLast = (value: string): string => {
   const maskedValue = arrValue.join('');
   return maskedValue;
 };
+
+export const maskAllButFirstAndLastThree = (value: string): string => {
+  let arrValue = value.split('');
+  for (let i = 0; i < value.length; i++) {
+    if (i > 3 && i < value.length - 3) {
+      arrValue[i] = '*';
+    }
+  }
+  const maskedValue = arrValue.join('');
+  return maskedValue;
+};

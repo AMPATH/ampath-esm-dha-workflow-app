@@ -194,8 +194,8 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
         size="md"
         onSecondarySubmit={() => onModalClose({ success: false })}
         onRequestClose={() => onModalClose({ success: false })}
-        onRequestSubmit={registerOnAfyaYangu}
-        primaryButtonText="Register on Afya Yangu"
+        onRequestSubmit={sendToTriage}
+        primaryButtonText="Send to Triage"
         secondaryButtonText="Cancel"
       >
         <ModalBody>
@@ -269,13 +269,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
               <></>
             )}
             <div className={styles.actionSection}>
-              {patients.length > 0 ? (
-                <div className={styles.btnContainer}>
-                  <Button className={styles.greenBtn} onClick={sendToTriage}>
-                    {loading ? <InlineLoading description="Sending To Triage..." /> : 'Send To Triage'}
-                  </Button>
-                </div>
-              ) : (
+              {patients.length === 0 ? (
                 <>
                   <div className={styles.patientAction}>
                     <div className={styles.btnContainer}>
@@ -290,6 +284,8 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                     </div>
                   </div>
                 </>
+              ) : (
+                <></>
               )}
             </div>
           </div>
