@@ -249,9 +249,13 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                   <Button className={styles.registrySearchBtn} kind="secondary" onClick={handleEmergencyRegistration}>
                     Emergency Registration
                   </Button>
-                  <Button className={styles.registrySearchBtn} kind="tertiary" onClick={registerOnAfyaYangu}>
-                    Register on Afya Yangu
-                  </Button>
+                  {!principal ? (
+                    <Button className={styles.registrySearchBtn} kind="tertiary" onClick={registerOnAfyaYangu}>
+                      Register on Afya Yangu
+                    </Button>
+                  ) : (
+                    <></>
+                  )}
                 </div>
               </div>
             </div>
