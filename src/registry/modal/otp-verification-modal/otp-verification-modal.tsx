@@ -4,7 +4,7 @@ import { Button, FormLabel, InlineLoading, Modal, ModalBody } from '@carbon/reac
 import styles from './otp-verification-modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { requestCustomOtp, validateCustomOtp } from '../../registry.resource';
-import { maskValue } from '../../utils/mask-data';
+import { maskAllButFirstAndLastThree } from '../../utils/mask-data';
 import OTPInput from '../../../shared/ui/otp-input/otp-input.component';
 import Timer from '../../../shared/ui/timer/timer.component';
 
@@ -94,6 +94,41 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
       setOtpStatus(OtpStatus.Draft);
     }
   };
+  const getPrimaryButtonFunc = () => {
+    if (otpStatus === OtpStatus.Draft) {
+      return handleSendOtp();
+    }
+    if (otpStatus === OtpStatus.Sent) {
+      return handleVerifyOtp();
+    }
+    if (otpStatus === OtpStatus.Verified) {
+      return onOtpSuccessfullVerification();
+    }
+  };
+  const getPrimaryButtonText = (): any => {
+    if (otpStatus === OtpStatus.Draft) {
+      if (loading) {
+        return 'Sending OTP...';
+      } else {
+        return 'Send OTP';
+      }
+    }
+    if (otpStatus === OtpStatus.Sent) {
+      if (loading) {
+        return 'Verifying OTP...';
+      } else {
+        return 'Verify';
+      }
+    }
+    if (otpStatus === OtpStatus.Verified) {
+      if (loading) {
+        return 'loading...';
+      } else {
+        return 'Continue';
+      }
+    }
+    return '';
+  };
   return (
     <>
       <Modal
@@ -101,21 +136,21 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
         size="md"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={registerOnAfyaYangu}
-        primaryButtonText="Register on Afya Yangu"
+        onRequestSubmit={getPrimaryButtonFunc}
+        primaryButtonText={getPrimaryButtonText()}
         secondaryButtonText="Cancel"
       >
         <ModalBody>
           <div className={styles.modalVerificationLayout}>
             <div className={styles.sectionHeader}>
               <h4 className={styles.sectionTitle}>One Time Password (OTP)</h4>
-              <h6>Enter one time password to proceed</h6>
+              <h6>(Enter one time password to proceed)</h6>
             </div>
             <div className={styles.sectionContent}>
               <div className={styles.contentHeader}>
                 {otpStatus === OtpStatus.Draft ? (
                   <>
-                    <h6>Send Code to Phone {maskValue(phoneNumber)}</h6>
+                    <h6>Send Code to Phone {maskAllButFirstAndLastThree(phoneNumber)}?</h6>
                   </>
                 ) : (
                   <></>
@@ -145,37 +180,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                 )}
               </div>
             </div>
-            <div className={styles.sectionAction}>
-              {otpStatus === OtpStatus.Draft ? (
-                <>
-                  <Button kind="primary" onClick={handleSendOtp}>
-                    {loading ? <InlineLoading description="Sending OTP..." /> : 'Send OTP'}
-                  </Button>
-                </>
-              ) : (
-                <></>
-              )}
-
-              {otpStatus === OtpStatus.Sent ? (
-                <>
-                  <Button kind="primary" onClick={handleVerifyOtp}>
-                    {loading ? <InlineLoading description="Verifying OTP..." /> : 'Verify'}
-                  </Button>
-                </>
-              ) : (
-                <></>
-              )}
-
-              {otpStatus === OtpStatus.Verified ? (
-                <>
-                  <Button kind="primary" onClick={onOtpSuccessfullVerification}>
-                    Continue
-                  </Button>
-                </>
-              ) : (
-                <></>
-              )}
-            </div>
+            <div className={styles.sectionAction}></div>
           </div>
         </ModalBody>
       </Modal>
