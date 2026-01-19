@@ -1,3 +1,4 @@
+import { openmrsFetch } from '@openmrs/esm-framework';
 import { getEtlBaseUrl } from '../../shared/utils/get-base-url';
 import {
   type BookingFilter,
@@ -21,7 +22,7 @@ export async function getDailyBookings(
   };
   const queryString = new URLSearchParams(params).toString();
   const dailyAppUrl = `${etlBaseUrl}/${bookingType}/${bookingFilter.startDate}?&${queryString}`;
-  const resp = await fetch(dailyAppUrl);
+  const resp = await openmrsFetch(dailyAppUrl);
   const data: DailyBookingsReponse = await resp.json();
   return data.result ?? [];
 }
