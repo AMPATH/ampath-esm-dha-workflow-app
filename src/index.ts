@@ -21,6 +21,7 @@ import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta'
 import { mchQueueDashboardMeta } from './dashboard-meta/mch-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
+import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -141,5 +142,13 @@ export const admissionsDashboard = getAsyncLifecycle(
 
 export const serviceQueueBannerComponent = getAsyncLifecycle(
   () => import('./service-queues/extensions/service-queue-patient-banner/service-queue-patient-banner'),
+  options,
+);
+export const patientChartAdmissionsLink = getSyncLifecycle(
+  openMrsCreateDashboardLink(patientChartAdmissionsMetaData as any),
+  options,
+);
+export const patientAdmissionSummary = getAsyncLifecycle(
+  () => import('./admissions/inpatient/inpatient-admissions.component'),
   options,
 );

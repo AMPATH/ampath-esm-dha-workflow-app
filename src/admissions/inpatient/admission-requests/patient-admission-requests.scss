@@ -1,0 +1,19 @@
+.admissionLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    .actionSection{
+        display: flex;
+        flex-direction: row;
+        column-gap: 10px;
+        margin: 10px 10px;
+        justify-content: flex-end;
+    }
+    .contentSection{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 10px;
+    }
+}

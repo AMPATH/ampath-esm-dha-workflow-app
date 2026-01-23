@@ -222,6 +222,30 @@
       "component": "serviceQueueBannerComponent",
       "name": "service-queue-banne",
       "slot": "patient-banner-tags-slot"
+    },
+      {
+      "name": "admissions-summary-dashboard",
+      "slot": "patient-chart-dashboard-slot",
+      "component": "patientChartAdmissionsLink",
+      "meta": {
+        "slot": "patient-chart-admissions-summary-dashboard-slot",
+        "path": "Admissions",
+        "layoutMode": "anchored"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "name": "admission-details",
+      "slot": "patient-chart-admissions-summary-dashboard-slot",
+      "component": "patientAdmissionSummary",
+      "order": 1,
+      "meta": {
+        "title": "Admissions",
+        "view": "admissions"
+      },
+      "online": true,
+      "offline": true
     }
   ],
   "modals": [
