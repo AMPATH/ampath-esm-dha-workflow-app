@@ -159,3 +159,5 @@ export const billingDashboard = getAsyncLifecycle(
   () => import('./billing/dashboard/billingDashboard.component'),
   options,
 );
+
+export const billingRoot = getAsyncLifecycle(() => import('./billing/billing-root'), options);
