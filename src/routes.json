@@ -246,6 +246,23 @@
       },
       "online": true,
       "offline": true
+    },
+    {
+      "name": "ampath-billing-dashboard-link",
+      "component": "billingDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "billing",
+        "slot": "ampath-billing-dashboard-slot",
+        "title": "Billing"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "billingRoot",
+      "name": "billing",
+      "slot": "ampath-billing-dashboard-slot"
     }
   ],
   "modals": [
