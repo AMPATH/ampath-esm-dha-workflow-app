@@ -126,4 +126,9 @@ export const mnchQueueDashboard = getAsyncLifecycle(() => import('./mch/mch-queu
 
 export const billingDashboardLink = getSyncLifecycle(createDashboardLink(billingDashboardMeta), options);
 
-export const billingDashboard = getAsyncLifecycle(() => import('./billing/dashboard/billingDashboard.component'), options);
+export const billingDashboard = getAsyncLifecycle(
+  () => import('./billing/dashboard/billingDashboard.component'),
+  options,
+);
+
+export const billingRoot = getAsyncLifecycle(() => import('./billing/billing-root'), options);

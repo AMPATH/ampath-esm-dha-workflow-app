@@ -204,7 +204,7 @@
       "offline": true
     },
     {
-      "component": "billingDashboard",
+      "component": "billingRoot",
       "name": "billing",
       "slot": "ampath-billing-dashboard-slot"
     }
