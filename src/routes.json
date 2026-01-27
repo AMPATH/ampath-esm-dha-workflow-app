@@ -190,6 +190,23 @@
       "component": "bookings",
       "name": "bookings",
       "slot": "bookings-dashboard-slot"
+    },
+    {
+      "name": "ampath-billing-dashboard-link",
+      "component": "billingDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "billing",
+        "slot": "ampath-billing-dashboard-slot",
+        "title": "Billing"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "billingDashboard",
+      "name": "billing",
+      "slot": "ampath-billing-dashboard-slot"
     }
   ],
   "modals": [
