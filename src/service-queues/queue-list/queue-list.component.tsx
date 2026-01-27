@@ -12,7 +12,7 @@ import {
   Tag,
 } from '@carbon/react';
 import { type QueueEntryResult } from '../../registry/types';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import styles from './queue-list.component.scss';
 import { QueueEntryPriority, QueueEntryStatus, type TagColor } from '../../types/types';
 
@@ -36,6 +36,28 @@ const QueueList: React.FC<QueueListProps> = ({
   showComingFromCol,
 }) => {
   const [checkIn, setCheckIn] = useState<boolean>(false);
+  const urgentEntries = useMemo(
+    () => sortQueueByPriorityAndWaitTime(queueEntries, QueueEntryPriority.Emergency),
+    [queueEntries],
+  );
+  const normalEntries = useMemo(
+    () => sortQueueByPriorityAndWaitTime(queueEntries, QueueEntryPriority.Normal),
+    [queueEntries],
+  );
+  const sortedQueueEntries = useMemo(() => generatePatientWaitingList(), [queueEntries]);
+  function generatePatientWaitingList() {
+    return [...urgentEntries, ...normalEntries];
+  }
+
+  function sortQueueByPriorityAndWaitTime(queueEntries: QueueEntryResult[], priority: QueueEntryPriority) {
+    return queueEntries
+      .filter((q) => {
+        return q.priority === priority;
+      })
+      .sort((a, b) => {
+        return b.wait_time_in_min - a.wait_time_in_min;
+      });
+  }
   const handleCheckin = () => {
     setCheckIn((prev) => !prev);
   };
@@ -105,7 +127,7 @@ const QueueList: React.FC<QueueListProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {queueEntries.map((val, index) => (
+              {sortedQueueEntries.map((val, index) => (
                 <TableRow>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
