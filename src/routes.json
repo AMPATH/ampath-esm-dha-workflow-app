@@ -11,13 +11,6 @@
   ],
   "extensions": [
     {
-      "component": "workflowRegistryLink",
-      "name": "workflow-registry-link",
-      "slot": "app-menu-slot",
-      "online": true,
-      "offline": true
-    },
-    {
       "component": "navLinks",
       "name": "side-nav-workflow-links",
       "slot": "dha-workflow-slot",
@@ -190,6 +183,23 @@
       "component": "bookings",
       "name": "bookings",
       "slot": "bookings-dashboard-slot"
+    },
+    {
+      "name": "service-queue-admin-dashboard-link",
+      "component": "serviceQueuesAdminLink",
+      "slot": "app-menu-slot",
+      "meta": {
+        "name": "service-queue-admin",
+        "slot": "service-queue-admin-dashboard-slot",
+        "title": "Service Queue Admin"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "serviceQueueAdmin",
+      "name": "service-queue-admin",
+      "slot": "service-queue-admin-dashboard-slot"
     }
   ],
   "modals": [

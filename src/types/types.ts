@@ -1,5 +1,6 @@
 import {
   type Visit,
+  type Location,
   type Concept,
   type Patient,
   type OpenmrsResource,
@@ -34,6 +35,15 @@ export interface Provider {
   location: string;
   serviceType: string;
 }
+
+export type QueueService = {
+  uuid: string;
+  display: string;
+  name: string;
+  description: string;
+  location: Location;
+  service: QueueService;
+};
 
 export interface Queue {
   uuid: string;
@@ -126,3 +136,30 @@ export enum QueueEntryPriority {
   Emergency = 'EMERGENCY',
   Normal = 'NORMAL',
 }
+
+export type CreateQueueDto = {
+  name: string;
+  description: string;
+  service: {
+    uuid: string;
+  };
+  location: {
+    uuid: string;
+  };
+};
+
+export type QueueRoom = {
+  uuid: string;
+  display: string;
+  name: string;
+  description: string;
+  queue: Queue;
+};
+
+export type CreateQueueRoomDto = {
+  name: string;
+  description: string;
+  queue: {
+    uuid: string;
+  };
+};
