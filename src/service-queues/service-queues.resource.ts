@@ -5,6 +5,10 @@ import {
   type MappedEncounter,
   type MappedVisitQueueEntry,
   type QueueEntry,
+  type Queue,
+  type CreateQueueDto,
+  type QueueRoom,
+  CreateQueueRoomDto,
 } from '../types/types';
 import dayjs from 'dayjs';
 import useSWR from 'swr';
@@ -141,7 +145,7 @@ export function useQueue(service: string = '7f7ec7ad-cdd7-4ed9-bc2e-5c5bd9f065b2
     Error
   >(service ? apiUrl : null, openmrsFetch);
 
- return { data, isLoading };
+  return { data, isLoading };
 }
 
 export async function getServiceQueueByLocationUuid(
@@ -174,4 +178,98 @@ export async function closeQueueEntry(entryQueueUuid: string): Promise<QueueEntr
   });
   const result = await response.json();
   return result.data;
+}
+
+export async function getQueuesByLocationUuid(locationUuid: string): Promise<Queue[]> {
+  const queueUrl = `${restBaseUrl}/queue`;
+  const params = {
+    location: locationUuid,
+    v: 'full',
+  };
+  const queryString = new URLSearchParams(params).toString();
+  const response = await openmrsFetch(`${queueUrl}?${queryString}`);
+  const result = await response.json();
+  return result.results;
+}
+
+export async function deleteQueue(queueUuid: string): Promise<any> {
+  const queueUrl = `${restBaseUrl}/queue/${queueUuid}?!purge`;
+  const response = await openmrsFetch(queueUrl, {
+    method: 'DELETE',
+  });
+  return response;
+}
+
+export async function createQueue(createQueueDto: CreateQueueDto): Promise<Queue> {
+  const createQueueUrl = `${restBaseUrl}/queue/`;
+  const response = await openmrsFetch(createQueueUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(createQueueDto),
+  });
+  const result = await response.json();
+  return result;
+}
+
+export async function editQueue(queueUuid: string, editQueueDto: CreateQueueDto): Promise<Queue> {
+  const editQueueUrl = `${restBaseUrl}/queue/${queueUuid}`;
+  const response = await openmrsFetch(editQueueUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(editQueueDto),
+  });
+  const result = await response.json();
+  return result;
+}
+
+export async function getQueueRoomsByLocationUuid(locationUuid: string): Promise<QueueRoom[]> {
+  const queueUrl = `${restBaseUrl}/queue-room`;
+  const v =
+    'custom:(uuid,display,name,description,queue:(uuid,display,location:(uuid,display),service:(uuid,display)))';
+  const params = {
+    location: locationUuid,
+    v: v,
+  };
+  const queryString = new URLSearchParams(params).toString();
+  const response = await openmrsFetch(`${queueUrl}?${queryString}`);
+  const result = await response.json();
+  return result.results;
+}
+
+export async function createQueueRoom(createQueueRoomDto: CreateQueueRoomDto): Promise<QueueRoom> {
+  const createQueueUrl = `${restBaseUrl}/queue-room/`;
+  const response = await openmrsFetch(createQueueUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(createQueueRoomDto),
+  });
+  const result = await response.json();
+  return result;
+}
+
+export async function deleteQueueRoom(queueRoomUuid: string): Promise<any> {
+  const queueUrl = `${restBaseUrl}/queue-room/${queueRoomUuid}?!purge`;
+  const response = await openmrsFetch(queueUrl, {
+    method: 'DELETE',
+  });
+  return response;
+}
+
+export async function editQueueRoom(queueRoomUuid: string, editQueueRoomDto: CreateQueueRoomDto): Promise<QueueRoom> {
+  const editQueueUrl = `${restBaseUrl}/queue-room/${queueRoomUuid}`;
+  const response = await openmrsFetch(editQueueUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(editQueueRoomDto),
+  });
+  const result = await response.json();
+  return result;
 }

@@ -1,0 +1,31 @@
+.createQueueModalLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    padding: 15px 15px;
+    .sectionHeader{
+        display: flex;
+        flex-direction: column;
+        row-gap: 15px;
+        width: 100%;
+        padding-bottom: 15px;
+    }
+    .createQueueModalContentSection{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 10px;
+    }
+    .createQueueModalFormRow{
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        column-gap: 10px;
+    }
+    .createQueueModalFormControl{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+}

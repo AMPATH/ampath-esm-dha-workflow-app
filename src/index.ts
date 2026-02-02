@@ -8,6 +8,7 @@ import { getAsyncLifecycle, defineConfigSchema, getSyncLifecycle } from '@openmr
 import { configSchema } from './config-schema';
 import { registryDashboardMeta } from './dashboard-meta/registry-dashboard.meta';
 import { createDashboardLink } from './createDashboardLink';
+import { createDashboardLink as openMrsCreateDashboardLink } from '@openmrs/esm-patient-common-lib';
 import { queueDashboardMeta } from './dashboard-meta/queue-dashboard.meta';
 import { pharmacyDashboardMeta } from './dashboard-meta/pharmacy-dashboard.meta';
 import { triageDashboardMeta } from './dashboard-meta/triage-dashboard.meta';
@@ -18,6 +19,7 @@ import { registersDashboardMeta } from './dashboard-meta/registers-dashboard.met
 import { reportsDashboardMeta } from './dashboard-meta/reports-dashboard.meta';
 import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta';
 import { mchQueueDashboardMeta } from './dashboard-meta/mch-dashboard.meta';
+import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -122,3 +124,10 @@ export const bookings = getAsyncLifecycle(() => import('./bookings/bookings.comp
 export const mnchQueueDashboardLink = getSyncLifecycle(createDashboardLink(mchQueueDashboardMeta), options);
 
 export const mnchQueueDashboard = getAsyncLifecycle(() => import('./mch/mch-queues.component'), options);
+
+export const serviceQueueAdmin = getAsyncLifecycle(
+  () => import('./service-queues/admin/service-queue-admin-dashboard.component'),
+  options,
+);
+
+export const serviceQueuesAdminLink = getSyncLifecycle(createDashboardLink(serviceQueueAdminDashboardMeta), options);

@@ -1,0 +1,33 @@
+.queueListLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    .layoutHeader{
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        width: 100%;
+    }
+    .layoutAction{
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        width: 100%;
+        column-gap: 5px;
+    }
+    .tableSection{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+}
+
+.actionBtns{
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+}
+.iconBtn:hover {
+  cursor: pointer;
+}
