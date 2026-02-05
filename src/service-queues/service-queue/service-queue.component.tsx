@@ -12,6 +12,7 @@ import StatDetails from './stats/stat-details/stat-details.component';
 import SignOffEntryModal from '../modals/sign-off/sign-off.modal';
 import { endVisit } from '../../resources/visit.resource';
 import { QUEUE_SERVICE_UUIDS } from '../../shared/constants/concepts';
+import ConfirmModal from '../../shared/ui/confirm-modal/confirm.modal';
 
 interface ServiceQueueComponentProps {
   serviceTypeUuid: string;
@@ -25,6 +26,8 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
   const [displayTransitionModal, setDisplayTransitionModal] = useState<boolean>(false);
   const [displayServeModal, setDisplayServeModal] = useState<boolean>(false);
   const [displaySignOffModal, setDisplaySignOffModal] = useState<boolean>(false);
+  const [displayConfirmClearQueueModal, setDisplayConfirmClearQueueModal] = useState<boolean>(false);
+  const [queueEntryToClear, setQueueEntryToClear] = useState<QueueEntryResult[]>();
   const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
@@ -130,6 +133,49 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
       });
     }
   };
+  const handleClearQueue = async (queueEntries: QueueEntryResult[]) => {
+    setQueueEntryToClear(queueEntries);
+    setDisplayConfirmClearQueueModal(true);
+  };
+
+  const clearQueue = async () => {
+    for (let i = 0; i < queueEntryToClear.length; i++) {
+      const queueEntryResult = queueEntries[i];
+      await closeQueue(queueEntryResult);
+    }
+  };
+
+  const closeQueue = async (queueEntryResult: QueueEntryResult) => {
+    try {
+      await closeQueueEntry(queueEntryResult.queue_entry_uuid);
+      await endVisit(queueEntryResult.visit_uuid, {
+        stopDatetime: new Date().toISOString(),
+      });
+      showSnackbar({
+        kind: 'success',
+        title: 'Queue entry successfully closed',
+        subtitle: `Queue entry ${queueEntryResult.queue_id} successfully closed`,
+      });
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Queue entry close failrure',
+        subtitle: `Queue entry ${queueEntryResult.queue_id} could not be closed. Please retry of contact support`,
+      });
+    }
+  };
+
+  const handleConfirmClearQueue = () => {
+    setDisplayConfirmClearQueueModal(false);
+    clearQueue();
+    setQueueEntryToClear([]);
+    handleRefresh();
+  };
+
+  const handleCloseConfirmClearQueueModal = () => {
+    setDisplayConfirmClearQueueModal(false);
+    setQueueEntryToClear([]);
+  };
 
   if (!serviceTypeUuid) {
     return <>No service type defined</>;
@@ -178,6 +224,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
                           handleSignOff={handleSignOff}
                           handleRemovePatient={handleRemovePatient}
                           showComingFromCol={serviceTypeUuid !== QUEUE_SERVICE_UUIDS.TRIAGE_SERVICE_UUID}
+                          handleClearQueue={handleClearQueue}
                         />
                       }
                     </TabPanel>
@@ -233,6 +280,20 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
             onModalClose={handleModalCloes}
             currentQueueEntry={selectedQueueEntry}
             onSuccessfullSignOff={onSuccessfullSignOff}
+          />
+        </>
+      ) : (
+        <></>
+      )}
+
+      {displayConfirmClearQueueModal ? (
+        <>
+          <ConfirmModal
+            open={displayConfirmClearQueueModal}
+            onConfirm={handleConfirmClearQueue}
+            onModalClose={handleCloseConfirmClearQueueModal}
+            title="Clear Queue"
+            subtitle="You are about to clear the patient queue and their respective visits. Are you sure?"
           />
         </>
       ) : (
