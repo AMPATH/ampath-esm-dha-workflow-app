@@ -24,6 +24,7 @@ interface QueueListProps {
   handleSignOff: (queueEntryResult: QueueEntryResult) => void;
   handleRemovePatient: (queueEntryResult: QueueEntryResult) => void;
   showComingFromCol: boolean;
+  handleClearQueue: (queueEntryResults: QueueEntryResult[]) => void;
 }
 
 const QueueList: React.FC<QueueListProps> = ({
@@ -34,6 +35,7 @@ const QueueList: React.FC<QueueListProps> = ({
   handleSignOff,
   handleRemovePatient,
   showComingFromCol,
+  handleClearQueue,
 }) => {
   const [checkIn, setCheckIn] = useState<boolean>(false);
   const urgentEntries = useMemo(
@@ -92,6 +94,9 @@ const QueueList: React.FC<QueueListProps> = ({
     }
     return type;
   };
+  const clearQueue = () => {
+    handleClearQueue(sortedQueueEntries);
+  };
   return (
     <>
       <div className={styles.queueListLayout}>
@@ -99,9 +104,18 @@ const QueueList: React.FC<QueueListProps> = ({
           <>
             {checkIn ? (
               <>
-                <Button kind="danger" onClick={handleCheckin}>
+                <Button kind="secondary" onClick={handleCheckin}>
                   Check Out
                 </Button>
+                {sortedQueueEntries.length > 0 ? (
+                  <>
+                    <Button kind="danger" onClick={clearQueue}>
+                      Clear Queue
+                    </Button>
+                  </>
+                ) : (
+                  <></>
+                )}
               </>
             ) : (
               <>
