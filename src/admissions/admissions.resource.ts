@@ -1,5 +1,5 @@
 import { Encounter, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
-import { AdmitPatientDto, AssignBedToPatientDto, BedLayout, CancelAdmissionDto, Disposition, DispositionResponse, type AdmissionLocationData } from './types';
+import { AdmitPatientDto, AssignBedToPatientDto, BedLayout, BedSwapDto, CancelAdmissionDto, Disposition, DispositionResponse, type AdmissionLocationData } from './types';
 
 const customRep =
   'custom:(ward,totalBeds,occupiedBeds,bedLayouts:(rowNumber,columnNumber,bedNumber,bedId,bedUuid,status,location,patients:(person:full,identifiers,uuid)))';
@@ -63,6 +63,17 @@ export async function cancelAdmissionRequest(cancelAdmissionDto: CancelAdmission
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(cancelAdmissionDto)
+  });
+  const result = await resp.json();
+  return result;
+}
+
+export async function bedSwapRequest(badSwapDto: BedSwapDto){
+  const cancelAdmissionUrl = `${restBaseUrl}/encounter`;
+  const resp = await openmrsFetch(cancelAdmissionUrl,{
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(badSwapDto)
   });
   const result = await resp.json();
   return result;

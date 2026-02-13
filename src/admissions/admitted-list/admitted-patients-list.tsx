@@ -1,12 +1,33 @@
-import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import React, { useState } from 'react';
+import { OverflowMenu, OverflowMenuItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 import { BedLayout } from '../types';
+import BedSwapModal from '../modal/bed-swap/bed-swap.modal';
 
 interface AdmittedPatientsListProps {
   admittedPatientsData: BedLayout[];
+  refresh: ()=> void;
 }
 
-const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPatientsData }) => {
+const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPatientsData, refresh }) => {
+  const [showBedSwapModal,setShowBedSwapModal]= useState<boolean>(false);
+  const [selectedLayout,setSelectedLayout] = useState<any>();
+  if(!admittedPatientsData){
+   return <>No data to display</>
+  }
+  const handleTransferRequest = (layout: BedLayout)=>{
+    setSelectedLayout(layout);
+  };
+  const handleBedSwapRequest = (layout: BedLayout)=>{
+    setSelectedLayout(layout);
+    setShowBedSwapModal(true);
+  };
+  const handleDischargeRequest = (layout: BedLayout)=>{
+    setSelectedLayout(layout);
+  };
+  const handleBedSwapModalClose = ()=>{
+    setShowBedSwapModal(false);
+    refresh()
+  }
   const rows =
     admittedPatientsData?.flatMap((layout) =>
       (layout.patients ?? []).map((patient) => ({
@@ -18,6 +39,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
         gender: patient.person.gender,
         age: patient.person.age,
         identifier: patient.identifiers?.[0]?.identifier ?? 'N/A',
+        person: patient.person
       })),
     ) ?? [];
 
@@ -26,6 +48,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
   }
 
   return (
+    <>
     <Table>
       <TableHead>
         <TableRow>
@@ -37,6 +60,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
           <TableHeader>Identifier</TableHeader>
           <TableHeader>Status</TableHeader>
           <TableHeader>Location</TableHeader>
+          <TableHeader>Action</TableHeader>
         </TableRow>
       </TableHead>
       <TableBody>
@@ -50,10 +74,32 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
             <TableCell>{row.identifier}</TableCell>
             <TableCell>{row.status}</TableCell>
             <TableCell>{row.location}</TableCell>
+            <TableCell>
+            <>
+                    <OverflowMenu aria-label="overflow-menu">
+                      <OverflowMenuItem itemText="Transfer" onClick={() => handleTransferRequest(row as any)} />
+                      <OverflowMenuItem itemText="Bed Swap" onClick={() => handleBedSwapRequest(row as any)} />
+                      <OverflowMenuItem itemText="Discharge" onClick={() => handleDischargeRequest(row as any)} />
+                    </OverflowMenu>
+                </>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+    {
+      showBedSwapModal && selectedLayout ? (<>
+       <BedSwapModal 
+       open={showBedSwapModal} 
+       onModalClose={handleBedSwapModalClose} 
+       onSuccessfullBedSwap={handleBedSwapModalClose} 
+       disposition={null}
+       person={selectedLayout.person}
+       bedLayouts={admittedPatientsData}/>
+      </>): (<></>)
+    }
+    
+    </>
   );
 };
 

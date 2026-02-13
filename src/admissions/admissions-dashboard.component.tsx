@@ -25,7 +25,6 @@ const AdmissionsDashboard: React.FC = () => {
   const getDashboardData = async () => {
     const res = await getAdmissionLoactionData(locationUuid);
     setDashboardData(res);
-    console.log('res', res);
   };
   const getFreeBeds = (dashboardData: AdmissionLocationData): number => {
     return (dashboardData?.totalBeds ?? 0) - (dashboardData.occupiedBeds ?? 0);
@@ -36,11 +35,9 @@ const AdmissionsDashboard: React.FC = () => {
   const getAdmissionListData = async () => {
     const res = await getAdmissionRequests(locationUuid);
     setAdmissionListData(res);
-    console.log('res', res);
   };
   const getAdmittedPatients = async () => {
-    const res = await getAdmittedPatientsData(locationUuid);
-    console.log('admitted patients data', res);   
+    const res = await getAdmittedPatientsData(locationUuid); 
     setAdmittedPatientsData(res);
   };   
   const handleRefresh = ()=>{
@@ -82,7 +79,11 @@ const AdmissionsDashboard: React.FC = () => {
                   /> : <></>}
                 </TabPanel>
                 <TabPanel>
-                  {admittedPatientsData ? <AdmittedPatientsList admittedPatientsData={admittedPatientsData} /> : <></>}
+                  {admittedPatientsData ? 
+                  <AdmittedPatientsList 
+                  admittedPatientsData={admittedPatientsData} 
+                  refresh={handleRefresh}
+                  /> : <></>}
                 </TabPanel>
                 <TabPanel></TabPanel>
               </TabPanels>

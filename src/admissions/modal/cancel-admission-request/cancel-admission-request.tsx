@@ -48,7 +48,7 @@ const CancelAdmissionRequestModal: React.FC<CancelAdmissionRequestModalProps> = 
         return {
             "patient": admissionRequest.patient.uuid,
             "encounterType": {
-                "uuid": AdmissionEncounterTypeUuids.CANCEL_ADMISSION_ENCOUNTER_TYPE_UUID,
+                "uuid": AdmissionEncounterTypeUuids.CANCEL_ADT_ENCOUNTER_TYPE_UUID,
             },
             "location": location.uuid,
             "obs": [

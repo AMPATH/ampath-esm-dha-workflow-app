@@ -60,26 +60,25 @@ export interface AdmissionLocationData {
   resourceVersion: string;
 }
 
-export type AdmitPatientDto = {
+export interface EncounterDto {
   patient: string;
   encounterType: {
     uuid: string;
   },
   location: string;
   obs: any[];
-  visit: string;
+  visit?: string;
+}
+
+export interface AdmitPatientDto extends EncounterDto{
 }
 export type AssignBedToPatientDto = {
  patientUuid:string;
  encounterUuid: string;
 }
 
-export type CancelAdmissionDto = {
-  patient: string;
-  encounterType: {
-    uuid: string;
-  },
-  location: string;
-  obs: any[];
-  visit: string;
+export interface CancelAdmissionDto extends EncounterDto{
+}
+
+export interface BedSwapDto extends EncounterDto {
 }

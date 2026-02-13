@@ -1,45 +1,38 @@
-import React, { useState } from "react";
-import { AdmitPatientDto, AssignBedToPatientDto, BedLayout, Disposition } from "../../types";
 import { Modal, ModalBody, Select, SelectItem } from "@carbon/react";
-import { Encounter, Patient, showSnackbar, useSession } from "@openmrs/esm-framework";
-import styles from './admit-patient.modal.scss';
+import React, { useState } from "react";
+import { AssignBedToPatientDto, BedLayout, BedSwapDto, Disposition } from "../../types";
+import styles from './bed-swap.modal.scss';
 import { AdmissionEncounterTypeUuids } from "../../constants";
-import { admitPatientToWard, assignBedToPatient } from "../../admissions.resource";
-interface AdmitPatientModalProps {
+import { Encounter,Person, showSnackbar, useSession } from "@openmrs/esm-framework";
+import { assignBedToPatient, bedSwapRequest } from "../../admissions.resource";
+interface BedSwapModalProps {
     open: boolean;
     disposition: Disposition;
+    person: Person;
     onModalClose: () => void;
     bedLayouts: BedLayout[];
-    onSuccessfullAdmission: () => void;
+    onSuccessfullBedSwap: () => void;
 }
-const AdmitPatientModal: React.FC<AdmitPatientModalProps> = ({ onModalClose, open, disposition, bedLayouts, onSuccessfullAdmission }) => {
+const BedSwapModal: React.FC<BedSwapModalProps> = ({open,onModalClose,onSuccessfullBedSwap,bedLayouts,disposition,person})=>{
     const [selectedBedId, setSelectedBedId] = useState<number>();
     const session = useSession();
     const location = session.sessionLocation;
-
-    const admitPatient = async () => {
-        try{
-            const admitPatientDto = generateAdmitPatientPayload();
-            const resp = await admitPatientToWard(admitPatientDto);
-
-            showSnackbar({
-                kind: 'success',
-                title: 'Admission Successfull',
-                subtitle: 'Patient Successfully Admitted',
-            });
     
-            //assign bed to patient
-            const assignBedDto = generateAssignBedPayload(resp);
-            const assignBedResp = await assignBedToPatient(selectedBedId,assignBedDto);
+    const swapBed = async ()=>{
 
+        try{
+            const bedSwapPayload = generateBedSwapRequestDto();
+            const resp = await bedSwapRequest(bedSwapPayload);
+
+              //assign bed to patient
+            const assignBedDto = generateAssignBedPayload(resp);
+            await assignBedToPatient(selectedBedId,assignBedDto);
             showSnackbar({
                 kind: 'success',
-                title: 'Bed Assignment Successfull',
+                title: 'Bed swap Successfull',
                 subtitle: `Patient Successfully assigned bed ${selectedBedId}`,
             });
-
-            onSuccessfullAdmission();
-            
+            onSuccessfullBedSwap();
         }catch(error){
             console.log({error});
             showSnackbar({
@@ -47,39 +40,39 @@ const AdmitPatientModal: React.FC<AdmitPatientModalProps> = ({ onModalClose, ope
                 title: 'Bed Assignment failed',
                 subtitle: error.message ?? 'Bed Assignment failed'
             });
+        }
+      
 
-        }
-       
-    };
-    const bedSelectedHandler = (bedId: number) => {
-        setSelectedBedId(bedId);
-    };
-    const generateAdmitPatientPayload = (): AdmitPatientDto=>{
-      return {
-        patient: disposition.patient.uuid,
-        encounterType: {
-            uuid: AdmissionEncounterTypeUuids.ADMIT_ENCOUNTER_TYPE_UUID
-        },
-        location: location.uuid,
-        obs: [],
-        visit: disposition.visit.uuid
-      }
     }
-    const generateAssignBedPayload = (admissionEncounter: Encounter): AssignBedToPatientDto=>{
+    const generateAssignBedPayload = (assignEncounter: Encounter): AssignBedToPatientDto=>{
         return {
-            patientUuid: disposition.patient.uuid,
-            encounterUuid: admissionEncounter.uuid
+            patientUuid: person.uuid,
+            encounterUuid: assignEncounter.uuid
         }
     }
+    const handleBedChange = (bedId: number)=>{
+        setSelectedBedId(bedId);
+    }
+    const generateBedSwapRequestDto = (): BedSwapDto => {
+        return {
+            "patient": person.uuid,
+            "encounterType": {
+                "uuid": AdmissionEncounterTypeUuids.BED_ASSIGNMENT_ENCOUNTER_TYPE_UUID,
+            },
+            "location": location.uuid,
+            "obs": [],
+        }
+    }
+
     return <>
-        <Modal
-            modalHeading="Admit Patient"
+     <Modal
+            modalHeading="Swap Beds"
             open={open}
             size="md"
             onSecondarySubmit={() => onModalClose()}
             onRequestClose={() => onModalClose()}
-            onRequestSubmit={admitPatient}
-            primaryButtonText="Admit"
+            onRequestSubmit={swapBed}
+            primaryButtonText="Swap Beds"
             secondaryButtonText="Cancel"
         >
             <ModalBody>
@@ -89,7 +82,7 @@ const AdmitPatientModal: React.FC<AdmitPatientModalProps> = ({ onModalClose, ope
                             <Select
                                 id="ward-beds"
                                 labelText="Beds"
-                                onChange={($event) => bedSelectedHandler(parseInt($event.target.value))}
+                                onChange={($event) => handleBedChange(parseInt($event.target.value))}
                             >
                                 <SelectItem value="" text="Select" />;
                                 {bedLayouts &&
@@ -106,4 +99,4 @@ const AdmitPatientModal: React.FC<AdmitPatientModalProps> = ({ onModalClose, ope
         </Modal>
     </>
 }
-export default AdmitPatientModal;
+export default BedSwapModal;
