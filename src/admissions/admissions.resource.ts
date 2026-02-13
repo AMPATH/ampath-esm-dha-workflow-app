@@ -1,5 +1,5 @@
 import { Encounter, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
-import { AdmitPatientDto, AssignBedToPatientDto, BedLayout, BedSwapDto, CancelAdmissionDto, Disposition, DispositionResponse, type AdmissionLocationData } from './types';
+import { AdmitPatientDto, AssignBedToPatientDto, BedLayout, BedSwapDto, CancelAdmissionDto, DischargePatientDto, Disposition, DispositionResponse, UnAssignBedDto, type AdmissionLocationData } from './types';
 
 const customRep =
   'custom:(ward,totalBeds,occupiedBeds,bedLayouts:(rowNumber,columnNumber,bedNumber,bedId,bedUuid,status,location,patients:(person:full,identifiers,uuid)))';
@@ -26,8 +26,8 @@ export async function getAdmissionRequests(locationUuid: string): Promise<Dispos
 }
 
 export async function getAdmittedPatientsData(locationUuid: string): Promise<BedLayout[]> {
-   const admissionLocationData = await getAdmissionLoactionData(locationUuid);
-   if(admissionLocationData.bedLayouts && admissionLocationData.bedLayouts.length > 0){
+  const admissionLocationData = await getAdmissionLoactionData(locationUuid);
+  if (admissionLocationData.bedLayouts && admissionLocationData.bedLayouts.length > 0) {
     const bedLayouts = admissionLocationData.bedLayouts;
     return bedLayouts;
   } else {
@@ -35,46 +35,50 @@ export async function getAdmittedPatientsData(locationUuid: string): Promise<Bed
   }
 }
 
-export async function admitPatientToWard(admitPatientDto:AdmitPatientDto): Promise<Encounter>{
+export async function postRequest(url: string, dto: any) {
+  const resp = await openmrsFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dto),
+  });
+  const result = await resp.json();
+  return result;
+}
+
+export async function admitPatientToWard(admitPatientDto: AdmitPatientDto): Promise<Encounter> {
   const admitPatientUrl = `${restBaseUrl}/encounter`;
-  const resp = await openmrsFetch(admitPatientUrl,{
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(admitPatientDto),
-  });
-  const result = await resp.json();
-  return result;
+  return postRequest(admitPatientUrl, admitPatientDto);
 }
 
-export async function assignBedToPatient(bedId: number,assignBedToPatientDto:AssignBedToPatientDto){
-   const assignBedUrl = `${restBaseUrl}/beds/${bedId}`;
-   const resp = await openmrsFetch(assignBedUrl,{
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(assignBedToPatientDto),
-  });
-  const result = await resp.json();
-  return result;
+export async function assignBedToPatient(bedId: number, assignBedToPatientDto: AssignBedToPatientDto) {
+  const assignBedUrl = `${restBaseUrl}/beds/${bedId}`;
+  return postRequest(assignBedUrl, assignBedToPatientDto);
 }
 
-export async function cancelAdmissionRequest(cancelAdmissionDto: CancelAdmissionDto){
+export async function cancelAdmissionRequest(cancelAdmissionDto: CancelAdmissionDto) {
   const cancelAdmissionUrl = `${restBaseUrl}/encounter`;
-  const resp = await openmrsFetch(cancelAdmissionUrl,{
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(cancelAdmissionDto)
-  });
-  const result = await resp.json();
-  return result;
+  return postRequest(cancelAdmissionUrl, cancelAdmissionDto);
 }
 
-export async function bedSwapRequest(badSwapDto: BedSwapDto){
+export async function bedSwapRequest(bedSwapDto: BedSwapDto) {
   const cancelAdmissionUrl = `${restBaseUrl}/encounter`;
-  const resp = await openmrsFetch(cancelAdmissionUrl,{
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(badSwapDto)
+  return postRequest(cancelAdmissionUrl, bedSwapDto);
+}
+
+export async function dischargePatientFromWard(dischargePatientDto: DischargePatientDto) {
+  const cancelAdmissionUrl = `${restBaseUrl}/encounter`;
+  return postRequest(cancelAdmissionUrl, dischargePatientDto);
+}
+
+export async function unassignBed(unAssignBedDto: UnAssignBedDto) {
+  const params = {
+    patientUuid: unAssignBedDto.patientUuid
+  };
+  const queryString = new URLSearchParams(params).toString();
+  const unassignBedUrl = `${restBaseUrl}/beds/${unAssignBedDto.bedId}?${queryString}`;
+  await openmrsFetch(unassignBedUrl, {
+    method: 'DELETE'
   });
-  const result = await resp.json();
-  return result;
+  return true;
+
 }

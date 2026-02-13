@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { OverflowMenu, OverflowMenuItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 import { BedLayout } from '../types';
 import BedSwapModal from '../modal/bed-swap/bed-swap.modal';
+import DischargeModal from '../modal/discharge/discharge-patient.modal';
 
 interface AdmittedPatientsListProps {
   admittedPatientsData: BedLayout[];
@@ -10,6 +11,7 @@ interface AdmittedPatientsListProps {
 
 const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPatientsData, refresh }) => {
   const [showBedSwapModal,setShowBedSwapModal]= useState<boolean>(false);
+  const [showDischargeModal,setShowDischargeModal]= useState<boolean>(false);
   const [selectedLayout,setSelectedLayout] = useState<any>();
   if(!admittedPatientsData){
    return <>No data to display</>
@@ -23,16 +25,25 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
   };
   const handleDischargeRequest = (layout: BedLayout)=>{
     setSelectedLayout(layout);
+    setShowDischargeModal(true);
   };
   const handleBedSwapModalClose = ()=>{
     setShowBedSwapModal(false);
     refresh()
+  }
+  const handleDischargeModalClose = ()=>{
+    setShowDischargeModal(false);
+  }
+  const handleSuccessfullDischarge = ()=>{
+    handleBedSwapModalClose();
+    refresh();
   }
   const rows =
     admittedPatientsData?.flatMap((layout) =>
       (layout.patients ?? []).map((patient) => ({
         key: `${layout.bedUuid}-${patient.uuid}`,
         bedNumber: layout.bedNumber,
+        bedId: layout.bedId,
         status: layout.status,
         location: layout.location,
         name: patient.person.display,
@@ -97,6 +108,18 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
        person={selectedLayout.person}
        bedLayouts={admittedPatientsData}/>
       </>): (<></>)
+    }
+
+    {
+      showDischargeModal &&  selectedLayout ? (<>
+      <DischargeModal 
+      open={showDischargeModal} 
+      onModalClose={handleDischargeModalClose}
+      onDischarge={handleSuccessfullDischarge}
+      admissionRequest={selectedLayout}
+      />
+      </>) : (<></>)
+      
     }
     
     </>

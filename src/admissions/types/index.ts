@@ -82,3 +82,10 @@ export interface CancelAdmissionDto extends EncounterDto{
 
 export interface BedSwapDto extends EncounterDto {
 }
+
+export interface DischargePatientDto extends EncounterDto {
+}
+export type UnAssignBedDto = {
+  patientUuid: string;
+  bedId: number;
+}
