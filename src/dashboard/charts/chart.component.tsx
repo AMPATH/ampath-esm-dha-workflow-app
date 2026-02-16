@@ -44,7 +44,7 @@ const Chart: React.FC<ChartProps> = () => {
         },
       },
     });
-  }, []);
+  }, [subDomainUrl]);
   return (
     <>
       <div id="my-superset-container" className={styles.container} ref={ref}></div>
