@@ -21,6 +21,7 @@ __metadata:
     "@openmrs/esm-patient-common-lib": "npm:next"
     "@openmrs/esm-styleguide": "npm:next"
     "@playwright/test": "npm:^1.52.0"
+    "@superset-ui/embedded-sdk": "npm:^0.3.0"
     "@swc/cli": "npm:^0.3.12"
     "@swc/core": "npm:^1.3.68"
     "@swc/jest": "npm:^0.2.36"
@@ -5740,6 +5741,23 @@ __metadata:
   dependencies:
     "@sinonjs/commons": "npm:^3.0.0"
   checksum: 10/78155c7bd866a85df85e22028e046b8d46cf3e840f72260954f5e3ed5bd97d66c595524305a6841ffb3f681a08f6e5cef572a2cce5442a8a232dc29fb409b83e
+  languageName: node
+  linkType: hard
+
+"@superset-ui/embedded-sdk@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@superset-ui/embedded-sdk@npm:0.3.0"
+  dependencies:
+    "@superset-ui/switchboard": "npm:^0.20.3"
+    jwt-decode: "npm:^4.0.0"
+  checksum: 10/3846a33bfdcfb58debb684ec666a26a7e6ad13afa0f66932cc2d84fa4bd8b8172b33de1540ddcd22b8a68d3914c70370f0198d7be058df233dd3cdcacf0ffeca
+  languageName: node
+  linkType: hard
+
+"@superset-ui/switchboard@npm:^0.20.3":
+  version: 0.20.3
+  resolution: "@superset-ui/switchboard@npm:0.20.3"
+  checksum: 10/92a567c7a27fe47e2d8a82dc632eeec2396ad2d0361a911d078fd69f6e8ce66c192abfdbaacb092ab938fb0dd4905cf21ec7052bce74fc15c0405d0fc3516c96
   languageName: node
   linkType: hard
 
@@ -13772,6 +13790,13 @@ __metadata:
   version: 5.0.1
   resolution: "jsonpointer@npm:5.0.1"
   checksum: 10/0b40f712900ad0c846681ea2db23b6684b9d5eedf55807b4708c656f5894b63507d0e28ae10aa1bddbea551241035afe62b6df0800fc94c2e2806a7f3adecd7c
+  languageName: node
+  linkType: hard
+
+"jwt-decode@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "jwt-decode@npm:4.0.0"
+  checksum: 10/87b569e4a9a0067fb0d592bcf3b2ac3e638e49beee28620eeb07bef1b4470f4077dea68c15d191dd68e076846c3af8394be3bcaecffedc6e97433b221fdbbcf3
   languageName: node
   linkType: hard
 
