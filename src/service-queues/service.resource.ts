@@ -4,7 +4,7 @@ import { type TransitionQueueEntryDto } from '../types/types';
 
 export async function getServiceQueueByLocation(locationUuid: string): Promise<ServiceQueue[]> {
   const params = {
-    v: 'custom:(uuid,name)',
+    v: 'custom:(uuid,name,location:(uuid,display))',
     location: locationUuid,
   };
   const queryString = new URLSearchParams(params).toString();

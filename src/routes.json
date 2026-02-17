@@ -217,6 +217,11 @@
       "component": "admissionsDashboard",
       "name": "admissions-dashboard",
       "slot": "admissions-dashboard-slot"
+    },
+     {
+      "component": "serviceQueueBannerComponent",
+      "name": "service-queue-banne",
+      "slot": "patient-banner-tags-slot"
     }
   ],
   "modals": [
