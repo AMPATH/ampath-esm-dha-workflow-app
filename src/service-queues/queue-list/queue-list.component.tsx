@@ -112,6 +112,16 @@ const QueueList: React.FC<QueueListProps> = ({
       return fullName.trim().toLowerCase().includes(searchString.trim().toLowerCase());
     });
   }
+  function formatPatientName(qe: QueueEntryResult) {
+    return `${formatName(qe.family_name)} ${formatName(qe.middle_name)} ${formatName(qe.given_name)}`;
+  }
+  function formatName(name: string) {
+    if (name === 'NULL') {
+      return '';
+    } else {
+      return name;
+    }
+  }
   return (
     <>
       <div className={styles.queueListLayout}>
@@ -170,12 +180,10 @@ const QueueList: React.FC<QueueListProps> = ({
                   <TableCell>
                     {checkIn ? (
                       <Link href={`${window.spaBase}/patient/${val.patient_uuid}/chart/`}>
-                        {val.family_name} {val.middle_name} {val.given_name}
+                        {formatPatientName(val)}
                       </Link>
                     ) : (
-                      <>
-                        {val.family_name} {val.middle_name} {val.given_name}
-                      </>
+                      <>{formatPatientName(val)}</>
                     )}
                   </TableCell>
                   <TableCell>{showComingFromCol ? val.queue_coming_from : ''}</TableCell>

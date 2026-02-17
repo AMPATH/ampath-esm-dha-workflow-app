@@ -8,7 +8,7 @@ import {
   type Queue,
   type CreateQueueDto,
   type QueueRoom,
-  CreateQueueRoomDto,
+  type CreateQueueRoomDto,
 } from '../types/types';
 import dayjs from 'dayjs';
 import useSWR from 'swr';
