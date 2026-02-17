@@ -27,6 +27,7 @@ import { formatDependantDisplayData } from './utils/format-dependant-display-dat
 import { registerHieClientInAmrs } from '../resources/hie-amrs-automatic-registration.service';
 import { getErrorMessages } from './utils/error-handler';
 import EligibilityTags from './eligibility/eliigibility-tags/eligibility-tags';
+import { IdentifierTypesUuids } from '../resources/identifier-types';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -130,13 +131,21 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         `${resp.totalCount} ${resp.totalCount > 0 ? 'Patients' : 'Patient'} found in the system with ${crId}`,
         '',
       );
-      setAmrsPatients(resp.results);
+      const validPatients = validateAmrsPatient(crId, resp.results ?? []);
+      setAmrsPatients(validPatients);
       setDisplaytriageModal(true);
     } else {
       showAlert('error', 'Patient not found in the system', '');
       setAmrsPatients([]);
       setDisplaytriageModal(true);
     }
+  };
+  const validateAmrsPatient = (crNo: string, patients: Patient[]) => {
+    return patients.filter((p) => {
+      return p.identifiers.some((id) => {
+        return id.identifier === crNo && id.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID;
+      });
+    });
   };
   const onSendToTriageModalClose = (modalCloseResp?: { success: boolean }) => {
     setDisplaytriageModal(false);
