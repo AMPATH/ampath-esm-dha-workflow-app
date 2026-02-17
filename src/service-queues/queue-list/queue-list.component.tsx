@@ -16,6 +16,7 @@ import { type QueueEntryResult } from '../../registry/types';
 import React, { useMemo, useState } from 'react';
 import styles from './queue-list.component.scss';
 import { QueueEntryPriority, QueueEntryStatus, type TagColor } from '../../types/types';
+import { getTagTypeByPriority } from '../../shared/utils/get-tag-type';
 
 interface QueueListProps {
   queueEntries: QueueEntryResult[];
@@ -76,20 +77,6 @@ const QueueList: React.FC<QueueListProps> = ({
         type = 'gray';
         break;
       case QueueEntryStatus.InService:
-        type = 'blue';
-        break;
-      default:
-        type = 'gray';
-    }
-    return type;
-  };
-  const getTagTypeByPriority = (priority: string): TagColor => {
-    let type: TagColor;
-    switch (priority) {
-      case QueueEntryPriority.Emergency:
-        type = 'red';
-        break;
-      case QueueEntryPriority.Normal:
         type = 'blue';
         break;
       default:

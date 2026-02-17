@@ -10,14 +10,12 @@ interface MovePatientModalProps {
   open: boolean;
   onModalClose: () => void;
   locationUuid: string;
-  serviceUuid: string;
   currentQueueEntryUuid: string;
 }
 const MovePatientModal: React.FC<MovePatientModalProps> = ({
   open,
   onModalClose,
   locationUuid,
-  serviceUuid,
   currentQueueEntryUuid,
 }) => {
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
@@ -41,7 +39,7 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
     const payload = getTransitionQueueEntryPayload();
     try {
       const resp = await transitionQueueEntry(payload);
-      showAlert('success', 'Cleint succesfully moved', '');
+      showAlert('success', 'Client succesfully moved', '');
       onModalClose();
     } catch (e) {
       showAlert('error', e.message, '');
@@ -69,10 +67,13 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
   const priorityChangeHandler = (priorityUuid: string) => {
     setSelectedPriority(priorityUuid);
   };
-  const handleCommentChange = (comment: string) => {};
+  const handleCommentChange = (comment: string) => {
+    setSelectedComment(comment);
+  };
   return (
     <>
       <Modal
+        modalHeading="Move Client"
         open={open}
         size="md"
         onSecondarySubmit={() => onModalClose()}
@@ -83,9 +84,6 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
       >
         <ModalBody>
           <div className={styles.modelLayout}>
-            <div className={styles.sectionHeader}>
-              <h4>Move Client</h4>
-            </div>
             <div className={styles.formSection}>
               <div className={styles.formRow}>
                 <div className={styles.formControl}>
@@ -96,11 +94,17 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
                   >
                     <SelectItem value="" text="" />;
                     {serviceQueues &&
-                      serviceQueues.map((vt) => {
-                        return <SelectItem value={vt.uuid} text={vt.name} />;
-                      })}
+                      serviceQueues
+                        .filter((qe) => {
+                          return qe.uuid !== currentQueueEntryUuid;
+                        })
+                        .map((vt) => {
+                          return <SelectItem value={vt.uuid} text={`${vt.name} (${vt.location.display})`} />;
+                        })}
                   </Select>
                 </div>
+              </div>
+              <div className={styles.formRow}>
                 <div className={styles.formControl}>
                   <Select
                     id="priority"
@@ -117,11 +121,11 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
                 <div className={styles.formControl}>
                   <TextArea
                     enableCounter
-                    helperText="Comment"
+                    helperText=""
                     id="comment"
                     labelText="Comment"
                     maxCount={500}
-                    placeholder="Comment"
+                    placeholder=""
                     onChange={(e) => handleCommentChange(e.target.value)}
                     rows={4}
                   />

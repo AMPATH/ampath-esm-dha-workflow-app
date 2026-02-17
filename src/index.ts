@@ -138,3 +138,8 @@ export const admissionsDashboard = getAsyncLifecycle(
   () => import('./admissions/admissions-dashboard.component'),
   options,
 );
+
+export const serviceQueueBannerComponent = getAsyncLifecycle(
+  () => import('./service-queues/extensions/service-queue-patient-banner/service-queue-patient-banner'),
+  options,
+);

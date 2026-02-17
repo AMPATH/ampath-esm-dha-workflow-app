@@ -273,3 +273,18 @@ export async function editQueueRoom(queueRoomUuid: string, editQueueRoomDto: Cre
   const result = await response.json();
   return result;
 }
+export async function getActiveQueueEntryByPatientUuid(patientUuid: string): Promise<QueueEntry[]> {
+  const queueUrl = `${restBaseUrl}/queue-entry`;
+  const v =
+    'custom:(uuid,display,queue,status,patient:(uuid,display,person,identifiers:(uuid,display,identifier,identifierType)),visit:(uuid,display,startDatetime,encounters:(uuid,display,diagnoses,encounterDatetime,encounterType,obs,encounterProviders,voided),attributes:(uuid,display,value,attributeType)),priority,priorityComment,sortWeight,startedAt,endedAt,locationWaitingFor,queueComingFrom,providerWaitingFor,previousQueueEntry)';
+  const params = {
+    patient: patientUuid,
+    v: v,
+    isEnded: 'false',
+    totalCount: 'true',
+  };
+  const queryString = new URLSearchParams(params).toString();
+  const response = await openmrsFetch(`${queueUrl}?${queryString}`);
+  const result = await response.json();
+  return result.results;
+}

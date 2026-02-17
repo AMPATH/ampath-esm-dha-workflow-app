@@ -239,7 +239,6 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
           <MovePatientModal
             open={displayMoveModal}
             locationUuid={locationUuid}
-            serviceUuid={serviceTypeUuid}
             onModalClose={handleModalCloes}
             currentQueueEntryUuid={selectedQueueEntry.queue_entry_uuid}
           />
