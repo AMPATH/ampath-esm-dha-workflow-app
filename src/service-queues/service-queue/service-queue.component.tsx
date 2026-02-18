@@ -217,6 +217,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
                     <TabPanel>
                       {
                         <QueueList
+                          queueRoom={key}
                           queueEntries={groupedByRoom[key]}
                           handleMovePatient={handleMovePatient}
                           handleTransitionPatient={handleTransitionPatient}
