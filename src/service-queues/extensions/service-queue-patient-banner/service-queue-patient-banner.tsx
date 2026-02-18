@@ -69,7 +69,7 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = () =
                 </Tag>
               </div>
               <div>
-                <Button kind="secondary" size="sm" onClick={displayTransferModal}>
+                <Button kind="secondary" size="xs" onClick={displayTransferModal}>
                   Transfer
                 </Button>
               </div>
