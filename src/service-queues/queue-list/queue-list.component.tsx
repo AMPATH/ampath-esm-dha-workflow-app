@@ -17,8 +17,11 @@ import React, { useMemo, useState } from 'react';
 import styles from './queue-list.component.scss';
 import { QueueEntryPriority, QueueEntryStatus, type TagColor } from '../../types/types';
 import { getTagTypeByPriority } from '../../shared/utils/get-tag-type';
+import { useSession } from '@openmrs/esm-framework';
+import { checkInRoom, checkOutRoom, isCheckedIn } from './check-in.service';
 
 interface QueueListProps {
+  queueRoom: string;
   queueEntries: QueueEntryResult[];
   handleMovePatient: (queueEntryResult: QueueEntryResult) => void;
   handleTransitionPatient: (queueEntryResult: QueueEntryResult) => void;
@@ -30,6 +33,7 @@ interface QueueListProps {
 }
 
 const QueueList: React.FC<QueueListProps> = ({
+  queueRoom,
   queueEntries,
   handleMovePatient,
   handleTransitionPatient,
@@ -39,7 +43,10 @@ const QueueList: React.FC<QueueListProps> = ({
   showComingFromCol,
   handleClearQueue,
 }) => {
-  const [checkIn, setCheckIn] = useState<boolean>(false);
+  const session = useSession();
+  const provider = session.currentProvider;
+  const [checkIn, setCheckin] = useState<boolean>(isProviderCheckedIn());
+
   const [searchString, setSearchString] = useState<string>();
   const urgentEntries = useMemo(
     () => sortQueueByPriorityAndWaitTime(queueEntries, QueueEntryPriority.Emergency),
@@ -64,8 +71,16 @@ const QueueList: React.FC<QueueListProps> = ({
         return b.wait_time_in_min - a.wait_time_in_min;
       });
   }
+  function isProviderCheckedIn() {
+    return isCheckedIn(provider.uuid, queueRoom);
+  }
   const handleCheckin = () => {
-    setCheckIn((prev) => !prev);
+    checkInRoom(provider.uuid, queueRoom);
+    setCheckin(isProviderCheckedIn());
+  };
+  const handleCheckout = () => {
+    checkOutRoom();
+    setCheckin(isProviderCheckedIn());
   };
   const getTagTypeByStatus = (status: string): TagColor => {
     let type: TagColor;
@@ -124,7 +139,7 @@ const QueueList: React.FC<QueueListProps> = ({
             </div>
             {checkIn ? (
               <>
-                <Button kind="secondary" onClick={handleCheckin}>
+                <Button kind="secondary" onClick={handleCheckout}>
                   Check Out
                 </Button>
                 {sortedQueueEntries.length > 0 ? (
