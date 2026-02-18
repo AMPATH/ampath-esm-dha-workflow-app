@@ -165,7 +165,7 @@ const QueueList: React.FC<QueueListProps> = ({
                 <TableRow id={val.queue_entry_uuid}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
-                    {checkIn ? (
+                    {checkIn && val.status !== QueueEntryStatus.Waiting ? (
                       <Link href={`${window.spaBase}/patient/${val.patient_uuid}/chart/`}>
                         {formatPatientName(val)}
                       </Link>
