@@ -7,27 +7,31 @@ import { getActiveQueueEntryByPatientUuid } from '../../service-queues.resource'
 import { type QueueEntry } from '../../../types/types';
 import MovePatientModal from '../../modals/move/move-patient.component';
 
-interface ServiceQueuePatientBannerProps {}
-const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = () => {
-  const { isLoading, patient, error } = usePatient();
+interface ServiceQueuePatientBannerProps {
+  renderedFrom: string;
+  patientUuid: string;
+}
+const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = ({ renderedFrom, patientUuid }) => {
   const session = useSession();
   const location = session.sessionLocation;
   const [currentQueueEntry, setCurrentQueueEntry] = useState<QueueEntry>();
   const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isPatientChart = renderedFrom === 'patient-chart';
   const getPatientCurrentServiceQueue = useCallback(async () => {
-    if (!patient?.id) return;
+    if (!patientUuid || !isPatientChart) return null;
 
     try {
-      const resp = await getActiveQueueEntryByPatientUuid(patient.id);
+      const resp = await getActiveQueueEntryByPatientUuid(patientUuid);
       if (resp.length > 0) {
         setCurrentQueueEntry(resp[0]);
+      } else {
+        setCurrentQueueEntry(null);
       }
     } catch (error) {
       console.error(error);
     }
-  }, [patient?.id]);
-  let timeout;
+  }, [patientUuid]);
   useEffect(() => {
     getPatientCurrentServiceQueue();
     return () => {
@@ -35,17 +39,7 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = () =
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [patient]);
-
-  if (isLoading) {
-    return <InlineLoading description="Fetching service queue data..." />;
-  }
-  if (error) {
-    return <></>;
-  }
-  if (!patient) {
-    return <></>;
-  }
+  }, [patientUuid]);
 
   const handleTransferModalClose = () => {
     setShowTransferModal(false);
@@ -54,6 +48,9 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = () =
   const displayTransferModal = () => {
     setShowTransferModal(true);
   };
+  if (!isPatientChart) {
+    return null;
+  }
   return (
     <>
       {currentQueueEntry ? (
@@ -69,7 +66,7 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = () =
                 </Tag>
               </div>
               <div>
-                <Button kind="secondary" size="xs" onClick={displayTransferModal}>
+                <Button className={styles.transferBtn} size="xs" onClick={displayTransferModal}>
                   Transfer
                 </Button>
               </div>
