@@ -73,13 +73,13 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
   return (
     <>
       <Modal
-        modalHeading="Move Client"
+        modalHeading="Transfer Client"
         open={open}
         size="md"
         onSecondarySubmit={() => onModalClose()}
         onRequestClose={() => onModalClose()}
         onRequestSubmit={transtionQueueEntry}
-        primaryButtonText="Move"
+        primaryButtonText="Transfer"
         secondaryButtonText="Cancel"
       >
         <ModalBody>

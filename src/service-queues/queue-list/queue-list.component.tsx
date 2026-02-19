@@ -213,7 +213,7 @@ const QueueList: React.FC<QueueListProps> = ({
                         {checkIn ? (
                           <>
                             <OverflowMenu aria-label="overflow-menu">
-                              <OverflowMenuItem itemText="Move" onClick={() => handleMovePatient(val)} />
+                              <OverflowMenuItem itemText="Transfer" onClick={() => handleMovePatient(val)} />
                               <OverflowMenuItem itemText="Transition" onClick={() => handleTransitionPatient(val)} />
                               <OverflowMenuItem itemText="Sign Off" onClick={() => handleSignOff(val)} />
                               <OverflowMenuItem itemText="Remove Patient" onClick={() => handleRemovePatient(val)} />
