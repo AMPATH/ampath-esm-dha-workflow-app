@@ -35,8 +35,8 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = ({ r
     getPatientCurrentServiceQueue();
   }, [patientUuid]);
 
-  const redirectToTriagePage = () => {
-    window.location.href = `${window.spaBase}/home/triage`;
+  const redirectToRegistryPage = () => {
+    window.location.href = `${window.spaBase}/home/registry`;
   };
 
   const handleTransferModalClose = () => {
@@ -48,7 +48,7 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = ({ r
 
   const handleTransferSuccess = () => {
     handleTransferModalClose();
-    redirectToTriagePage();
+    redirectToRegistryPage();
   };
 
   if (!isPatientChart) {
