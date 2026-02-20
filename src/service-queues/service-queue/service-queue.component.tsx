@@ -242,6 +242,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
             locationUuid={locationUuid}
             onModalClose={handleModalCloes}
             currentQueueEntryUuid={selectedQueueEntry.queue_entry_uuid}
+            onTransferSuccess={handleModalCloes}
           />
         </>
       ) : (

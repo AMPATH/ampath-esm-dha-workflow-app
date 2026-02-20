@@ -10,7 +10,6 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tag,
   TextInput,
 } from '@carbon/react';
 import React, { useState } from 'react';

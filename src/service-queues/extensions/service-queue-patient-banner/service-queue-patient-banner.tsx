@@ -16,7 +16,6 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = ({ r
   const location = session.sessionLocation;
   const [currentQueueEntry, setCurrentQueueEntry] = useState<QueueEntry>();
   const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isPatientChart = renderedFrom === 'patient-chart';
   const getPatientCurrentServiceQueue = useCallback(async () => {
     if (!patientUuid || !isPatientChart) return null;
@@ -34,20 +33,24 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = ({ r
   }, [patientUuid]);
   useEffect(() => {
     getPatientCurrentServiceQueue();
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
   }, [patientUuid]);
+
+  const redirectToTriagePage = () => {
+    window.location.href = `${window.spaBase}/home/triage`;
+  };
 
   const handleTransferModalClose = () => {
     setShowTransferModal(false);
-    timeoutRef.current = setTimeout(getPatientCurrentServiceQueue, 5000);
   };
   const displayTransferModal = () => {
     setShowTransferModal(true);
   };
+
+  const handleTransferSuccess = () => {
+    handleTransferModalClose();
+    redirectToTriagePage();
+  };
+
   if (!isPatientChart) {
     return null;
   }
@@ -79,6 +82,7 @@ const ServiceQueuePatientBanner: React.FC<ServiceQueuePatientBannerProps> = ({ r
                 currentQueueEntryUuid={currentQueueEntry.uuid}
                 locationUuid={location.uuid}
                 onModalClose={handleTransferModalClose}
+                onTransferSuccess={handleTransferSuccess}
               />
             </>
           ) : (

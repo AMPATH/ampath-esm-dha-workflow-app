@@ -11,12 +11,14 @@ interface MovePatientModalProps {
   onModalClose: () => void;
   locationUuid: string;
   currentQueueEntryUuid: string;
+  onTransferSuccess?: () => void;
 }
 const MovePatientModal: React.FC<MovePatientModalProps> = ({
   open,
   onModalClose,
   locationUuid,
   currentQueueEntryUuid,
+  onTransferSuccess,
 }) => {
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>([]);
   const [selectedComment, setSelectedComment] = useState<string>();
@@ -40,7 +42,7 @@ const MovePatientModal: React.FC<MovePatientModalProps> = ({
     try {
       const resp = await transitionQueueEntry(payload);
       showAlert('success', 'Client succesfully moved', '');
-      onModalClose();
+      onTransferSuccess();
     } catch (e) {
       showAlert('error', e.message, '');
     }
