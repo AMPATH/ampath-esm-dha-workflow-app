@@ -17,6 +17,12 @@ export const getTagTypeByPriority = (priority: string): TagColor => {
     case QueueEntryPriority.Normal:
       type = 'blue';
       break;
+    case `${QueueEntryPriority.Emergency} PRIORITY`:
+      type = 'red';
+      break;
+    case `${QueueEntryPriority.Normal} PRIORITY`:
+      type = 'blue';
+      break;
     default:
       type = 'gray';
   }
