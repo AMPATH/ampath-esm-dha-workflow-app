@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './stat-details.component.scss';
 import { type QueueEntryResult } from '../../../../registry/types';
-import StatCard from '../stat-card/stat-card.component';
+import StatCard from '../../../../shared/ui/stat-card/stat-card.component';
 
 interface StatDetailsProps {
   queueEntries: QueueEntryResult[];
