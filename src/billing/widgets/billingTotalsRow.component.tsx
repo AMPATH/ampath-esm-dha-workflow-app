@@ -17,7 +17,7 @@ import {
   AISkeletonText,
 } from '@carbon/react';
 import { Money, WarningAlt, CheckmarkFilled, Hospital, Receipt, PendingFilled } from '@carbon/react/icons';
-import { navigate, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
+import { ConfigurableLink, navigate, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import { spacing05 } from '@carbon/themes';
 import './billingTotalsRow.component.scss';
 
@@ -272,12 +272,13 @@ const BillsTable = ({
                     if (cell.info.header === 'patient') {
                       return (
                         <TableCell key={cell.id}>
-                          <a
-                            href={`${window.spaBase}/home/billing/patient/${row.id.split('|')[1]}/${row.id.split('|')[0]}`}
-                            style={{ color: '#0f62fe', textDecoration: 'none', fontWeight: 500 }}
+                          <ConfigurableLink
+                            style={{ textDecoration: 'none' }}
+                            to={`${window.spaBase}/home/billing/patient/${row.id.split('|')[1]}/${row.id.split('|')[0]}`}
+                            templateParams={{ patientUuid: row.id.split('|')[1], uuid: row.id.split('|')[0] }}
                           >
                             {cell.value}
-                          </a>
+                          </ConfigurableLink>
                         </TableCell>
                       );
                     }

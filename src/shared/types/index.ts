@@ -44,6 +44,7 @@ export type PayableBillableService = ServicePrice & {
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
 
 export type LineItem = {
+  uuid?: string;
   billableService: string;
   quantity: number;
   price: number;
