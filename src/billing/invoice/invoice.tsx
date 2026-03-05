@@ -45,6 +45,9 @@ const Invoice: React.FC<InvoinceProps> = () => {
   if (!bill || !billUuid) {
     return;
   }
+  const refresh = () => {
+    fetchInvoiceBill(billUuid);
+  };
   function getTotalAmount(bill: Bill) {
     let total = 0;
     const lineItems = bill?.lineItems ?? [];
@@ -127,7 +130,7 @@ const Invoice: React.FC<InvoinceProps> = () => {
         );
       } finally {
         setLoading(false);
-        fetchInvoiceBill(billUuid);
+        refresh();
       }
     } else {
       setLoading(false);
@@ -170,7 +173,12 @@ const Invoice: React.FC<InvoinceProps> = () => {
             <div className={styles.lineItemsData}>
               {bill && bill.lineItems ? (
                 <>
-                  <LineItems lineItems={bill.lineItems} />
+                  <LineItems
+                    lineItems={bill.lineItems.filter((res) => {
+                      return !res.voided;
+                    })}
+                    refresh={refresh}
+                  />
                 </>
               ) : (
                 <></>

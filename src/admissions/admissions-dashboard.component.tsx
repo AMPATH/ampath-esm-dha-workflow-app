@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import styles from './admissions-dashboard.component.scss';
 import StatCard from '../shared/ui/stat-card/stat-card.component';
 import { InlineLoading, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
-import { FHIRResource, useSession } from '@openmrs/esm-framework';
+import { useSession } from '@openmrs/esm-framework';
 import {
   getAdmissionLoactionData,
   getAdmissionRequests,
@@ -12,10 +12,9 @@ import {
 import {
   type Disposition,
   type AdmissionLocationData,
-  BedLayout,
-  FhirEncounter,
-  FhirBundleEntry,
-  FhirEncounterBundle,
+  type BedLayout,
+  type FhirEncounter,
+  type FhirEncounterBundle,
 } from './types';
 import AdmittedPatientsList from './admitted-list/admitted-patients-list';
 import AdmissionsRequestList from './admission-request-list/admission-request-list';

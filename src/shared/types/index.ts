@@ -52,6 +52,8 @@ export type LineItem = {
   priceUuid: string;
   lineItemOrder: number;
   paymentStatus: PaymentStatus;
+  voided?: boolean;
+  voidedReason?: string;
 };
 
 export type CreateBillDto = {
