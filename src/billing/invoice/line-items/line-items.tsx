@@ -1,13 +1,37 @@
-import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import React, { useState } from 'react';
+import {
+  OverflowMenu,
+  OverflowMenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@carbon/react';
 import { type LineItem } from '../../../shared/types';
+import DeleteBillLineItemModal from '../modal/delete-bill-item/delete-bill-item.modal';
 interface LineItemsProps {
   lineItems: LineItem[];
+  refresh: () => void;
 }
-const LineItems: React.FC<LineItemsProps> = ({ lineItems }) => {
+const LineItems: React.FC<LineItemsProps> = ({ lineItems, refresh }) => {
+  const [selectedLineItem, setSelectedLineItem] = useState<LineItem>();
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>();
   if (!lineItems || lineItems.length === 0) {
     return <>No Data to Display</>;
   }
+  const handleEditLineItem = (selectedLineItem: LineItem) => {
+    setSelectedLineItem(selectedLineItem);
+  };
+  const handleDeleteLineItem = (selectedLineItem: LineItem) => {
+    setSelectedLineItem(selectedLineItem);
+    setShowDeleteModal(true);
+  };
+  const hideDeleteModal = () => {
+    setShowDeleteModal(false);
+    refresh();
+  };
   return (
     <>
       <Table>
@@ -19,6 +43,7 @@ const LineItems: React.FC<LineItemsProps> = ({ lineItems }) => {
             <TableHeader>Quantity</TableHeader>
             <TableHeader>Price</TableHeader>
             <TableHeader>Total</TableHeader>
+            <TableHeader>Action</TableHeader>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -32,12 +57,32 @@ const LineItems: React.FC<LineItemsProps> = ({ lineItems }) => {
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>KES {item.price}</TableCell>
                   <TableCell>KES {item.price * item.quantity}</TableCell>
+                  <TableCell>
+                    <>
+                      <OverflowMenu aria-label="overflow-menu">
+                        <OverflowMenuItem itemText="Edit" onClick={() => handleEditLineItem(item)} />
+                        <OverflowMenuItem itemText="Delete" onClick={() => handleDeleteLineItem(item)} />
+                      </OverflowMenu>
+                    </>
+                  </TableCell>
                 </TableRow>
               </>
             );
           })}
         </TableBody>
       </Table>
+      {showDeleteModal ? (
+        <>
+          <DeleteBillLineItemModal
+            lineItem={selectedLineItem}
+            onModalClose={hideDeleteModal}
+            onSuccessfullDeletion={hideDeleteModal}
+            open={showDeleteModal}
+          />
+        </>
+      ) : (
+        <></>
+      )}
     </>
   );
 };

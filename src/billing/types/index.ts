@@ -59,3 +59,26 @@ export type PayBillDto = {
   amountTendered: number;
   amount: number;
 };
+export type EditLineItem = {
+  uuid: string;
+  display: string;
+  voided: boolean;
+  voidReason: string | null;
+  item: '';
+  billableService: string;
+  quantity: number;
+  price: number;
+  priceName: string;
+  priceUuid: string;
+  lineItemOrder: 0;
+  paymentStatus: PaymentStatus;
+  resourceVersion: string;
+};
+export type EditBillLineItemDto = {
+  cashPoint: string;
+  cashier: string;
+  lineItems: EditLineItem[];
+  patient: string;
+  status: BillStatus;
+  uuid: string;
+};
