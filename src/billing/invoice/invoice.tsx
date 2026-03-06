@@ -1,8 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './invoice.scss';
 import HeaderCard from './invoice-header/header-card/header-card';
 import { useParams } from 'react-router-dom';
-import { formatDate, navigate, parseDate, showSnackbar, usePatient } from '@openmrs/esm-framework';
+import {
+  ExtensionSlot,
+  formatDate,
+  navigate,
+  parseDate,
+  showSnackbar,
+  useConfig,
+  usePatient,
+} from '@openmrs/esm-framework';
 import { type PayBillDto, type Bill } from '../types';
 import { fetchBill, payBill } from './bill.resource';
 import { Button, InlineLoading, Select, SelectItem, TextInput } from '@carbon/react';
@@ -10,10 +18,14 @@ import { type PaymentMode } from '../../shared/types';
 import { fetchPaymentModes } from '../../shared/services/billing.resource';
 import PaymentDetails from './payment-details/payment-details';
 import LineItems from './line-items/line-items';
+import { useReactToPrint } from 'react-to-print';
+import { Printer } from '@carbon/react/icons';
+import { t } from 'i18next';
+import PrintReceipt from './print-invoice/print-receipt.component';
 interface InvoinceProps {}
 const Invoice: React.FC<InvoinceProps> = () => {
   const { billUuid, patientUuid } = useParams();
-  // const { patient, isLoading: isLoadingPatient } = usePatient(patientUuid);
+  const { patient, isLoading: isLoadingPatient } = usePatient(patientUuid);
   const [bill, setBill] = useState<Bill>();
   const totalAmount = useMemo(() => getTotalAmount(bill), [bill]);
   const totalTendered = useMemo(() => getTotalTendered(bill), [bill]);
@@ -22,6 +34,9 @@ const Invoice: React.FC<InvoinceProps> = () => {
   const [payAmount, setPayAmount] = useState<number>();
   const [refNo, setRefNo] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const onBeforeGetContentResolve = useRef<(() => void) | null>(null);
+  const componentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (billUuid) {
@@ -40,6 +55,60 @@ const Invoice: React.FC<InvoinceProps> = () => {
         subtitle: 'An error occurred while fetching the invoice bill',
       });
     }
+  }
+
+  const handleAfterPrint = useCallback(() => {
+    onBeforeGetContentResolve.current = null;
+    setIsPrinting(false);
+  }, []);
+
+  const handleOnBeforeGetContent = useCallback(() => {
+    return new Promise<void>((resolve) => {
+      if (patient && bill) {
+        setIsPrinting(true);
+        onBeforeGetContentResolve.current = resolve;
+      }
+    });
+  }, [bill, patient]);
+
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Invoice ${bill?.receiptNumber} - ${patient?.name?.[0]?.given?.join(' ')} ${patient?.name?.[0].family}`,
+    onBeforePrint: handleOnBeforeGetContent,
+    onAfterPrint: handleAfterPrint,
+    preserveAfterPrint: false,
+    onPrintError: (_, error) =>
+      showSnackbar({
+        title: t('errorPrintingInvoice', 'Error printing invoice'),
+        kind: 'error',
+        subtitle: error.message,
+      }),
+  });
+
+  useEffect(() => {
+    if (isPrinting && onBeforeGetContentResolve.current) {
+      onBeforeGetContentResolve.current();
+    }
+  }, [isPrinting]);
+
+  // Do not remove this comment. Adds the translation keys for the invoice details
+  /**
+   * t('totalAmount', 'Total amount')
+   * t('amountTendered', 'Amount tendered')
+   * t('invoiceNumber', 'Invoice #')
+   * t('dateAndTime', 'Date and time')
+   * t('invoiceStatus', 'Invoice status')
+   */
+  const invoiceDetails = {
+    [t('totalAmount', 'Total amount')]: `KES ${totalAmount}`,
+    [t('amountTendered', 'Amount tendered')]: `KES ${payAmount}`,
+    [t('invoiceNumber', 'Invoice number')]: bill?.receiptNumber,
+    [t('dateAndTime', 'Date and time')]: bill?.dateCreated,
+    [t('invoiceStatus', 'Invoice status')]: bill?.status,
+  };
+
+  if (isLoadingPatient) {
+    return <></>;
   }
 
   if (!bill || !billUuid) {
@@ -151,6 +220,9 @@ const Invoice: React.FC<InvoinceProps> = () => {
   return (
     <>
       <div className={styles.invoiceLayout}>
+        <div className={styles.patientHeader}>
+          {patient && patientUuid && <ExtensionSlot name="patient-header-slot" state={{ patient, patientUuid }} />}
+        </div>
         <div className={styles.invoiceHeader}>
           <div className={styles.invoiceTitle}>
             <h4>Patient Invoice</h4>
@@ -168,6 +240,17 @@ const Invoice: React.FC<InvoinceProps> = () => {
           ) : (
             <></>
           )}
+        </div>
+        <div className={styles.printActions}>
+          <Button
+            disabled={isPrinting || isLoadingPatient || loading}
+            onClick={handlePrint}
+            renderIcon={(props) => <Printer size={24} {...props} />}
+            iconDescription={t('printBill', 'Print bill')}
+          >
+            {t('printBill', 'Print bill')}
+          </Button>
+          {(bill?.status === 'PAID' || payAmount > 0) && <PrintReceipt billUuid={bill?.uuid} />}
         </div>
         <div className={styles.contentSection}>
           <div className={styles.lineItemsSection}>
