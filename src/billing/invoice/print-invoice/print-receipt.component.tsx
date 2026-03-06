@@ -17,7 +17,7 @@ const PrintReceipt: React.FC<PrintReceiptProps> = ({ billUuid }) => {
   const handlePrintReceiptClick = () => {
     setIsRedirecting(true);
     setTimeout(() => {
-      const pdfUrl = `${baseUrl.origin}/openmrs${restBaseUrl}/billing/}receipt?billUuid=${billUuid}`;
+      const pdfUrl = `${baseUrl.origin}/openmrs${restBaseUrl}/billing/receipt?billUuid=${billUuid}`;
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = `receipt_${billUuid}.pdf`;

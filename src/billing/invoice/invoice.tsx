@@ -91,22 +91,6 @@ const Invoice: React.FC<InvoinceProps> = () => {
     }
   }, [isPrinting]);
 
-  // Do not remove this comment. Adds the translation keys for the invoice details
-  /**
-   * t('totalAmount', 'Total amount')
-   * t('amountTendered', 'Amount tendered')
-   * t('invoiceNumber', 'Invoice #')
-   * t('dateAndTime', 'Date and time')
-   * t('invoiceStatus', 'Invoice status')
-   */
-  const invoiceDetails = {
-    [t('totalAmount', 'Total amount')]: `KES ${totalAmount}`,
-    [t('amountTendered', 'Amount tendered')]: `KES ${payAmount}`,
-    [t('invoiceNumber', 'Invoice number')]: bill?.receiptNumber,
-    [t('dateAndTime', 'Date and time')]: bill?.dateCreated,
-    [t('invoiceStatus', 'Invoice status')]: bill?.status,
-  };
-
   if (isLoadingPatient) {
     return <></>;
   }
