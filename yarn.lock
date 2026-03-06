@@ -60,6 +60,7 @@ __metadata:
     react-dom: "npm:^18.3.1"
     react-i18next: "npm:^16.0.0"
     react-router-dom: "npm:^6.14.1"
+    react-to-print: "npm:^3.1.1"
     rxjs: "npm:^6.6.7"
     swc-loader: "npm:^0.2.3"
     turbo: "npm:^2.5.2"
@@ -16615,6 +16616,15 @@ __metadata:
   peerDependencies:
     react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
   checksum: 10/7c41bae17027ca949c430c64eb7550bd6b5e645b9e9b30fa821a2d8d175dbd6041897169e0e89f0cb0c7ff0fa6646c60b57ffb19cd8fe505a58c74a5b9a38261
+  languageName: node
+  linkType: hard
+
+"react-to-print@npm:^3.1.1":
+  version: 3.3.0
+  resolution: "react-to-print@npm:3.3.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ~19
+  checksum: 10/c1d6d28cef1aedd61e1d2d3d26b3a3d02bb53ad9edad0ad473387e09a5a0b29d384fd459baff4b21d2e6681afdad87eddad29499b4be135eab4210ec54676783
   languageName: node
   linkType: hard
 
