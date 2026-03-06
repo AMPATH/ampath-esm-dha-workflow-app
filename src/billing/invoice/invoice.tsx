@@ -240,11 +240,12 @@ const Invoice: React.FC<InvoinceProps> = () => {
               <div className={styles.processPaymentSection}>
                 <div>Total Amount : {totalAmount}</div>
                 <div>Total Tendered : {totalTendered}</div>
+                <div>Total Due : {totalAmount - totalTendered}</div>
                 <div className={styles.actionRow}>
                   <Button kind="secondary" onClick={navigateToBillingPage}>
                     Discard
                   </Button>
-                  {bill.status === 'PENDING' ? (
+                  {bill.status !== 'PAID' ? (
                     <>
                       <Button kind="primary" onClick={handlePayment} disabled={loading}>
                         {loading ? (

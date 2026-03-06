@@ -61,7 +61,9 @@ const LineItems: React.FC<LineItemsProps> = ({ lineItems, refresh, bill }) => {
               <>
                 <TableRow id={item.uuid}>
                   <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.billableService}</TableCell>
+                  <TableCell>
+                    {item.billableService}({item.priceName})
+                  </TableCell>
                   <TableCell>{item.paymentStatus}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
                   <TableCell>KES {item.price}</TableCell>
