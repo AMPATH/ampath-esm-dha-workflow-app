@@ -49,8 +49,10 @@ import {
   type CreateBillDto,
   type PaymentStatus,
   type CashPoint,
+  type HieClientPaymentMode,
 } from '../../../shared/types';
 import { PatientCategories } from '../../../shared/constants/patient-category';
+import { fetchClientPaymentMode } from '../../../shared/services/client-payment-mode.resource';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -89,12 +91,15 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [selectedInsurancePolicy, setSelectedInsurancePolicy] = useState<string>('');
   const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [hieClientPaymentMode, setHieClientPaymentMode] = useState<HieClientPaymentMode>();
   const visitTypes = useVisitTypes();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
   const visitTypeOptions = useMemo(() => generateVisitTypeOptions(), [visitTypes]);
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+
+  const clientPaymentMode = useMemo(() => getClientPaymentMethod(), [hieClientPaymentMode, paymentModes]);
 
   const paymentDetails = Object.values(PaymentDetail).map((value) => {
     return {
@@ -107,13 +112,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     getPaymentMethods();
     getBillableServices();
     getCashPoints();
+    getClientPaymentMode();
   }, [patients]);
   if (!patients) {
     return <>No Client data</>;
   }
-  const registerOnAfyaYangu = () => {
-    window.open('https://afyayangu.go.ke/', '_blank');
-  };
   const sendToTriage = async () => {
     if (!validateVisitQueueBill()) return;
     setLoading(true);
@@ -460,6 +463,25 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     return selectedPaymentMode.name.trim().toLowerCase().includes(paymentMode.trim().toLowerCase());
   }
 
+  async function getClientPaymentMode() {
+    try {
+      const resp = await fetchClientPaymentMode(client.id);
+      setHieClientPaymentMode(resp);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function getClientPaymentMethod(): PaymentMode {
+    if (!paymentModes || !hieClientPaymentMode) {
+      return null;
+    }
+    const mode = paymentModes.find((pm) => {
+      return pm.uuid === hieClientPaymentMode.payment_mode_uuid;
+    });
+    return mode;
+  }
+
   return (
     <>
       <Modal
@@ -485,6 +507,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         <TableHeader>No</TableHeader>
                         <TableHeader>Name</TableHeader>
                         <TableHeader>Gender</TableHeader>
+                        <TableHeader>Payment Method</TableHeader>
                         <TableHeader>Select Patient</TableHeader>
                       </TableRow>
                     </TableHead>
@@ -494,6 +517,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{p.person.preferredName.display}</TableCell>
                           <TableCell>{p.person.gender}</TableCell>
+                          <TableCell>{clientPaymentMode ? <>{clientPaymentMode.name}</> : <>Not Set</>}</TableCell>
                           <TableCell>
                             <Checkbox id={p.uuid} labelText="" onChange={() => onPatientSelect(p)} />
                           </TableCell>
