@@ -71,3 +71,18 @@ export type CashPoint = {
   retired: boolean;
   location: Location;
 };
+
+export type CreateClientPaymentModeDto = {
+  clientId: string;
+  paymentModeUuid: string;
+};
+export type HieClientPaymentMode = {
+  client_id: string;
+  payment_mode_uuid: string;
+};
+
+export type HieBillPayment = {
+  billUuid: string;
+  paymentUuid: string;
+  referenceNo: string;
+};

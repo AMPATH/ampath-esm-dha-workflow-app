@@ -11,10 +11,10 @@ import {
   useConfig,
   usePatient,
 } from '@openmrs/esm-framework';
-import { type PayBillDto, type Bill } from '../types';
+import { type PayBillDto, type Bill, type Payment } from '../types';
 import { fetchBill, payBill } from './bill.resource';
 import { Button, InlineLoading, Select, SelectItem, TextInput } from '@carbon/react';
-import { type PaymentMode } from '../../shared/types';
+import { type HieBillPayment, type PaymentMode } from '../../shared/types';
 import { fetchPaymentModes } from '../../shared/services/billing.resource';
 import PaymentDetails from './payment-details/payment-details';
 import LineItems from './line-items/line-items';
@@ -22,6 +22,7 @@ import { useReactToPrint } from 'react-to-print';
 import { Printer } from '@carbon/react/icons';
 import { t } from 'i18next';
 import PrintReceipt from './print-invoice/print-receipt.component';
+import { createClientPayment } from '../../shared/services/client-payment.resource';
 interface InvoinceProps {}
 const Invoice: React.FC<InvoinceProps> = () => {
   const { billUuid, patientUuid } = useParams();
@@ -169,11 +170,17 @@ const Invoice: React.FC<InvoinceProps> = () => {
       try {
         const resp = await payBill(billUuid, payBillDto);
         if (resp && resp.uuid) {
+          if (refNo) {
+            await createBillPaymentReference(resp);
+          }
+
           showAlert(
             'success',
             'Payment succesfull',
             `KES ${resp.amountTendered} (${resp.instanceType.name}) was succesfully paid`,
           );
+
+          clearData();
         }
       } catch (error) {
         showAlert(
@@ -200,6 +207,21 @@ const Invoice: React.FC<InvoinceProps> = () => {
   const navigateToBillingPage = () => {
     navigate({ to: `${window.spaBase}/home/billing`, templateParams: {} });
   };
+
+  async function createBillPaymentReference(payment: Payment) {
+    // save bill and  reference number to hie
+    const payload: HieBillPayment = {
+      paymentUuid: payment.uuid,
+      billUuid: billUuid,
+      referenceNo: refNo,
+    };
+    await createClientPayment(payload);
+  }
+
+  function clearData() {
+    setPayAmount(0);
+    setRefNo('');
+  }
 
   return (
     <>
