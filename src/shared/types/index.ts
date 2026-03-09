@@ -86,3 +86,15 @@ export type HieBillPayment = {
   paymentUuid: string;
   referenceNo: string;
 };
+
+export type ServiceQueueDailyReport = {
+  queue_room_name: string;
+  patients: number;
+};
+
+export type ServiceQueueDailyReportResp = {
+  schemas: any;
+  sqlQuery: string;
+  size: number;
+  result: ServiceQueueDailyReport[];
+};
