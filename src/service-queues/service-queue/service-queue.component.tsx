@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { type QueueEntryResult } from '../../registry/types';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { closeQueueEntry, getServiceQueueByLocationUuid } from '../service-queues.resource';
+import { closeQueueEntry, getServiceQueueByLocationUuid, getServiceQueueDailyReport } from '../service-queues.resource';
 import { Button, InlineLoading, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import QueueList from '../queue-list/queue-list.component';
 import styles from './service-queue.component.scss';
@@ -13,6 +13,7 @@ import SignOffEntryModal from '../modals/sign-off/sign-off.modal';
 import { endVisit } from '../../resources/visit.resource';
 import { QUEUE_SERVICE_UUIDS } from '../../shared/constants/concepts';
 import ConfirmModal from '../../shared/ui/confirm-modal/confirm.modal';
+import { type ServiceQueueDailyReport } from '../../shared/types';
 
 interface ServiceQueueComponentProps {
   serviceTypeUuid: string;
@@ -21,6 +22,7 @@ interface ServiceQueueComponentProps {
 
 const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTypeUuid, title }) => {
   const [queueEntries, setQueueEntries] = useState<QueueEntryResult[]>([]);
+  const [queueEntryDailyReport, setQueueEntryDailyReport] = useState<ServiceQueueDailyReport[]>([]);
   const [selectedQueueEntry, setSelectedQueueEntry] = useState<QueueEntryResult>();
   const [displayMoveModal, setDisplayMoveModal] = useState<boolean>(false);
   const [displayTransitionModal, setDisplayTransitionModal] = useState<boolean>(false);
@@ -49,8 +51,11 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
   const groupedByRoom: { [key: string]: QueueEntryResult[] } = useMemo(() => groupEntriesByRooms(), [queueEntries]);
 
   useEffect(() => {
-    getEntryQueues();
-  }, []);
+    if (serviceTypeUuid && locationUuid) {
+      getEntryQueues();
+      getEntryQueueDailyReport();
+    }
+  }, [serviceTypeUuid, locationUuid]);
 
   const filterOutClients = (queueEntries: QueueEntryResult[]) => {
     if (!queueEntries) {
@@ -77,6 +82,21 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
         kind: 'error',
         title: 'Error fetching queue',
         subtitle: 'An error occurred while fetching the queue. Please reload or contact support',
+      });
+    }
+  };
+
+  const getEntryQueueDailyReport = async () => {
+    setLoading(true);
+    try {
+      const res = await getServiceQueueDailyReport(serviceTypeUuid, locationUuid);
+      setQueueEntryDailyReport(res);
+      setLoading(false);
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error fetching queue daily report',
+        subtitle: 'An error occurred while fetching the queue daily report. Please reload or contact support',
       });
     }
   };
@@ -212,7 +232,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
         <div>
           {queueEntries ? (
             <>
-              <StatDetails queueEntries={queueEntries} />
+              <StatDetails queueEntries={queueEntries} report={queueEntryDailyReport}/>
             </>
           ) : (
             <></>
