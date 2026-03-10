@@ -8,9 +8,10 @@ import AgregateStatCard from '../../../../shared/ui/aggregate-stat-card/aggregat
 interface StatDetailsProps {
   queueEntries: QueueEntryResult[];
   report: ServiceQueueDailyReport[];
+  onStatDetailsRequest: () => void;
 }
 
-const StatDetails: React.FC<StatDetailsProps> = ({ queueEntries, report }) => {
+const StatDetails: React.FC<StatDetailsProps> = ({ queueEntries, report, onStatDetailsRequest }) => {
   const patientsInWaiting = useMemo(() => getCategoryTotal(['WAITING']), [queueEntries]);
   const patientsAttendedTo = useMemo(() => getCategoryTotal(['IN SERVICE', 'COMPLETED']), [queueEntries]);
   const patientsCheckedIn = useMemo(() => getTotalCheckedIn(), [report]);
@@ -46,7 +47,12 @@ const StatDetails: React.FC<StatDetailsProps> = ({ queueEntries, report }) => {
   return (
     <div className={styles.statsSection}>
       <div className={styles.aggregate}>
-        <AgregateStatCard title="Total Checked In" totalCount={patientsCheckedIn ?? 0} stats={aggregateStats} />
+        <AgregateStatCard
+          title="Total Checked In"
+          totalCount={patientsCheckedIn ?? 0}
+          stats={aggregateStats}
+          onStatDetailsRequest={onStatDetailsRequest}
+        />
       </div>
       <StatCard title="Patients in waiting" count={patientsInWaiting ?? 0} />
       <StatCard title="Patients attended to" count={patientsAttendedTo ?? 0} />

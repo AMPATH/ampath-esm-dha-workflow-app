@@ -6,9 +6,10 @@ interface AgregateStatCardProps {
   title: string;
   totalCount: number;
   stats: { title: string; count: number }[];
+  onStatDetailsRequest: () => void;
 }
 
-const AgregateStatCard: React.FC<AgregateStatCardProps> = ({ title, totalCount, stats }) => {
+const AgregateStatCard: React.FC<AgregateStatCardProps> = ({ title, totalCount, stats, onStatDetailsRequest }) => {
   if (!title) {
     return <></>;
   }
@@ -16,7 +17,9 @@ const AgregateStatCard: React.FC<AgregateStatCardProps> = ({ title, totalCount, 
     <div className={styles.aggregateStatsCard}>
       <div className={styles.aggregateStatsCardHeader}>
         <h5>{title}</h5>
-        <h1>{totalCount}</h1>
+        <h1 className={styles.totalCount} onClick={onStatDetailsRequest}>
+          {totalCount}
+        </h1>
       </div>
       <div className={styles.stats}>
         {stats.map((val, index) => {
