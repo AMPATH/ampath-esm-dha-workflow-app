@@ -98,3 +98,30 @@ export type ServiceQueueDailyReportResp = {
   size: number;
   result: ServiceQueueDailyReport[];
 };
+
+export type ServiceQueueReportPatientList = {
+  queue_entry_id: number;
+  patient_id: number;
+  queue_id: number;
+  queue_room_name: string;
+  queue_room_id: number;
+  service_name: string;
+  patient_uuid: string;
+  uuid: string;
+  person_id: number;
+  gender: string;
+  birthdate: string;
+  age: number;
+  person_name: string;
+  identifiers: string;
+  phone_number: string;
+};
+
+export type ServiceQueueDailyPatientListReportResp = {
+  schemas: any;
+  sqlQuery: string;
+  size: number;
+  results: {
+    results: ServiceQueueReportPatientList[];
+  };
+};
