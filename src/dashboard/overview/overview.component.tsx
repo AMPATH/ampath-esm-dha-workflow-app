@@ -1,6 +1,6 @@
 import { FluidDropdown, Tile } from '@carbon/react';
 import React, { useState } from 'react';
-import { UserMultiple, CheckmarkFilled, Time, Hospital } from '@carbon/react/icons';
+import { UserMultiple, CheckmarkFilled, Time, Hospital, Chemistry, Medication } from '@carbon/react/icons';
 
 import styles from './overview.component.scss';
 import { type QueueEntryResult } from '../../registry/types';
@@ -81,6 +81,18 @@ const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount, das
             <Time size={20} /> Uncompleted visits
           </h4>
           <h4 className={styles.text}>{dashboardSummary?.uncompleted_visits ?? 0}</h4>
+        </Tile>
+        <Tile className={`${styles.card} ${styles.labs}`}>
+          <h4 className={styles.text}>
+            <Chemistry size={20} /> Labs
+          </h4>
+          <h4 className={styles.text}>{dashboardSummary?.labs ?? 0}</h4>
+        </Tile>
+        <Tile className={`${styles.card} ${styles.pharmacy}`}>
+          <h4 className={styles.text}>
+            <Medication size={20} /> Pharmacy
+          </h4>
+          <h4 className={styles.text}>{dashboardSummary?.pharmacy ?? 0}</h4>
         </Tile>
         <Tile className={`${styles.card} ${styles.emergencies}`}>
           <h4 className={styles.text}>
