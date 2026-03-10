@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, ModalBody, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import { Modal, ModalBody, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
 import styles from './daily-report-patient-list.scss';
 import { type ServiceQueueReportPatientList } from '../../../shared/types';
 
@@ -39,6 +39,7 @@ const DailyReportPatientListModal: React.FC<DailyReportPatientListModalProps> = 
                     <TableHeader>Phone Number</TableHeader>
                     <TableHeader>Identifiers</TableHeader>
                     <TableHeader>Queue Room</TableHeader>
+                    <TableHeader>Status</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -51,6 +52,11 @@ const DailyReportPatientListModal: React.FC<DailyReportPatientListModalProps> = 
                       <TableCell>{val.phone_number}</TableCell>
                       <TableCell>{val.identifiers}</TableCell>
                       <TableCell>{val.queue_room_name}</TableCell>
+                      <TableCell>
+                        <Tag size="md" type={val.served_status === 'SERVED' ? 'blue' : 'gray'}>
+                          {val.served_status}
+                        </Tag>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
