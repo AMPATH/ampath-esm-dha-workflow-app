@@ -40,12 +40,9 @@ import {
   type BillableService,
   type PaymentMode,
   type CreateBillDto,
-  type PaymentStatus,
   type CashPoint,
-  type HieClientPaymentMode,
 } from '../../../shared/types';
 import { PatientCategories } from '../../../shared/constants/patient-category';
-import { fetchClientPaymentMode } from '../../../shared/services/client-payment-mode.resource';
 import { VisitTypeUuids } from '../../../shared/constants/visit-types';
 
 interface SendToTriageModalProps {
@@ -85,13 +82,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [selectedInsurancePolicy, setSelectedInsurancePolicy] = useState<string>('');
   const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [hieClientPaymentMode, setHieClientPaymentMode] = useState<HieClientPaymentMode>();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
-
-  const clientPaymentMode = useMemo(() => getClientPaymentMethod(), [hieClientPaymentMode, paymentModes]);
 
   const visitTypeOptions = useMemo(
     () => [
@@ -118,7 +112,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     getPaymentMethods();
     getBillableServices();
     getCashPoints();
-    getClientPaymentMode();
   }, [patients]);
   if (!patients) {
     return <>No Client data</>;
@@ -460,25 +453,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     return selectedPaymentMode.name.trim().toLowerCase().includes(paymentMode.trim().toLowerCase());
   }
 
-  async function getClientPaymentMode() {
-    try {
-      const resp = await fetchClientPaymentMode(client.id);
-      setHieClientPaymentMode(resp);
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  function getClientPaymentMethod(): PaymentMode {
-    if (!paymentModes || !hieClientPaymentMode) {
-      return null;
-    }
-    const mode = paymentModes.find((pm) => {
-      return pm.uuid === hieClientPaymentMode.payment_mode_uuid;
-    });
-    return mode;
-  }
-
   return (
     <>
       <Modal
@@ -504,7 +478,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         <TableHeader>No</TableHeader>
                         <TableHeader>Name</TableHeader>
                         <TableHeader>Gender</TableHeader>
-                        <TableHeader>Payment Method</TableHeader>
                         <TableHeader>Select Patient</TableHeader>
                       </TableRow>
                     </TableHead>
@@ -514,7 +487,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{p.person.preferredName.display}</TableCell>
                           <TableCell>{p.person.gender}</TableCell>
-                          <TableCell>{clientPaymentMode ? <>{clientPaymentMode.name}</> : <>Not Set</>}</TableCell>
                           <TableCell>
                             <Checkbox id={p.uuid} labelText="" onChange={() => onPatientSelect(p)} />
                           </TableCell>

@@ -23,52 +23,9 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
   onSubmit,
   onSendClientToTriage,
 }) => {
-  const [selectedPaymentMode, setSelectedPaymentMode] = useState<PaymentMode>();
-  const [clientPaymentMode, setClientPaymentMode] = useState<HieClientPaymentMode>();
   if (!client) {
     return <>No Client data</>;
   }
-  const handleSelectedPatientOption = (selectedPaymentMode: PaymentMode) => {
-    setSelectedPaymentMode(selectedPaymentMode);
-    addClientPaymentMode(selectedPaymentMode);
-  };
-  const generateClientPaymentModePayload = (selectedPaymentMode: PaymentMode): CreateClientPaymentModeDto => {
-    return {
-      clientId: client.id,
-      paymentModeUuid: selectedPaymentMode.uuid,
-    };
-  };
-  const addClientPaymentMode = async (selectedPaymentMode: PaymentMode) => {
-    const paymentModePayload = generateClientPaymentModePayload(selectedPaymentMode);
-    try {
-      const resp = await createClientPaymentMode(paymentModePayload);
-      if (resp) {
-        setClientPaymentMode(resp);
-        showSnackbar({
-          kind: 'success',
-          title: 'Payment method set succesfully',
-          subtitle: `Client Payment method has been set to ${selectedPaymentMode.name} succesfully`,
-        });
-      }
-    } catch (error) {
-      showSnackbar({
-        kind: 'error',
-        title: 'Error setting client payment method',
-        subtitle: 'An error ocurred while setting the client payment method. Please retry or contact support',
-      });
-    }
-  };
-  const confirmPatientDetails = () => {
-    if (!clientPaymentMode) {
-      showSnackbar({
-        kind: 'error',
-        title: 'Missing Payment method',
-        subtitle: 'Please select a payment method before proceeding',
-      });
-    } else {
-      onSendClientToTriage(client.id);
-    }
-  };
   return (
     <>
       <Modal
@@ -76,7 +33,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
         size="lg"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={confirmPatientDetails}
+        onRequestSubmit={() => onSendClientToTriage(client.id)}
         primaryButtonText="Send To Triage"
         secondaryButtonText="Cancel"
       >
@@ -89,14 +46,10 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
               <Tabs>
                 <TabList contained>
                   <Tab>Patient Details</Tab>
-                  <Tab>Payment Details</Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>
                     <ClientDetails client={client} />
-                  </TabPanel>
-                  <TabPanel>
-                    <PaymentOptionsComponent onSelectPaymentMethod={handleSelectedPatientOption} />
                   </TabPanel>
                 </TabPanels>
               </Tabs>
