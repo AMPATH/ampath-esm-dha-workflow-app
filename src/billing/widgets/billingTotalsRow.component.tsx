@@ -15,14 +15,12 @@ import {
   Search,
   InlineLoading,
   AISkeletonText,
-  Modal,
-  Button,
 } from '@carbon/react';
 import { Money, WarningAlt, CheckmarkFilled, Hospital, Receipt, PendingFilled } from '@carbon/react/icons';
-import { ConfigurableLink, navigate, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
+import { ConfigurableLink, navigate } from '@openmrs/esm-framework';
 import { spacing05 } from '@carbon/themes';
 import './billingTotalsRow.component.scss';
-import { fetchAllBills } from '../api/billing.api';
+import { fetchLatest1000Bills } from '../api/billing.api';
 
 type BillStatus = 'UNPAID' | 'PAID' | 'CLAIM_SUBMITTED';
 
@@ -41,7 +39,7 @@ type Bill = {
 };
 
 async function fetchBills(): Promise<Bill[]> {
-  const res = await fetchAllBills();
+  const res = await fetchLatest1000Bills();
   const bills: Bill[] = [];
 
   (res.results ?? []).forEach((billNode: any) => {
@@ -91,11 +89,11 @@ async function fetchBills(): Promise<Bill[]> {
         status = 'CLAIM_SUBMITTED';
         paymentMode = 'SHA';
       } else {
-        status = 'PAID'; // Everything else counts as Paid Cash
+        status = 'PAID';
         paymentMode = 'CASH';
       }
     } else {
-      status = 'PAID'; // fallback for any unexpected status
+      status = 'PAID';
       paymentMode = 'CASH';
     }
     bills.push({
@@ -104,9 +102,9 @@ async function fetchBills(): Promise<Bill[]> {
       receiptNo: billNode.receiptNumber ?? 'N/A',
       patient: patientName,
       raisedBy,
-      paymentMode, // <- new field included
+      paymentMode,
       date: `${dateStr}, ${timeStr}`,
-      status, // <- adjusted status
+      status,
       total: totalAmount.toFixed(2),
       items: services.join(', '),
       createdAt,
@@ -369,7 +367,7 @@ const BillingTotalsRow: React.FC = () => {
     };
 
     loadBills();
-  }, []); // empty dependency → run only once on mount
+  }, []);
 
   const counts = useMemo(
     () => ({
