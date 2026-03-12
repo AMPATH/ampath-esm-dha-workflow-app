@@ -384,9 +384,12 @@ import {
   Checkbox,
   OverflowMenu,
   OverflowMenuItem,
+  SkeletonText,
+  SkeletonPlaceholder,
 } from '@carbon/react';
-import { navigate } from '@openmrs/esm-framework';
+import { navigate, showSnackbar } from '@openmrs/esm-framework';
 
+import { Download, Receipt, DocumentAdd, Subtract, Money, View } from '@carbon/react/icons';
 import { fetchBillById, processPayment, fetchPaymentModes } from '../api/billing.api';
 
 type LineItemStatus = 'PENDING' | 'PAID' | 'CLAIMED' | 'WAIVED';
@@ -527,10 +530,19 @@ const BillDetails: React.FC = () => {
   >(null);
   const [reference, setReference] = useState('');
   const [waiverType, setWaiverType] = useState<'PERCENT' | 'AMOUNT'>('AMOUNT');
-  const [waiverPercent, setWaiverPercent] = useState(0);
-  const [waiverAmount, setWaiverAmount] = useState(0);
+
+  const [waiverPercent, setWaiverPercent] = useState('');
+  const [waiverAmount, setWaiverAmount] = useState('');
   const [editItem, setEditItem] = useState<LineItem | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(1);
+
+  const percent = Number(waiverPercent || 0);
+  const amount = Number(waiverAmount || 0);
+
+  useEffect(() => {
+    setWaiverPercent('');
+    setWaiverAmount('');
+  }, [waiverType]);
 
   const getBalance = (i: LineItem) =>
     i.price * i.quantity - (i.paidQuantity || 0) * i.price - (i.waivedAmount || 0) - (i.claimedAmount || 0);
@@ -571,44 +583,63 @@ const BillDetails: React.FC = () => {
   // const totalBalance = items.reduce((acc, i) => acc + getBalance(i), 0);
   const totalPaid = items.reduce((acc, i) => {
     const payer = (i.payerType ?? '').toString().trim().toUpperCase();
-    const qty = Number(i.quantity ?? 0); // <- use quantity, not paidQuantity
+    const status = (i.status ?? '').toString().trim().toUpperCase();
+    const qty = Number(i.quantity ?? 0);
     const price = Number(i.price ?? 0);
 
-    if (payer === 'CASH') {
+    if (payer === 'CASH' && status === 'PAID') {
       return acc + qty * price;
     }
+
     return acc;
   }, 0);
 
   const billTotal = items.reduce((acc, i) => acc + i.price * i.quantity, 0);
-
   const totalWaived = items.reduce((acc, i) => acc + (i.waivedAmount || 0), 0);
+
   const totalClaimed = items.reduce((acc, i) => {
-    return i.payerType.toUpperCase() === 'SHA' ? acc + (i.claimedAmount ?? getBalance(i)) : acc;
+    const payer = (i.payerType ?? '').toUpperCase();
+    const status = (i.status ?? '').toUpperCase();
+
+    if (payer === 'SHA' && (status === 'CLAIMED' || status === 'PAID')) {
+      return acc + (i.claimedAmount ?? i.price * i.quantity);
+    }
+
+    return acc;
   }, 0);
+
+  const showAlert = (type: string, title: string, subTitle: string) => {
+    showSnackbar({
+      kind: type,
+      title: title,
+      subtitle: subTitle,
+    });
+  };
 
   // Balance per item: remaining amount to be settled
   const totalBalance = billTotal - (totalPaid + totalClaimed + totalWaived);
 
   // Auto-select SHA items
   useEffect(() => {
-    setItems((prev) =>
-      prev.map((i) => {
-        if (shaOnlyBill) {
-          return { ...i, selected: true };
-        }
+    setItems((prev) => {
+      if (prev.length === 0) return prev;
+
+      return prev.map((i) => {
+        if (shaOnlyBill) return { ...i, selected: true };
+
         if (i.status === 'PENDING' && i.payerType.toUpperCase() === 'SHA') {
           return { ...i, selected: true };
         }
+
         return i;
-      }),
-    );
-  }, [shaOnlyBill, items]);
+      });
+    });
+  }, [shaOnlyBill]);
 
   // ----- Render Raise SHA Claim Button -----
   const showShaClaimButton = () => {
-    if (shaOnlyBill) return true; // SHA-only bills can always claim
-    if (hasPendingSha && allCashSettled) return true; // mixed bills: only if all cash paid
+    if (shaOnlyBill) return true;
+    if (hasPendingSha && allCashSettled) return true;
     return false;
   };
 
@@ -642,16 +673,19 @@ const BillDetails: React.FC = () => {
   };
 
   const processCashPayment = async () => {
-    if (!reference.trim()) return alert('Payment reference required');
-    if (selectedCashItems.length === 0) return alert('No items selected');
+    if (!reference.trim()) return;
+    showAlert('error', 'Cash Payment', 'Payment reference required');
+
+    if (selectedCashItems.length === 0) showAlert('error', 'Cash Payment', 'No items selected');
 
     try {
+      setCashLoading(true);
       // 1️⃣ Fetch payment modes and find Cash UUID
       const paymentModesResponse = await fetchPaymentModes();
 
       // Find the UUID for Cash
       const cashMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'cash');
-      if (!cashMode) throw new Error('Cash payment mode not found');
+      if (!cashMode) showAlert('error', 'Cash Payment', 'Cash payment mode not found');
       const cashUuid = cashMode.uuid;
 
       // 2️⃣ Prepare payload for line item payments
@@ -663,9 +697,7 @@ const BillDetails: React.FC = () => {
 
       // 3️⃣ Call payment endpoint
       const response = await processPayment(billId, payload);
-      if (!response.ok) throw new Error('Payment failed');
-
-      alert('Payment successful');
+      if (!response.ok) showAlert('success', 'Cash Payment', 'Payment processing successful');
 
       // 4️⃣ Re-fetch bill and update local state instead of manual update
       const refreshedBill = await fetchBillById(billId);
@@ -690,24 +722,34 @@ const BillDetails: React.FC = () => {
 
       setReference('');
       setModalType(null);
+      setCashLoading(false);
     } catch (error) {
       console.error('Payment failed', error);
-      alert('Payment failed. Please try again.');
+      setCashLoading(false);
+      showAlert('error', 'Cash Payment', 'Payment failed. Please try again.');
     }
   };
 
   const applyWaiver = async () => {
-    const appliedAmount = waiverType === 'PERCENT' ? Math.round((totalBalance * waiverPercent) / 100) : waiverAmount;
-    if (appliedAmount <= 0) return alert('Invalid waiver');
+    return showAlert(
+      'error',
+      'Waiver Application',
+      'Waiver functionality is currently unavailable. Please contact support.',
+    );
 
-    return alert('Waiver functionality is currently unavailable. Please contact support.');
+    setWaiverLoading(true);
+
+    const appliedAmount = waiverType === 'PERCENT' ? Math.round((totalBalance * percent) / 100) : waiverAmount;
+    if (amount <= 0) return;
+    showAlert('error', 'Waiver Application', 'Waiver amount must be greater than zero');
 
     // 1️⃣ Fetch payment modes and find Cash UUID
     const waiverModesResponse = await fetchPaymentModes();
 
     // Find the UUID for Cash
-    const waiverMode = waiverModesResponse.results.find((mode) => mode.name.toLowerCase() === 'sha');
-    if (!waiverMode) throw new Error('Waiver payment mode not found');
+    const waiverMode = waiverModesResponse.results.find((mode) => mode.name.toLowerCase() === 'waiver');
+    if (!waiverMode) showAlert('error', 'Waiver Application', 'Waiver payment mode not found. Please contact support.');
+
     const waiverUuid = waiverMode.uuid;
 
     // 2️⃣ Prepare payload for line item payments
@@ -719,9 +761,10 @@ const BillDetails: React.FC = () => {
 
     // 3️⃣ Call payment endpoint
     const response = await processPayment(billId, payload);
-    if (!response.ok) throw new Error('Payment failed');
+    if (!response.ok)
+      showAlert('error', 'Waiver Application', 'Failed to apply waiver. Please try again or contact support.');
 
-    alert('Waiver successful');
+    showAlert('success', 'Waiver Application', 'Waiver applied successfully');
 
     // 4️⃣ Re-fetch bill and update local state instead of manual update
     const refreshedBill = await fetchBillById(billId);
@@ -745,21 +788,26 @@ const BillDetails: React.FC = () => {
     addLog(
       'WAIVER',
       items.filter((i) => i.waiverAllowed),
-      appliedAmount,
+      amount,
     );
-    setWaiverAmount(0);
-    setWaiverPercent(0);
+    setWaiverAmount('');
+    setWaiverPercent('');
     setModalType(null);
+    setWaiverLoading(false);
   };
 
   const applySHAClaim = async () => {
     try {
+      setShaLoading(true);
+
       // 1️⃣ Fetch payment modes and find Cash UUID
       const paymentModesResponse = await fetchPaymentModes();
 
       // Find the UUID for Cash
       const shaMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'sha');
-      if (!shaMode) throw new Error('SHA payment mode not found');
+      if (!shaMode)
+        showAlert('error', 'SHA Claim', 'SHA payment mode not found. Please contact support to resolve this issue.');
+
       const shaUuid = shaMode.uuid;
 
       // 2️⃣ Prepare payload for line item payments
@@ -771,9 +819,10 @@ const BillDetails: React.FC = () => {
 
       // 3️⃣ Call payment endpoint
       const response = await processPayment(billId, payload);
-      if (!response.ok) throw new Error('Payment failed');
+      if (!response.ok)
+        showAlert('error', 'SHA Claim', 'Failed to raise SHA claim. Please try again or contact support.');
 
-      alert('Payment successful');
+      showAlert('success', 'SHA Claim', 'SHA claim raised successfully');
 
       // 4️⃣ Re-fetch bill and update local state instead of manual update
       const refreshedBill = await fetchBillById(billId);
@@ -798,9 +847,11 @@ const BillDetails: React.FC = () => {
 
       setReference('');
       setModalType(null);
+      setShaLoading(false);
     } catch (error) {
       console.error('Payment failed', error);
-      alert('Payment failed. Please try again.');
+      setShaLoading(false);
+      showAlert('error', 'SHA Claim', 'Failed to raise SHA claim. Please try again or contact support.');
     }
   };
 
@@ -816,34 +867,53 @@ const BillDetails: React.FC = () => {
     setModalType(null);
   };
 
+  const statusText = `${billState}${billStatus() ? ` (${billStatus()})` : ''}`;
+
+  const [cashLoading, setCashLoading] = useState(false);
+  const [waiverLoading, setWaiverLoading] = useState(false);
+  const [shaLoading, setShaLoading] = useState(false);
+
+  const handlePrintInvoice = () => {
+    // For partially paid / unpaid bills
+    const billUrl = `/billing/print-invoice/${billId}`;
+    window.open(billUrl, '_blank');
+  };
+
+  const handlePrintReceipt = () => {
+    // For fully paid bills
+    const receiptUrl = `/billing/print-receipt/${billId}`;
+    window.open(receiptUrl, '_blank');
+  };
+
   return (
     <Grid fullWidth style={{ padding: '0' }}>
       {/* Breadcrumb & Bill Info */}
       <Column lg={16} style={{ marginTop: '1rem' }}>
         <Breadcrumb style={{ marginBottom: '1rem' }}>
           <BreadcrumbItem onClick={navigateToBillingPage}>Bills</BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>{billNumber}</BreadcrumbItem>
+          <BreadcrumbItem isCurrentPage>{loading ? <SkeletonText width="120px" /> : billNumber}</BreadcrumbItem>
         </Breadcrumb>
 
         <Tile style={{ paddingTop: '1rem' }}>
           {/* Patient Name on Top */}
-          <h5 style={{ marginBottom: '1rem' }}>{patientName}</h5>
+          {loading ? <SkeletonText width="200px" /> : <h5 style={{ marginBottom: '1rem' }}>{patientName}</h5>}
 
           {/* Row with three columns */}
           <Grid fullWidth>
             <Column sm={4} md={4} lg={4}>
               <p>
-                <strong>Bill No:</strong> {billNumber}
+                <strong>Bill No:</strong> {loading ? <SkeletonText width="100px" /> : billNumber}
               </p>
             </Column>
             <Column sm={4} md={4} lg={4}>
               <p>
-                <strong>Cash Point:</strong> {bill?.cashPoint?.name || '-'}
+                <strong>Cash Point:</strong> {loading ? <SkeletonText width="120px" /> : cashPoint}
               </p>
             </Column>
             <Column sm={4} md={4} lg={4}>
               <p>
-                <strong>Bill Date:</strong> {formatBillDate(bill?.dateCreated)}
+                <strong>Bill Date:</strong>{' '}
+                {loading ? <SkeletonText width="150px" /> : formatBillDate(bill?.dateCreated)}
               </p>
             </Column>
           </Grid>
@@ -879,84 +949,105 @@ const BillDetails: React.FC = () => {
 
                   <Stack orientation="horizontal" gap={2}>
                     {selectedCashItems.length > 0 && (
-                      <Button size="sm" onClick={() => setModalType('CASH')}>
+                      <Button disabled={loading} renderIcon={Money} size="sm" onClick={() => setModalType('CASH')}>
                         Pay Selected Cash Items
-                      </Button>
-                    )}
-
-                    {totalBalance > 0 && (
-                      <Button size="sm" kind="ghost" onClick={() => setModalType('WAIVER')}>
-                        Apply Waiver
                       </Button>
                     )}
 
                     {showShaClaimButton() && (
                       <Button
+                        disabled={loading}
                         size="sm"
                         kind="secondary"
+                        renderIcon={hasPendingSha ? DocumentAdd : View}
                         onClick={() => setModalType(hasPendingSha ? 'SHA' : 'CHECK_SHA')}
                       >
                         {hasPendingSha ? 'Raise SHA Claim' : 'Check SHA Claim Status'}
+                      </Button>
+                    )}
+
+                    {totalBalance > 0 && (
+                      <Button
+                        disabled={loading}
+                        renderIcon={Subtract}
+                        size="sm"
+                        kind="primary"
+                        onClick={() => setModalType('WAIVER')}
+                      >
+                        Apply Waiver
+                      </Button>
+                    )}
+
+                    {totalBalance > 0 ? (
+                      <Button
+                        disabled={loading}
+                        size="sm"
+                        kind="tertiary"
+                        renderIcon={Download}
+                        onClick={() => handlePrintInvoice()}
+                      >
+                        Print Invoice
+                      </Button>
+                    ) : (
+                      <Button
+                        disabled={loading}
+                        size="sm"
+                        kind="tertiary"
+                        renderIcon={Receipt}
+                        onClick={() => handlePrintReceipt()}
+                      >
+                        Print Receipt
                       </Button>
                     )}
                   </Stack>
                 </div>
 
                 {/* Bill Items Table */}
-                <DataTable rows={items} headers={headers}>
-                  {({ rows, headers, getHeaderProps, getRowProps }) => (
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          {headers.map((h) => (
-                            <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
-                              {h.header}
-                            </TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
+                {loading ? (
+                  <SkeletonPlaceholder style={{ height: '300px', width: '100%' }} />
+                ) : (
+                  <DataTable rows={items} headers={headers}>
+                    {({ rows, headers, getHeaderProps, getRowProps }) => (
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            {headers.map((h) => (
+                              <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
+                                {h.header}
+                              </TableHeader>
+                            ))}
+                          </TableRow>
+                        </TableHead>
 
-                      <TableBody>
-                        {rows.map((row) => {
-                          const i = items.find((it) => it.id === row.id)!;
+                        <TableBody>
+                          {rows.map((row) => {
+                            const i = items.find((it) => it.id === row.id)!;
 
-                          return (
-                            <TableRow key={i.id} {...getRowProps({ row })}>
-                              <TableCell>{i.service}</TableCell>
-                              <TableCell>{i.payerType}</TableCell>
-                              <TableCell>{i.quantity}</TableCell>
-                              <TableCell>Ksh {i.price}</TableCell>
-                              <TableCell>Ksh {getBalance(i)}</TableCell>
-                              <TableCell>
-                                {i.payerType.toUpperCase() === 'SHA' && i.status.toUpperCase() === 'PAID'
-                                  ? statusTag('CLAIMED')
-                                  : statusTag(i.status)}
-                              </TableCell>
+                            return (
+                              <TableRow key={i.id} {...getRowProps({ row })}>
+                                <TableCell>{i.service}</TableCell>
+                                <TableCell>{i.payerType}</TableCell>
+                                <TableCell>{i.quantity}</TableCell>
+                                <TableCell>Ksh {i.price}</TableCell>
+                                <TableCell>Ksh {getBalance(i)}</TableCell>
+                                <TableCell>
+                                  {i.payerType.toUpperCase() === 'SHA' && i.status.toUpperCase() === 'PAID'
+                                    ? statusTag('CLAIMED')
+                                    : statusTag(i.status)}
+                                </TableCell>
 
-                              <TableCell>
-                                {/* {i.status === 'PENDING' && i.payerType === 'CASH' && !shaOnlyBill && (
-                                  <Checkbox
-                                    id={`select-${i.id}`}
-                                    labelText=""
-                                    checked={!!i.selected}
-                                    onChange={() => toggleSelect(i.id)}
-                                  />
-                                )} */}
-
-                                {i.status === 'PENDING' && (
+                                <TableCell>
                                   <Checkbox
                                     id={`select-${i.id}`}
                                     labelText=""
                                     checked={shaOnlyBill ? true : !!i.selected}
-                                    disabled={shaOnlyBill || i.payerType !== 'CASH'}
+                                    disabled={i.status !== 'PENDING' || shaOnlyBill || i.payerType !== 'CASH'}
                                     onChange={() => toggleSelect(i.id)}
                                   />
-                                )}
-                              </TableCell>
+                                </TableCell>
 
-                              <TableCell>
-                                {i.status === 'PENDING' && (
-                                  <OverflowMenu ariaLabel="Actions" size="sm">
+                                <TableCell>
+                                  <OverflowMenu ariaLabel="Actions" size="sm" disabled={i.status !== 'PENDING'}>
                                     <OverflowMenuItem itemText="Edit Quantity" onClick={() => openEditQuantity(i)} />
                                     <OverflowMenuItem
                                       itemText="Delete Item"
@@ -966,15 +1057,15 @@ const BillDetails: React.FC = () => {
                                       }}
                                     />
                                   </OverflowMenu>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
-                </DataTable>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </DataTable>
+                )}
               </Tile>
 
               {bill?.payments?.length > 0 && (
@@ -1034,22 +1125,22 @@ const BillDetails: React.FC = () => {
                 </h4>
 
                 <p>
-                  <strong>Status:</strong> {billState} {billStatus() ? `(${billStatus()})` : ''}
+                  <strong>Status:</strong> {loading ? <SkeletonText width="100px" /> : statusText}
                 </p>
                 <p>
-                  <strong>Total:</strong> Ksh {billTotal}
+                  <strong>Total:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + billTotal}
                 </p>
                 <p>
-                  <strong>Paid:</strong> Ksh {totalPaid}
+                  <strong>Paid:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalPaid}
                 </p>
                 <p>
-                  <strong>Waived:</strong> Ksh {totalWaived}
+                  <strong>Waived:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalWaived}
                 </p>
                 <p>
-                  <strong>Claimed:</strong> Ksh {totalClaimed}
+                  <strong>Claimed:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalClaimed}
                 </p>
                 <p>
-                  <strong>Balance:</strong> Ksh {totalBalance}
+                  <strong>Balance:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalBalance}
                 </p>
               </Tile>
             </Column>
@@ -1063,8 +1154,9 @@ const BillDetails: React.FC = () => {
       <Modal
         open={modalType === 'CASH'}
         modalHeading="Cash Payment"
-        primaryButtonText="Submit"
+        primaryButtonText={cashLoading ? 'Processing...' : 'Submit'}
         secondaryButtonText="Cancel"
+        primaryButtonDisabled={cashLoading}
         onRequestClose={() => setModalType(null)}
         onRequestSubmit={processCashPayment}
       >
@@ -1094,8 +1186,14 @@ const BillDetails: React.FC = () => {
       <Modal
         open={modalType === 'WAIVER'}
         modalHeading="Apply Waiver"
-        primaryButtonText="Submit"
+        primaryButtonText={waiverLoading ? 'Applying...' : 'Submit'}
         secondaryButtonText="Cancel"
+        primaryButtonDisabled={
+          waiverLoading ||
+          (waiverType === 'PERCENT'
+            ? waiverPercent === '' || Number(waiverPercent) < 1 || Number(waiverPercent) > 100
+            : waiverAmount === '' || Number(waiverAmount) < 1)
+        }
         onRequestClose={() => setModalType(null)}
         onRequestSubmit={applyWaiver}
       >
@@ -1132,7 +1230,9 @@ const BillDetails: React.FC = () => {
             min={0}
             max={100}
             value={waiverPercent}
-            onChange={(_e, state) => setWaiverPercent(Number(state.value))}
+            invalid={waiverPercent !== '' && (Number(waiverPercent) < 1 || Number(waiverPercent) > 100)}
+            invalidText="Percentage must be between 1 and 100"
+            onChange={(_e, state) => setWaiverPercent(String(state.value))}
           />
         ) : (
           <NumberInput
@@ -1140,7 +1240,9 @@ const BillDetails: React.FC = () => {
             label="Waiver Amount"
             min={0}
             value={waiverAmount}
-            onChange={(_e, state) => setWaiverAmount(Number(state.value))}
+            invalid={waiverAmount !== '' && Number(waiverAmount) < 1}
+            invalidText="Amount cannot be less than 1"
+            onChange={(_e, state) => setWaiverAmount(String(state.value))}
           />
         )}
       </Modal>
@@ -1149,8 +1251,9 @@ const BillDetails: React.FC = () => {
       <Modal
         open={modalType === 'SHA'}
         modalHeading="SHA Claim"
-        primaryButtonText="Submit Claim"
+        primaryButtonText={shaLoading ? 'Submitting...' : 'Submit Claim'}
         secondaryButtonText="Cancel"
+        primaryButtonDisabled={shaLoading}
         onRequestClose={() => setModalType(null)}
         onRequestSubmit={applySHAClaim}
       >

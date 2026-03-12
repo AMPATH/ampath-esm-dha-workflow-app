@@ -15,14 +15,12 @@ import {
   Search,
   InlineLoading,
   AISkeletonText,
-  Modal,
-  Button,
 } from '@carbon/react';
 import { Money, WarningAlt, CheckmarkFilled, Hospital, Receipt, PendingFilled } from '@carbon/react/icons';
-import { ConfigurableLink, navigate, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
+import { ConfigurableLink, navigate } from '@openmrs/esm-framework';
 import { spacing05 } from '@carbon/themes';
 import './billingTotalsRow.component.scss';
-import { fetchAllBills } from '../api/billing.api';
+import { fetchLatest1000Bills } from '../api/billing.api';
 
 type BillStatus = 'UNPAID' | 'PAID' | 'CLAIM_SUBMITTED';
 
@@ -41,7 +39,7 @@ type Bill = {
 };
 
 async function fetchBills(): Promise<Bill[]> {
-  const res = await fetchAllBills();
+  const res = await fetchLatest1000Bills();
   const bills: Bill[] = [];
 
   (res.results ?? []).forEach((billNode: any) => {
