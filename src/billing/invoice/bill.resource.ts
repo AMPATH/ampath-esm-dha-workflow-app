@@ -38,3 +38,10 @@ export async function editBillLineItem(billUuid: string, editBillLineItemDto: Ed
   const result = await resp.json();
   return result;
 }
+
+export async function fetchPatientBills(patientUuid: string): Promise<Bill[]> {
+  const billUrl = `${restBaseUrl}/billing/bill?v=full&patient=${patientUuid}`;
+  const resp = await openmrsFetch<Bill>(billUrl);
+  const result = await resp.json();
+  return result.results ?? [];
+}
