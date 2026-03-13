@@ -16,7 +16,7 @@ import {
   TextInput,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import { type Patient, useSession, showSnackbar, type VisitType, type Visit } from '@openmrs/esm-framework';
+import { type Patient, useSession, showSnackbar, type Visit } from '@openmrs/esm-framework';
 import {
   type HieClient,
   type CreateVisitDto,
@@ -44,6 +44,8 @@ import {
 } from '../../../shared/types';
 import { PatientCategories } from '../../../shared/constants/patient-category';
 import { VisitTypeUuids } from '../../../shared/constants/visit-types';
+import { type Bill } from '../../../billing/types';
+import { fetchPatientBills } from '../../../billing/invoice/bill.resource';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -77,10 +79,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [billableServices, setBillableServices] = useState<BillableService[]>([]);
   const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
   const [filteredBillableServices, setFilteredBillableServices] = useState<ServicePrice[]>(null);
-  const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice>(null);
+  const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice | null>(null);
   const [selectedInsuranceScheme, setSelectedInsuranceScheme] = useState<string>('');
   const [selectedInsurancePolicy, setSelectedInsurancePolicy] = useState<string>('');
   const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
+  const [patientBills, setPatientBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
@@ -112,28 +115,38 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     getPaymentMethods();
     getBillableServices();
     getCashPoints();
+    getPatientBills();
   }, [patients]);
   if (!patients) {
     return <>No Client data</>;
+  }
+
+  async function getPatientBills() {
+    if (patients) {
+      let bills: Bill[] = [];
+      setPatientBills([]);
+      for (let i = 0; i < patients.length; i++) {
+        const resp = await fetchPatientBills(patients[i].uuid);
+        const todaysBills = getTodaysBills(resp);
+        setPatientBills(todaysBills);
+      }
+    }
+  }
+  function getTodaysBills(bills: Bill[]) {
+    const today = new Date();
+    return bills.filter((b) => {
+      const billDate = new Date(b.dateCreated);
+      return (
+        billDate.getFullYear() === today.getFullYear() &&
+        billDate.getMonth() === today.getMonth() &&
+        billDate.getDate() === today.getDate()
+      );
+    });
   }
   const sendToTriage = async () => {
     if (!validateVisitQueueBill()) return;
     setLoading(true);
     try {
-      // add bill if it was a paying client
-      let createBillResp = null;
-      if (selectedPaymentDetail === PaymentDetail.Paying) {
-        const createBillDto = generateCreateBillDto();
-        if (isValidCreateBillDto(createBillDto)) {
-          createBillResp = await createBill(createBillDto);
-          if (createBillResp) {
-            showAlert('success', 'Bill succesfully created', '');
-          }
-        } else {
-          return false;
-        }
-      }
-
       const newVisit = await createPatientVisit();
       if (newVisit) {
         const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit);
@@ -141,6 +154,20 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
         if (queueEntryResp) {
           showAlert('success', 'Patient has succesfully been moved to the Triage queue', '');
+        }
+
+        // add bill if it was a paying client
+        let createBillResp = null;
+        if (selectedPaymentDetail === PaymentDetail.Paying) {
+          const createBillDto = generateCreateBillDto();
+          if (isValidCreateBillDto(createBillDto)) {
+            createBillResp = await createBill(createBillDto);
+            if (createBillResp) {
+              showAlert('success', 'Bill succesfully created', '');
+            }
+          } else {
+            return false;
+          }
         }
 
         if ((queueEntryResp && PaymentDetail.Paying && createBillResp) || (queueEntryResp && PaymentDetail.NonPaying)) {
@@ -264,7 +291,25 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     const selectedBillableService = servicePrices.find((sp) => {
       return sp.uuid === selectedBillableServiceUuid;
     });
-    setSelectedBillableService(selectedBillableService);
+    if (isValidBillableService(selectedBillableService)) {
+      setSelectedBillableService(selectedBillableService);
+    } else {
+      setSelectedBillableService(null);
+      showAlert('error', 'Existing bill', 'Patient has a similar bill');
+    }
+  };
+  const isValidBillableService = (selectedService: ServicePrice) => {
+    // check if patient has been billed for similar service
+    let isValid = true;
+    patientBills.forEach((b) => {
+      const lineItems = b.lineItems;
+      lineItems.forEach((l) => {
+        if (l.billableService === selectedService.billableService.display) {
+          isValid = false;
+        }
+      });
+    });
+    return isValid;
   };
   const cashPointsHandler = (selectedCashPointUuid: string) => {
     const selectedCashPoint = cashPoints.find((cp) => {
