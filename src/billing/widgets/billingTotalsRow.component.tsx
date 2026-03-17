@@ -15,12 +15,16 @@ import {
   Search,
   InlineLoading,
   AISkeletonText,
+  Button,
+  DatePicker,
+  DatePickerInput,
 } from '@carbon/react';
-import { Money, WarningAlt, CheckmarkFilled, Hospital, Receipt, PendingFilled } from '@carbon/react/icons';
+import { Money, WarningAlt, CheckmarkFilled, Hospital, PendingFilled } from '@carbon/react/icons';
 import { ConfigurableLink, navigate } from '@openmrs/esm-framework';
 import { spacing05 } from '@carbon/themes';
 import './billingTotalsRow.component.scss';
-import { fetchLatest1000Bills } from '../api/billing.api';
+import { fetchBillsByDate } from '../api/billing.api';
+import { showSnackbar } from '@openmrs/esm-styleguide';
 
 type BillStatus = 'UNPAID' | 'PAID' | 'CLAIM_SUBMITTED';
 
@@ -38,75 +42,53 @@ type Bill = {
   createdAt: Date;
 };
 
-async function fetchBills(): Promise<Bill[]> {
-  const res = await fetchLatest1000Bills();
+async function fetchBills(date: string): Promise<Bill[]> {
+  const res = await fetchBillsByDate(date);
   const bills: Bill[] = [];
 
-  (res.results ?? []).forEach((billNode: any) => {
-    const patientDisplay = billNode.patient?.display ?? 'Unknown';
-    const patientName = patientDisplay.includes('-')
-      ? (patientDisplay.split('-').pop()?.trim() ?? patientDisplay)
-      : patientDisplay;
-
-    const raisedByDisplay = billNode.cashier?.display ?? 'Unknown';
-    const raisedBy = raisedByDisplay.includes('-')
-      ? (raisedByDisplay.split('-').pop()?.trim() ?? raisedByDisplay)
-      : raisedByDisplay;
-
+  (res.data ?? []).forEach((billNode: any) => {
     const createdAt = new Date(billNode.dateCreated);
+
     const dateStr =
       createdAt.toLocaleDateString() === new Date().toLocaleDateString()
         ? 'Today'
         : createdAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const timeStr = createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    let totalAmount = 0;
-    const services: string[] = [];
-    const payModes: string[] = [];
-
-    (billNode.lineItems ?? []).forEach((item: any) => {
-      if (item.voided) return;
-      totalAmount += Number(item.price ?? 0);
-      if (item.billableService) services.push(item.billableService);
-      payModes.push((item.priceName ?? 'DEFAULT').toUpperCase());
+    const timeStr = createdAt.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
     });
 
-    if (services.length === 0) return; // skip empty bills
+    const services = billNode.billItems?.map((i: any) => i.billName).join(', ') ?? '';
 
-    // --- Categorization logic ---
-    const normalizedPayModes = payModes.map((p) => (p || '').toUpperCase());
-    const hasSha = normalizedPayModes.includes('SHA');
+    const hasSha = billNode.billItems?.some((i: any) => i.paymentMode === 'SHA') ?? false;
 
-    // Default everything else to PAID (Cash) unless explicitly SHA
     let status: BillStatus;
     let paymentMode: string;
 
-    if (billNode.status === 'PENDING') {
+    if (billNode.balance > 0) {
       status = 'UNPAID';
       paymentMode = 'CASH';
-    } else if (billNode.status === 'POSTED' || billNode.status === 'PAID') {
-      if (hasSha) {
-        status = 'CLAIM_SUBMITTED';
-        paymentMode = 'SHA';
-      } else {
-        status = 'PAID';
-        paymentMode = 'CASH';
-      }
+    } else if (hasSha) {
+      status = 'CLAIM_SUBMITTED';
+      paymentMode = 'SHA';
     } else {
       status = 'PAID';
       paymentMode = 'CASH';
     }
+
     bills.push({
-      id: `${billNode.uuid}|${billNode.patient?.uuid ?? ''}`,
-      patientId: billNode.patient?.uuid ?? '',
+      id: `${billNode.billUuid}|${billNode.patientUuid}`,
+      patientId: billNode.patientUuid ?? '',
       receiptNo: billNode.receiptNumber ?? 'N/A',
-      patient: patientName,
-      raisedBy,
+      patient: billNode.patientName ?? 'Unknown',
+      raisedBy: billNode.cashPoint ?? 'Unknown',
       paymentMode,
       date: `${dateStr}, ${timeStr}`,
       status,
-      total: totalAmount.toFixed(2),
-      items: services.join(', '),
+      total: Number(billNode.totalAmount ?? 0).toFixed(2),
+      items: services,
       createdAt,
     });
   });
@@ -182,23 +164,7 @@ const StatusTag = ({ status }: { status: BillStatus }) => {
   }
 };
 
-const filterBills = (allBills: Bill[], status?: BillStatus, search = '', range: [Date?, Date?] = []) => {
-  return allBills.filter((b) => {
-    const statusMatch = !status || b.status === status;
-    const searchMatch = b.receiptNo.includes(search) || b.patient.toLowerCase().includes(search.toLowerCase());
-    const dateMatch = !range[0] || !range[1] || (b.createdAt >= range[0]! && b.createdAt <= range[1]!);
-    return statusMatch && searchMatch && dateMatch;
-  });
-};
-
 const { Table, TableHead, TableRow, TableHeader, TableBody, TableCell } = DataTable;
-
-const goToPatientBill = (rowId: string) => {
-  const [billUuid, patientUuid] = rowId.split('|');
-  navigate({
-    to: `${window.spaBase}/home/billing/patient/${patientUuid}/${billUuid}`,
-  });
-};
 
 const BillsTable = ({
   rows,
@@ -231,21 +197,6 @@ const BillsTable = ({
   return (
     <>
       {redirecting && <InlineLoading description="Redirecting to patient bill..." status="active" />}
-
-      <Grid fullWidth>
-        <Column lg={16} md={8} sm={4}>
-          <Search
-            closeButtonLabelText="Clear search input"
-            id="search-default-1"
-            labelText="Search bills"
-            placeholder="Search bill or patient"
-            size="md"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            disabled={redirecting}
-          />
-        </Column>
-      </Grid>
 
       <DataTable rows={rows} headers={headers}>
         {({ rows, headers, getTableProps }) => (
@@ -301,20 +252,35 @@ const BillsTab = ({
   source,
   filterDate,
   setFilterDate,
+  search,
+  setSearch,
   loading,
 }: {
   status?: BillStatus;
   source: Bill[];
-  filterDate: Date | null;
-  setFilterDate: (val: Date | null) => void;
+  filterDate: Date;
+  setFilterDate: (val: Date) => void;
+  search: string;
+  setSearch: (val: string) => void;
   loading: boolean;
 }) => {
-  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
   const filtered = useMemo(
-    () => filterBills(source, status, search, filterDate ? [filterDate, filterDate] : []),
+    () =>
+      source.filter((b) => {
+        const statusMatch = !status || b.status === status;
+        const searchMatch =
+          b.patient.toLowerCase().includes(search.toLowerCase()) ||
+          b.receiptNo.toLowerCase().includes(search.toLowerCase());
+        const start = new Date(filterDate);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(filterDate);
+        end.setHours(23, 59, 59, 999);
+        const dateMatch = b.createdAt >= start && b.createdAt <= end;
+        return statusMatch && searchMatch && dateMatch;
+      }),
     [source, status, search, filterDate],
   );
 
@@ -352,12 +318,33 @@ const BillsTab = ({
 const BillingTotalsRow: React.FC = () => {
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterDate, setFilterDate] = useState<Date | null>(null);
+  const [filterDate, setFilterDate] = useState<Date>(() => {
+    const saved = sessionStorage.getItem('billing-filter-date');
+    if (!saved) return new Date();
+
+    try {
+      const data = JSON.parse(saved);
+      if (data.expiry && new Date().getTime() > data.expiry) {
+        sessionStorage.removeItem('billing-filter-date');
+        return new Date();
+      }
+      return new Date(data.value);
+    } catch {
+      return new Date();
+    }
+  });
+  const [search, setSearch] = useState('');
+  const formatDate = (date: Date) =>
+    `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
 
   useEffect(() => {
     const loadBills = async () => {
       try {
-        const fetchedBills = await fetchBills();
+        setLoading(true);
+
+        const dateStr = formatDate(filterDate);
+        const fetchedBills = await fetchBills(dateStr);
+
         setBills(fetchedBills);
       } catch (error) {
         console.error('Error fetching bills:', error);
@@ -367,144 +354,136 @@ const BillingTotalsRow: React.FC = () => {
     };
 
     loadBills();
-  }, []);
+  }, [filterDate]);
+
+  useEffect(() => {
+    const expiry = new Date().getTime() + 5 * 60 * 1000;
+    const data = {
+      value: filterDate.toISOString(),
+      expiry,
+    };
+    sessionStorage.setItem('billing-filter-date', JSON.stringify(data));
+  }, [filterDate]);
+
+  // Filter bills by selected date
+  const billsForDate = useMemo(() => {
+    const start = new Date(filterDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(filterDate);
+    end.setHours(23, 59, 59, 999);
+
+    return bills.filter((b) => b.createdAt >= start && b.createdAt <= end);
+  }, [bills, filterDate]);
 
   const counts = useMemo(
     () => ({
-      all: bills.length,
-      unpaid: bills.filter((b) => b.status === 'UNPAID').length,
-      paid: bills.filter((b) => b.status === 'PAID').length,
-      submittedClaims: bills.filter((b) => b.status === 'CLAIM_SUBMITTED').length,
+      all: billsForDate.length,
+      unpaid: billsForDate.filter((b) => b.status === 'UNPAID').length,
+      paid: billsForDate.filter((b) => b.status === 'PAID').length,
+      submittedClaims: billsForDate.filter((b) => b.status === 'CLAIM_SUBMITTED').length,
     }),
-    [bills],
+    [billsForDate],
   );
 
-  const revenueToday = useMemo(() => {
-    const today = new Date().toDateString();
+  const revenueToday = useMemo(
+    () => billsForDate.filter((b) => b.status === 'PAID').reduce((sum, b) => sum + Number(b.total), 0),
+    [billsForDate],
+  );
 
-    return bills
-      .filter((b) => b.status === 'PAID' && b.createdAt.toDateString() === today)
-      .reduce((sum, b) => {
-        const amount = Number(b.total.replace(/,/g, ''));
-        return sum + amount;
-      }, 0);
-  }, [bills]);
+  const filterBillsBy = (status?: BillStatus) => {
+    const start = new Date(filterDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(filterDate);
+    end.setHours(23, 59, 59, 999);
+
+    return bills.filter((b) => {
+      const statusMatch = !status || b.status === status;
+      const searchMatch =
+        b.patient.toLowerCase().includes(search.toLowerCase()) ||
+        b.receiptNo.toLowerCase().includes(search.toLowerCase());
+      const dateMatch = b.createdAt >= start && b.createdAt <= end;
+      return statusMatch && searchMatch && dateMatch;
+    });
+  };
 
   return (
     <Stack gap={4} className="cds--pt-06">
-      <div
-        style={{
-          fontSize: 'var(--cds-body-compact-02-font-size, 1rem)',
-          fontWeight: 'var(--cds-body-compact-02-font-weight, 400)',
-          lineHeight: 'var(--cds-body-compact-02-line-height, 1.375)',
-          letterSpacing: 'var(--cds-body-compact-02-letter-spacing, 0)',
-          color: 'var(--cds-text-secondary, #525252)',
-          height: '6rem',
-          backgroundColor: 'var(--cds-background, #ffffff)',
-          display: 'flex',
-          paddingLeft: '0.5rem',
-          justifyContent: 'space-between',
-          borderBottom: '1px solid var(--cds-border-subtle-01, #e0e0e0)',
-        }}
-      >
-        <Grid fullWidth>
-          <Column lg={16} md={8} sm={4}>
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.75rem',
-                alignItems: 'center',
-              }}
-            >
-              <Receipt size={45} style={{ color: 'var(--brand-01)' }} />
-
-              <div style={{ margin: spacing05 }}>
-                <p className="cds--label">Billing</p>
-                <h4 className="cds--heading-04">Home</h4>
-              </div>
-            </div>
-          </Column>
-        </Grid>
-      </div>
-
+      {/* Stats Tiles */}
       <div style={{ padding: spacing05 }}>
         <Grid fullWidth>
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<Money size={25} />}
-              label="Revenue Today"
+              label="Revenue Collected"
               value={
                 loading ? (
                   <AISkeletonText />
                 ) : (
-                  `Ksh ${revenueToday.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`
+                  `Ksh ${revenueToday.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                 )
               }
-              style={{
-                backgroundColor: 'var(--cds-layer-background-02, #DFF6F0)',
-                color: '#00B37E',
-                padding: spacing05,
-              }}
+              style={{ backgroundColor: '#DFF6F0', color: '#00B37E', padding: spacing05 }}
             />
           </Column>
-
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<WarningAlt size={25} />}
               label="Unpaid Bills"
               value={loading ? <AISkeletonText /> : counts.unpaid}
-              style={{
-                backgroundColor: 'var(--cds-layer-background-02, #FFF5D9)',
-                color: '#F2B01F',
-                padding: spacing05,
-              }}
+              style={{ backgroundColor: '#FFF5D9', color: '#F2B01F', padding: spacing05 }}
             />
           </Column>
-
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<CheckmarkFilled size={25} />}
               label="Paid Bills"
               value={loading ? <AISkeletonText /> : counts.paid}
-              style={{
-                backgroundColor: 'var(--cds-layer-background-02, #E7F0FF)',
-                color: '#0F62FE',
-                padding: spacing05,
-              }}
+              style={{ backgroundColor: '#E7F0FF', color: '#0F62FE', padding: spacing05 }}
             />
           </Column>
-
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<Hospital size={25} />}
               label="Submitted Claims"
               value={loading ? <AISkeletonText /> : counts.submittedClaims}
-              style={{
-                backgroundColor: 'var(--cds-layer-background-02, #F4EBFF)',
-                color: '#8C41FF',
-                padding: spacing05,
-              }}
+              style={{ backgroundColor: '#F4EBFF', color: '#8C41FF', padding: spacing05 }}
             />
           </Column>
         </Grid>
       </div>
 
+      {/* Filters + Tabs */}
       <div style={{ padding: spacing05, paddingTop: 0 }}>
-        <div
-          style={{
-            border: '1px solid var(--cds-border-subtle-01, #e0e0e0)',
-            borderRadius: '0.25rem',
-            paddingTop: spacing05,
-          }}
-        >
+        <div style={{ border: '1px solid #e0e0e0', borderRadius: '0.25rem', paddingTop: spacing05 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '1rem', padding: spacing05 }}>
+            {/* Search */}
+            <div style={{ flex: 4 }}>
+              <Search
+                closeButtonLabelText="Clear search input"
+                id="search-default-1"
+                labelText="Search bills"
+                placeholder="Search bill or patient"
+                size="md"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {/* Date */}
+            <div style={{ flex: 1 }}>
+              <DatePicker
+                datePickerType="single"
+                value={[formatDate(filterDate)]}
+                dateFormat="Y-m-d"
+                onChange={(dates) => setFilterDate(new Date(dates[0] ?? new Date()))}
+              >
+                <DatePickerInput id="bill-date-filter" placeholder="yyyy-mm-dd" labelText="" size="md" />
+              </DatePicker>
+            </div>
+          </div>
+
           <Tabs>
-            <TabList activation="manual">
-              <Tab>
-                All <Tag size="sm">{loading ? <AISkeletonText /> : counts.all}</Tag>
-              </Tab>
+            <TabList style={{ paddingLeft: spacing05 }}>
               <Tab>
                 Unpaid{' '}
                 <Tag type="red" size="sm">
@@ -523,36 +502,49 @@ const BillingTotalsRow: React.FC = () => {
                   {loading ? <AISkeletonText /> : counts.submittedClaims}
                 </Tag>
               </Tab>
+              <Tab>
+                All <Tag size="sm">{loading ? <AISkeletonText /> : counts.all}</Tag>
+              </Tab>
             </TabList>
 
             <TabPanels>
               <TabPanel>
-                <BillsTab source={bills} filterDate={filterDate} setFilterDate={setFilterDate} loading={loading} />
-              </TabPanel>
-              <TabPanel>
                 <BillsTab
-                  source={bills}
-                  status="UNPAID"
+                  source={filterBillsBy('UNPAID')}
                   filterDate={filterDate}
                   setFilterDate={setFilterDate}
+                  search={search}
+                  setSearch={setSearch}
                   loading={loading}
                 />
               </TabPanel>
               <TabPanel>
                 <BillsTab
-                  source={bills}
-                  status="PAID"
+                  source={filterBillsBy('PAID')}
                   filterDate={filterDate}
                   setFilterDate={setFilterDate}
+                  search={search}
+                  setSearch={setSearch}
                   loading={loading}
                 />
               </TabPanel>
               <TabPanel>
                 <BillsTab
-                  source={bills}
-                  status="CLAIM_SUBMITTED"
+                  source={filterBillsBy('CLAIM_SUBMITTED')}
                   filterDate={filterDate}
                   setFilterDate={setFilterDate}
+                  search={search}
+                  setSearch={setSearch}
+                  loading={loading}
+                />
+              </TabPanel>
+              <TabPanel>
+                <BillsTab
+                  source={filterBillsBy()}
+                  filterDate={filterDate}
+                  setFilterDate={setFilterDate}
+                  search={search}
+                  setSearch={setSearch}
                   loading={loading}
                 />
               </TabPanel>
