@@ -15,3 +15,13 @@ export async function getHieBaseUrl() {
   const { hieBaseUrl } = await getConfig(moduleName);
   return hieBaseUrl ?? null;
 }
+
+export async function getClaimsUrl() {
+  const { claimsBaseUrl } = await getConfig(moduleName);
+  return claimsBaseUrl ?? null;
+}
+
+export async function getClaimsKey() {
+  const { claimsKey } = await getConfig(moduleName);
+  return claimsKey ?? null;
+}

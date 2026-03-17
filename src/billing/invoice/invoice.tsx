@@ -1,366 +1,3 @@
-// import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-// import styles from './invoice.scss';
-// import HeaderCard from './invoice-header/header-card/header-card';
-// import { useParams } from 'react-router-dom';
-// import {
-//   ExtensionSlot,
-//   formatDate,
-//   navigate,
-//   parseDate,
-//   showSnackbar,
-//   useConfig,
-//   usePatient,
-// } from '@openmrs/esm-framework';
-// import { type PayBillDto, type Bill, type Payment } from '../types';
-// import { fetchBill, payBill } from './bill.resource';
-// import { Button, InlineLoading, Select, SelectItem, TextInput } from '@carbon/react';
-// import { type HieBillPayment, type PaymentMode } from '../../shared/types';
-// import { fetchPaymentModes } from '../../shared/services/billing.resource';
-// import PaymentDetails from './payment-details/payment-details';
-// import LineItems from './line-items/line-items';
-// import { useReactToPrint } from 'react-to-print';
-// import { Printer } from '@carbon/react/icons';
-// import { t } from 'i18next';
-// import PrintReceipt from './print-invoice/print-receipt.component';
-// import { createClientPayment } from '../../shared/services/client-payment.resource';
-// interface InvoinceProps {}
-// const Invoice: React.FC<InvoinceProps> = () => {
-//   const { billUuid, patientUuid } = useParams();
-//   const { patient, isLoading: isLoadingPatient } = usePatient(patientUuid);
-//   const [bill, setBill] = useState<Bill>();
-//   const totalAmount = useMemo(() => getTotalAmount(bill), [bill]);
-//   const totalTendered = useMemo(() => getTotalTendered(bill), [bill]);
-//   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
-//   const [selectedPaymentMode, setSelectedPaymentMode] = useState<PaymentMode>();
-//   const [payAmount, setPayAmount] = useState<number>();
-//   const [refNo, setRefNo] = useState<string>('');
-//   const [loading, setLoading] = useState<boolean>(false);
-//   const [isPrinting, setIsPrinting] = useState(false);
-//   const onBeforeGetContentResolve = useRef<(() => void) | null>(null);
-//   const componentRef = useRef<HTMLDivElement>(null);
-
-//   useEffect(() => {
-//     if (billUuid) {
-//       fetchInvoiceBill(billUuid);
-//       getPaymentMethods();
-//     }
-//   }, [billUuid]);
-//   async function fetchInvoiceBill(billUuid: string) {
-//     try {
-//       const resp = await fetchBill(billUuid);
-//       setBill(resp);
-//     } catch (error) {
-//       showSnackbar({
-//         kind: 'error',
-//         title: 'Error fetching bill',
-//         subtitle: 'An error occurred while fetching the invoice bill',
-//       });
-//     }
-//   }
-
-//   const handleAfterPrint = useCallback(() => {
-//     onBeforeGetContentResolve.current = null;
-//     setIsPrinting(false);
-//   }, []);
-
-//   const handleOnBeforeGetContent = useCallback(() => {
-//     return new Promise<void>((resolve) => {
-//       if (patient && bill) {
-//         setIsPrinting(true);
-//         onBeforeGetContentResolve.current = resolve;
-//       }
-//     });
-//   }, [bill, patient]);
-
-//   const handlePrint = useReactToPrint({
-//     contentRef: componentRef,
-//     documentTitle: `Invoice ${bill?.receiptNumber} - ${patient?.name?.[0]?.given?.join(' ')} ${patient?.name?.[0].family}`,
-//     onBeforePrint: handleOnBeforeGetContent,
-//     onAfterPrint: handleAfterPrint,
-//     preserveAfterPrint: false,
-//     onPrintError: (_, error) =>
-//       showSnackbar({
-//         title: t('errorPrintingInvoice', 'Error printing invoice'),
-//         kind: 'error',
-//         subtitle: error.message,
-//       }),
-//   });
-
-//   useEffect(() => {
-//     if (isPrinting && onBeforeGetContentResolve.current) {
-//       onBeforeGetContentResolve.current();
-//     }
-//   }, [isPrinting]);
-
-//   if (isLoadingPatient) {
-//     return <></>;
-//   }
-
-//   if (!bill || !billUuid) {
-//     return;
-//   }
-//   const refresh = () => {
-//     fetchInvoiceBill(billUuid);
-//   };
-//   function getTotalAmount(bill: Bill) {
-//     let total = 0;
-//     const lineItems = bill?.lineItems ?? [];
-//     for (let i = 0; i < lineItems.length; i++) {
-//       total += lineItems[i].price * lineItems[i].quantity;
-//     }
-//     return total;
-//   }
-//   function getTotalTendered(bill: Bill) {
-//     if (!bill || !bill.payments) {
-//       return 0;
-//     }
-//     let total = 0;
-//     const payments = bill.payments ?? [];
-//     for (let i = 0; i < payments.length; i++) {
-//       total += payments[i].amountTendered;
-//     }
-//     return total;
-//   }
-//   async function getPaymentMethods() {
-//     const methods = await fetchPaymentModes();
-//     setPaymentModes(methods);
-//   }
-//   const paymentMethodHandler = (selectedPaymentModeUuid: string) => {
-//     const selectedPaymentMode = paymentModes.find((pm) => {
-//       return pm.uuid === selectedPaymentModeUuid;
-//     });
-//     setSelectedPaymentMode(selectedPaymentMode);
-//   };
-//   const amountHandler = (amount: number) => {
-//     setPayAmount(amount);
-//   };
-//   const refNoHandler = (refNo: string) => {
-//     setRefNo(refNo);
-//   };
-//   const showAlert = (type: string, title: string, subTitle: string) => {
-//     showSnackbar({
-//       kind: type,
-//       title: title,
-//       subtitle: subTitle,
-//     });
-//   };
-//   const isValidPaybillDto = (payBillDto: PayBillDto): boolean => {
-//     if (!payBillDto.amount) {
-//       showAlert('error', 'Missing Amount', 'Kindly add the total amount');
-//       return false;
-//     }
-//     if (!payBillDto.amountTendered) {
-//       showAlert('error', 'Missing Amount Tendered', 'Kindly add the amount tendered');
-//       return false;
-//     }
-//     if (!payBillDto.instanceType) {
-//       showAlert('error', 'Missing Payment mode', 'Kindly add the missing payment mode');
-//       return false;
-//     }
-//     if (payAmount > totalAmount - totalTendered) {
-//       showAlert('error', 'High Amount tendered value', 'The amount tendered is greater than the balance');
-//       return false;
-//     }
-//     return true;
-//   };
-//   const handlePayment = async () => {
-//     setLoading(true);
-//     const payBillDto = generatePayBillDto();
-//     if (isValidPaybillDto(payBillDto)) {
-//       try {
-//         const resp = await payBill(billUuid, payBillDto);
-//         if (resp && resp.uuid) {
-//           if (refNo) {
-//             await createBillPaymentReference(resp);
-//           }
-
-//           showAlert(
-//             'success',
-//             'Payment succesfull',
-//             `KES ${resp.amountTendered} (${resp.instanceType.name}) was succesfully paid`,
-//           );
-
-//           clearData();
-//         }
-//       } catch (error) {
-//         showAlert(
-//           'error',
-//           'Error Payming Bill',
-//           error.message ?? 'An error occurred while paying the bill. Kindly retry or contact support',
-//         );
-//       } finally {
-//         setLoading(false);
-//         refresh();
-//       }
-//     } else {
-//       setLoading(false);
-//     }
-//   };
-//   const generatePayBillDto = (): PayBillDto => {
-//     return {
-//       instanceType: selectedPaymentMode.uuid,
-//       amountTendered: payAmount,
-//       amount: totalAmount,
-//     };
-//   };
-
-//   const navigateToBillingPage = () => {
-//     navigate({ to: `${window.spaBase}/home/billing`, templateParams: {} });
-//   };
-
-//   async function createBillPaymentReference(payment: Payment) {
-//     // save bill and  reference number to hie
-//     const payload: HieBillPayment = {
-//       paymentUuid: payment.uuid,
-//       billUuid: billUuid,
-//       referenceNo: refNo,
-//     };
-//     await createClientPayment(payload);
-//   }
-
-//   function clearData() {
-//     setPayAmount(0);
-//     setRefNo('');
-//   }
-
-//   return (
-//     <>
-//       <div className={styles.invoiceLayout}>
-//         <div className={styles.patientHeader}>
-//           {patient && patientUuid && <ExtensionSlot name="patient-header-slot" state={{ patient, patientUuid }} />}
-//         </div>
-//         <div className={styles.invoiceHeader}>
-//           <div className={styles.invoiceTitle}>
-//             <h4>Patient Invoice</h4>
-//           </div>
-//           {bill ? (
-//             <>
-//               <div className={styles.invoiceHeaderDetails}>
-//                 <HeaderCard title="Total Amount" subTitle={`KES ${totalAmount}`} />
-//                 <HeaderCard title="Amount Tendered" subTitle={`KES ${totalTendered}`} />
-//                 <HeaderCard title="Invoice No" subTitle={bill.receiptNumber} />
-//                 <HeaderCard title="Date and Time" subTitle={formatDate(parseDate(bill.dateCreated))} />
-//                 <HeaderCard title="Invoice Status" subTitle={bill.status} />
-//               </div>
-//             </>
-//           ) : (
-//             <></>
-//           )}
-//         </div>
-//         <div className={styles.printActions}>
-//           <Button
-//             disabled={isPrinting || isLoadingPatient || loading}
-//             onClick={handlePrint}
-//             renderIcon={(props) => <Printer size={24} {...props} />}
-//             iconDescription={t('printBill', 'Print bill')}
-//           >
-//             {t('printBill', 'Print bill')}
-//           </Button>
-//           {(bill?.status === 'PAID' || payAmount > 0) && <PrintReceipt billUuid={bill?.uuid} />}
-//         </div>
-//         <div className={styles.contentSection}>
-//           <div className={styles.lineItemsSection}>
-//             <div className={styles.lineItemsHeader}>
-//               <h5>Line Items</h5>
-//             </div>
-//             <div className={styles.lineItemsData}>
-//               {bill && bill.lineItems ? (
-//                 <>
-//                   <LineItems
-//                     bill={bill}
-//                     lineItems={bill.lineItems.filter((res) => {
-//                       return !res.voided;
-//                     })}
-//                     refresh={refresh}
-//                   />
-//                 </>
-//               ) : (
-//                 <></>
-//               )}
-//             </div>
-//           </div>
-//           <div className={styles.paymentSection}>
-//             <div className={styles.paymentSectionHeader}>
-//               <h5>Payments</h5>
-//             </div>
-//             <div className={styles.paymentDetails}>
-//               {bill && bill.payments ? (
-//                 <>
-//                   <PaymentDetails payments={bill.payments} />
-//                 </>
-//               ) : (
-//                 <></>
-//               )}
-//             </div>
-//             <div className={styles.paymentSectionHeader}>
-//               <h5>Make Payment</h5>
-//             </div>
-//             <div className={styles.paymentSectionContent}>
-//               <div className={styles.paymentMethodSection}>
-//                 <div className={styles.formRow}>
-//                   <Select
-//                     id="payment-method"
-//                     labelText="Payment Method"
-//                     onChange={($event) => paymentMethodHandler($event.target.value)}
-//                   >
-//                     <SelectItem value="" text="Select" />;
-//                     {paymentModes &&
-//                       paymentModes.map((pm) => {
-//                         return <SelectItem value={pm.uuid} text={pm.name} />;
-//                       })}
-//                   </Select>
-//                 </div>
-//                 <div className={styles.formRow}>
-//                   <TextInput
-//                     id="amount"
-//                     type="number"
-//                     labelText="Amount"
-//                     onChange={(e) => amountHandler(parseInt(e.target.value))}
-//                   />
-//                 </div>
-//                 <div className={styles.formRow}>
-//                   <TextInput
-//                     id="reference-no"
-//                     labelText="Reference Number"
-//                     onChange={(e) => refNoHandler(e.target.value)}
-//                   />
-//                 </div>
-//               </div>
-//               <div className={styles.processPaymentSection}>
-//                 <div>Total Amount : {totalAmount}</div>
-//                 <div>Total Tendered : {totalTendered}</div>
-//                 <div>Total Due : {totalAmount - totalTendered}</div>
-//                 <div className={styles.actionRow}>
-//                   <Button kind="secondary" onClick={navigateToBillingPage}>
-//                     Discard
-//                   </Button>
-//                   {bill.status !== 'PAID' ? (
-//                     <>
-//                       <Button kind="primary" onClick={handlePayment} disabled={loading}>
-//                         {loading ? (
-//                           <>
-//                             <InlineLoading description="Processing" />
-//                           </>
-//                         ) : (
-//                           <>Process Payment</>
-//                         )}
-//                       </Button>
-//                     </>
-//                   ) : (
-//                     <></>
-//                   )}
-//                 </div>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
-//     </>
-//   );
-// };
-
-// export default Invoice;
-
 import React, { useEffect, useState } from 'react';
 import {
   Grid,
@@ -390,7 +27,8 @@ import {
 import { navigate, showSnackbar } from '@openmrs/esm-framework';
 
 import { Download, Receipt, DocumentAdd, Subtract, Money, View } from '@carbon/react/icons';
-import { fetchBillById, processPayment, fetchPaymentModes } from '../api/billing.api';
+import { fetchBillById, processPayment, fetchPaymentModes, checkClaimStatus, raiseSHAClaim } from '../api/billing.api';
+import EligibilityTags from '../../registry/eligibility/eliigibility-tags/eligibility-tags';
 
 type LineItemStatus = 'PENDING' | 'PAID' | 'CLAIMED' | 'WAIVED';
 
@@ -536,6 +174,9 @@ const BillDetails: React.FC = () => {
   const [editItem, setEditItem] = useState<LineItem | null>(null);
   const [editQuantity, setEditQuantity] = useState<number>(1);
 
+  const [claimResponse, setClaimResponse] = useState<any | null>(null);
+  const [checkingClaim, setCheckingClaim] = useState(false);
+
   const percent = Number(waiverPercent || 0);
   const amount = Number(waiverAmount || 0);
 
@@ -636,6 +277,12 @@ const BillDetails: React.FC = () => {
     });
   }, [shaOnlyBill]);
 
+  const crId =
+    bill?.patient?.identifiers?.find((id: any) => id.identifierType?.display?.toLowerCase().includes('cr'))
+      ?.identifier || '';
+
+  const locationUuid = bill?.cashPoint?.location?.uuid || '';
+
   // ----- Render Raise SHA Claim Button -----
   const showShaClaimButton = () => {
     if (shaOnlyBill) return true;
@@ -666,6 +313,25 @@ const BillDetails: React.FC = () => {
     reference: l.reference ?? l.claimNumber ?? '-',
   }));
 
+  const handleRaiseSHAClaim = async () => {
+    if (!billId) return;
+
+    try {
+      setShaLoading(true);
+      const { results } = await raiseSHAClaim(billId);
+      showSnackbar({ kind: 'success', title: 'SHA Claim', subtitle: 'Claim raised successfully' });
+
+      // Optionally refresh bill
+      const refreshedBill = await fetchBillById(billId);
+      setBill(refreshedBill);
+    } catch (err: any) {
+      console.error(err);
+      showSnackbar({ kind: 'error', title: 'SHA Claim', subtitle: err.responseBody || 'Failed to raise claim' });
+    } finally {
+      setShaLoading(false);
+    }
+  };
+
   const billStatus = () => {
     if (totalBalance === 0) return 'Fully Settled';
     if (totalBalance < billTotal) return 'Partially Settled';
@@ -673,8 +339,7 @@ const BillDetails: React.FC = () => {
   };
 
   const processCashPayment = async () => {
-    if (!reference.trim()) return;
-    showAlert('error', 'Cash Payment', 'Payment reference required');
+    if (!reference.trim()) return showAlert('error', 'Cash Payment', 'Payment reference required');
 
     if (selectedCashItems.length === 0) showAlert('error', 'Cash Payment', 'No items selected');
 
@@ -728,6 +393,27 @@ const BillDetails: React.FC = () => {
       setCashLoading(false);
       showAlert('error', 'Cash Payment', 'Payment failed. Please try again.');
     }
+  };
+
+  const handleCheckSHAClaim = async () => {
+    if (!billId) return showSnackbar({ kind: 'error', title: 'SHA Claim Status', subtitle: 'Bill ID is required' });
+
+    setCheckingClaim(true);
+
+    const res = await checkClaimStatus(billId);
+
+    if (!res.success) {
+      setCheckingClaim(false);
+      return showSnackbar({
+        kind: 'error',
+        title: 'SHA Claim Status',
+        subtitle: res.message,
+      });
+    }
+
+    setClaimResponse(res.data);
+    setModalType('CHECK_SHA');
+    setCheckingClaim(false);
   };
 
   const applyWaiver = async () => {
@@ -800,33 +486,53 @@ const BillDetails: React.FC = () => {
     try {
       setShaLoading(true);
 
-      // 1️⃣ Fetch payment modes and find Cash UUID
       const paymentModesResponse = await fetchPaymentModes();
-
-      // Find the UUID for Cash
       const shaMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'sha');
-      if (!shaMode)
-        showAlert('error', 'SHA Claim', 'SHA payment mode not found. Please contact support to resolve this issue.');
 
-      const shaUuid = shaMode.uuid;
+      if (!shaMode) {
+        showAlert('error', 'SHA Claim', 'SHA payment mode not found. Please contact support.');
+        setShaLoading(false);
+        return;
+      }
 
-      // 2️⃣ Prepare payload for line item payments
+      // 1️⃣ Check if claim already exists
+      const claimStatus = await checkClaimStatus(billId);
+      let claimExists = false;
+
+      if (claimStatus.success && claimStatus.data) {
+        claimExists = true;
+      }
+
+      // 2️⃣ Raise claim if not existing
+      if (!claimExists) {
+        const claimResponse = await raiseSHAClaim(billId);
+
+        if (!claimResponse.success) {
+          showAlert('error', 'SHA Claim', claimResponse.message || 'Failed to raise SHA claim.');
+          setShaLoading(false);
+          return;
+        }
+      }
+
+      // 3️⃣ Process SHA payment
+      const totalAmount = pendingShaItems.reduce((acc, i) => acc + getBalance(i), 0);
+
       const payload = {
-        instanceType: shaUuid,
-        amount: pendingShaItems.reduce((acc, i) => acc + getBalance(i), 0),
-        amountTendered: pendingShaItems.reduce((acc, i) => acc + getBalance(i), 0),
+        instanceType: shaMode.uuid,
+        amount: totalAmount,
+        amountTendered: totalAmount,
       };
 
-      // 3️⃣ Call payment endpoint
-      const response = await processPayment(billId, payload);
-      if (!response.ok)
-        showAlert('error', 'SHA Claim', 'Failed to raise SHA claim. Please try again or contact support.');
+      const paymentResponse = await processPayment(billId, payload);
 
-      showAlert('success', 'SHA Claim', 'SHA claim raised successfully');
+      if (!paymentResponse.ok) {
+        showAlert('error', 'SHA Claim', 'Payment failed after claim creation.');
+        setShaLoading(false);
+        return;
+      }
 
-      // 4️⃣ Re-fetch bill and update local state instead of manual update
+      // 4️⃣ Refresh bill
       const refreshedBill = await fetchBillById(billId);
-
       setBill(refreshedBill);
 
       const mappedItems: LineItem[] =
@@ -838,20 +544,22 @@ const BillDetails: React.FC = () => {
           waiverAllowed: li.waiverAllowed || false,
           quantity: li.quantity || 1,
           price: li.price || 0,
-          status: (li.paymentStatus && li.paymentStatus.toUpperCase()) || 'CASH',
+          status: (li.paymentStatus?.toUpperCase() as LineItemStatus) || 'PENDING',
         })) || [];
 
       setItems(mappedItems);
 
-      addLog('SHA', pendingShaItems, payload.amountTendered);
+      // 5️⃣ Add transaction log
+      addLog('SHA', pendingShaItems, totalAmount);
 
-      setReference('');
+      showAlert('success', 'SHA Claim', 'SHA claim processed successfully');
+
       setModalType(null);
-      setShaLoading(false);
     } catch (error) {
-      console.error('Payment failed', error);
+      console.error('SHA claim flow failed', error);
+      showAlert('error', 'SHA Claim', 'Unexpected error while processing SHA claim.');
+    } finally {
       setShaLoading(false);
-      showAlert('error', 'SHA Claim', 'Failed to raise SHA claim. Please try again or contact support.');
     }
   };
 
@@ -885,6 +593,16 @@ const BillDetails: React.FC = () => {
     window.open(receiptUrl, '_blank');
   };
 
+  const handleRaiseShaConfirm = () => {
+    const confirmed = window.confirm(
+      'Raise SHA claim for this bill?\n\nConfirm that all cash items are settled if any and that there are no additional items to add to the claim.',
+    );
+
+    if (confirmed) {
+      setModalType('SHA');
+    }
+  };
+
   return (
     <Grid fullWidth style={{ padding: '0' }}>
       {/* Breadcrumb & Bill Info */}
@@ -896,7 +614,16 @@ const BillDetails: React.FC = () => {
 
         <Tile style={{ paddingTop: '1rem' }}>
           {/* Patient Name on Top */}
-          {loading ? <SkeletonText width="200px" /> : <h5 style={{ marginBottom: '1rem' }}>{patientName}</h5>}
+          {loading ? (
+            <SkeletonText width="200px" />
+          ) : (
+            <>
+              <h5 style={{ marginBottom: '0.5rem' }}>{patientName}</h5>
+
+              {crId && locationUuid && <EligibilityTags crId={crId} locationUuid={locationUuid} />}
+            </>
+          )}
+          {/* {loading ? <SkeletonText width="200px" /> : <h5 style={{ marginBottom: '1rem' }}>{patientName}</h5>} */}
 
           {/* Row with three columns */}
           <Grid fullWidth>
@@ -956,13 +683,13 @@ const BillDetails: React.FC = () => {
 
                     {showShaClaimButton() && (
                       <Button
-                        disabled={loading}
+                        disabled={loading || checkingClaim}
                         size="sm"
                         kind="secondary"
                         renderIcon={hasPendingSha ? DocumentAdd : View}
-                        onClick={() => setModalType(hasPendingSha ? 'SHA' : 'CHECK_SHA')}
+                        onClick={hasPendingSha ? handleRaiseShaConfirm : handleCheckSHAClaim}
                       >
-                        {hasPendingSha ? 'Raise SHA Claim' : 'Check SHA Claim Status'}
+                        {hasPendingSha ? 'Raise SHA Claim' : checkingClaim ? 'Checking...' : 'Check SHA Claim Status'}
                       </Button>
                     )}
 
@@ -980,7 +707,7 @@ const BillDetails: React.FC = () => {
 
                     {totalBalance > 0 ? (
                       <Button
-                        disabled={loading}
+                        disabled
                         size="sm"
                         kind="tertiary"
                         renderIcon={Download}
@@ -990,7 +717,7 @@ const BillDetails: React.FC = () => {
                       </Button>
                     ) : (
                       <Button
-                        disabled={loading}
+                        disabled
                         size="sm"
                         kind="tertiary"
                         renderIcon={Receipt}
@@ -1268,6 +995,64 @@ const BillDetails: React.FC = () => {
         <p style={{ marginTop: '1rem' }}>
           <strong>Total: Ksh {pendingShaItems.reduce((acc, i) => acc + getBalance(i), 0)}</strong>
         </p>
+      </Modal>
+
+      <Modal
+        open={modalType === 'CHECK_SHA'}
+        modalHeading="SHA Claim Status"
+        primaryButtonText="Close"
+        secondaryButtonText={null}
+        onRequestClose={() => setModalType(null)}
+        onRequestSubmit={() => setModalType(null)}
+      >
+        {claimResponse ? (
+          <div>
+            <p>
+              <strong>Bill UUID:</strong> {claimResponse.billUuid}
+            </p>
+            <p>
+              <strong>Patient:</strong> {claimResponse.patientFullName} ({claimResponse.gender})
+            </p>
+            <p>
+              <strong>Facility:</strong> {claimResponse.facilityName} ({claimResponse.facilityLevel})
+            </p>
+            <p>
+              <strong>Status:</strong> {claimResponse.claim_Status}
+            </p>
+            <p>
+              <strong>Response:</strong> {claimResponse.claim_Response}
+            </p>
+
+            {claimResponse.services?.length > 0 && (
+              <>
+                <strong>Services:</strong>
+                <ul>
+                  {claimResponse.services.map((s: any) => (
+                    <li key={s.serviceCode}>
+                      {s.serviceDisplay} (Code: {s.serviceCode}) - Qty: {s.quantity} - Total: Ksh{' '}
+                      {s.totalAmount.toFixed(2)}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {claimResponse.diagnoses?.length > 0 && (
+              <>
+                <strong>Diagnoses:</strong>
+                <ul>
+                  {claimResponse.diagnoses.map((d: any) => (
+                    <li key={d.Code}>
+                      {d.Display} (Code: {d.Code})
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        ) : (
+          <p>No claim data available.</p>
+        )}
       </Modal>
     </Grid>
   );
