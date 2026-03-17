@@ -69,28 +69,6 @@ export async function fetchPaymentModes() {
   return res.data;
 }
 
-export async function fetchLatest1000Bills() {
-  const countRes = await openmrsFetch(
-    `${restBaseUrl}/billing/bill?v=custom:(id,uuid,dateCreated,status,receiptNumber,patient:(uuid,display),cashier:(uuid,display),lineItems:(uuid,price,priceName,billableService,voided))&status=PENDING,POSTED,PAID&limit=1&startIndex=0&totalCount=true`,
-  );
-
-  const total = countRes.data.totalCount ?? 0;
-
-  const startIndex = Math.max(total - 1000, 0) + 20;
-
-  const page1 = await openmrsFetch(
-    `${restBaseUrl}/billing/bill?v=custom:(id,uuid,dateCreated,status,receiptNumber,patient:(uuid,display),cashier:(uuid,display),lineItems:(uuid,price,priceName,billableService,voided))&status=PENDING,POSTED,PAID&limit=500&startIndex=${startIndex}`,
-  );
-
-  const page2 = await openmrsFetch(
-    `${restBaseUrl}/billing/bill?v=custom:(id,uuid,dateCreated,status,receiptNumber,patient:(uuid,display),cashier:(uuid,display),lineItems:(uuid,price,priceName,billableService,voided))&status=PENDING,POSTED,PAID&limit=500&startIndex=${startIndex + 500}`,
-  );
-
-  const results = [...(page1.data.results ?? []), ...(page2.data.results ?? [])];
-
-  return { results };
-}
-
 export async function processPayment(billId: string, payload: any) {
   return openmrsFetch(`${restBaseUrl}/billing/bill/${billId}/payment`, {
     method: 'POST',
