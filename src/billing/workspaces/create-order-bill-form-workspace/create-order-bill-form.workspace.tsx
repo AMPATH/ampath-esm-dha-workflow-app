@@ -1,15 +1,15 @@
 import { Order } from "@openmrs/esm-patient-common-lib";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { validationSchema, type CreateOrderBillFormSchema } from "./schema";
-import { ResponsiveWrapper, showSnackbar, useLayoutType } from "@openmrs/esm-framework";
+import { FetchResponse, OpenmrsResource, ResponsiveWrapper, showSnackbar, useDebounce, useLayoutType } from "@openmrs/esm-framework";
 import { useTranslation } from "react-i18next";
-import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Stack, TextInput, InlineNotification, ButtonSet, Button, InlineLoading } from "@carbon/react";
+import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Stack, TextInput, InlineNotification, ButtonSet, Button, InlineLoading, Search, Layer, Tile, FormLabel } from "@carbon/react";
 import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
-import { createOrderBillInHie, createPatientBill, removePatientBill, useBillableItems, useCashPoint } from "./create-order-bill-form.resource";
+import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, usePatientBills } from "./create-order-bill-form.resource";
 
 interface CreateOrderBillFormProps {
     closeWorkspace: () => void;
@@ -24,10 +24,21 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 }) => {
     const { t } = useTranslation();
     const isTablet = useLayoutType() === 'tablet';
-    const { lineItems, isLoading: isLoadingLineItems } = useBillableItems();
+    const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(serviceTypeUuid);
+    const { currentDayBills } = usePatientBills(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const cashPointUuid = cashPoints?.[0]?.uuid ?? '';
     const conceptUuid = order?.concept?.uuid;
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm.trim());
+    const searchInputRef = useRef(null);
+    const searchResults = useMemo(() => {
+        if (debouncedSearchTerm) {
+            const filteredItems = lineItems.filter(item => item?.name.toLowerCase()?.includes(debouncedSearchTerm.toLowerCase()));
+            return filteredItems;
+        }
+        return [];
+    }, [debouncedSearchTerm])
 
     const {
         control,
@@ -41,7 +52,14 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
     });
 
-    const unitPriceObservable = watch('unitPrice');
+    const selectedBillableItem = useWatch({ control, name: 'billableItem' });
+    const billableItem = useMemo(() => {
+        if (selectedBillableItem) {
+            const filteredItems = lineItems.filter(item => item?.uuid === selectedBillableItem);
+            return filteredItems;
+        }
+        return [];
+    }, [selectedBillableItem])
 
     const onSubmit = async (data) => {
         try {
@@ -65,15 +83,28 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                     lineItemOrder: index,
                     paymentStatus: 'PENDING',
                 }));
-            const billPayload = {
-                lineItems: billableItems,
-                cashPoint: cashPointUuid,
-                patient: order?.patient?.uuid,
-                status: 'PENDING',
-                payments: [],
-            };
+            let billPayload = {};
 
-            const response = await createPatientBill(billPayload);
+            let response: FetchResponse<{ uuid: string }> | undefined;
+
+            if (currentDayBills && currentDayBills.length) {
+                const bill = currentDayBills[0];
+                const billUuid = bill?.uuid;
+                const lineItems = [...bill?.lineItems, ...billableItems];
+                billPayload = {
+                    lineItems: lineItems
+                }
+                response = await updatePatientBill(billUuid, billPayload);
+            } else {
+                billPayload = {
+                    lineItems: billableItems,
+                    cashPoint: cashPointUuid,
+                    patient: order?.patient?.uuid,
+                    status: 'PENDING',
+                };
+                response = await createPatientBill(billPayload);
+            }
+
             let billUuid = response.data.uuid;
 
             const hiePayload = {
@@ -136,49 +167,104 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                         </FormGroup>
                     </ResponsiveWrapper>
 
+                    <ResponsiveWrapper>
+                        <Controller
+                            name="billableItem"
+                            control={control}
+                            render={({ field }) => (
+                                <>
+                                    <FormLabel className={styles.conceptLabel}>{t('billableItem', 'Billable item')}</FormLabel>
+                                    <Search
+                                        id="billableItemSearch"
+                                        labelText={t('billableItem', 'Billable item')}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                                        onClear={() => {
+                                            setSearchTerm('');
+                                            field.onChange('');
+                                        }}
+                                        placeholder={t('searchBillableItem', 'Search billable item')}
+                                        ref={searchInputRef}
+                                        value={lineItems.find(v => v.uuid === selectedBillableItem)?.name || searchTerm}
+                                    />
+
+                                    {(() => {
+                                        if (!debouncedSearchTerm || selectedBillableItem) {
+                                            return null;
+                                        }
+                                        if (searchResults && searchResults.length) {
+
+                                            return (
+                                                <ul className={styles.conceptsList}>
+                                                    {searchResults?.map((item) => (
+                                                        <li
+                                                            className={styles.service}
+                                                            key={item?.uuid}
+                                                            onClick={() => {
+                                                                field.onChange(item?.uuid);
+                                                                setSearchTerm('');
+                                                            }}
+                                                            role="menuitem">
+                                                            {item?.name}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            );
+                                        }
+                                        return (
+                                            <Layer>
+                                                <Tile className={styles.emptyResults}>
+                                                    <span>
+                                                        {t('noResultsFor', 'No results for {{searchTerm}}', { searchTerm: debouncedSearchTerm })}
+                                                    </span>
+                                                </Tile>
+                                            </Layer>
+                                        );
+                                    })()}
+                                </>
+                            )}
+                        />
+                    </ResponsiveWrapper>
+
                     <Column>
                         <Controller
                             control={control}
                             name="unitPrice"
                             render={({ field }) => {
-
-                                const availableServices = lineItems
-                                    .filter(
-                                        (service) => service?.serviceType?.uuid === serviceTypeUuid && service?.concept?.uuid === conceptUuid,
-                                    );
-                                const servicePrices = availableServices[0]?.servicePrices ?? [];
-                                const serviceUuid = availableServices[0]?.uuid ?? "";
+                                const servicePrices = billableItem[0]?.servicePrices ?? [];
+                                const serviceUuid = billableItem[0]?.uuid ?? "";
 
                                 return (
                                     <>
-                                        {servicePrices.length > 0 ? (
-                                            <Select id="unitPrice" labelText={t('selectServicePrice', 'Select service price *')} invalid={!!errors.unitPrice}
-                                                invalidText={errors.unitPrice?.message}
-                                                onChange={(e) => {
-                                                    field.onChange(e.target.value);
-                                                }}
-                                            >
-                                                <SelectItem value="" text="Select service price" />
-                                                {
-                                                    servicePrices.map((service) => {
-                                                        const value = serviceUuid + "#" + service?.uuid;
-                                                        const text = `${service?.name} - ${service?.price}`;
-                                                        return (
-                                                            <SelectItem value={value} text={text} />
-                                                        )
-                                                    })
-                                                }
-                                            </Select>
-                                        ) : (
-                                            <InlineNotification
-                                                kind="warning"
-                                                title={t(
-                                                    'noServicesAvailable',
-                                                    'No service price has been configured for this order.',
-                                                )}
-                                                lowContrast
-                                            />
-                                        )}
+                                        {billableItem && billableItem.length ?
+                                            (servicePrices.length > 0 ? (
+                                                <Select id="unitPrice" labelText={t('selectServicePrice', 'Select service price *')} invalid={!!errors.unitPrice}
+                                                    invalidText={errors.unitPrice?.message}
+                                                    onChange={(e) => {
+                                                        field.onChange(e.target.value);
+                                                    }}
+                                                >
+                                                    <SelectItem value="" text="Select service price" />
+                                                    {
+                                                        servicePrices.map((service) => {
+                                                            const value = serviceUuid + "#" + service?.uuid;
+                                                            const text = `${service?.name} - ${service?.price}`;
+                                                            return (
+                                                                <SelectItem value={value} text={text} />
+                                                            )
+                                                        })
+                                                    }
+                                                </Select>
+                                            ) : (
+                                                <InlineNotification
+                                                    kind="warning"
+                                                    title={t(
+                                                        'noServicesAvailable',
+                                                        'No service price has been configured for this order.',
+                                                    )}
+                                                    lowContrast
+                                                />
+                                            )) : null
+                                        }
                                     </>
                                 );
                             }}

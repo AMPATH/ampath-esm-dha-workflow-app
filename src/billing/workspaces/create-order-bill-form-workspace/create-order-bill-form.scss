@@ -1,6 +1,7 @@
 @use '@carbon/colors';
 @use '@carbon/layout';
 @use '@carbon/type';
+@use '@openmrs/esm-styleguide/src/vars' as *;
 
 .form {
     display: flex;
@@ -26,11 +27,32 @@
 }
 
 .buttonContainer {
-  max-width: 50%;
+    max-width: 50%;
 }
 
 .inlineLoading {
-  display: flex;
-  align-items: center;
-  gap: layout.$spacing-03;
+    display: flex;
+    align-items: center;
+    gap: layout.$spacing-03;
+}
+
+.service {
+    padding: layout.$spacing-05 layout.$spacing-04;
+}
+
+.conceptsList {
+    background-color: $ui-02;
+    max-height: 14rem;
+    overflow-y: auto;
+    border: 1px solid $ui-03;
+
+    li:hover {
+        background-color: $ui-03;
+    }
+}
+
+.errorMessage {
+    @include type.type-style('label-02');
+    color: $danger;
+    margin-bottom: layout.$spacing-05;
 }
