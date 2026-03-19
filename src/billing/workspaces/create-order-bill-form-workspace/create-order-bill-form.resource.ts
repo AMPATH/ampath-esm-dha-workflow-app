@@ -3,19 +3,56 @@ import { useState } from "react";
 import useSWR from 'swr';
 import { getHieBaseUrl } from "../../../shared/utils/get-base-url";
 import { postJson } from "../../../registry/registry.resource";
+import dayjs from "dayjs";
 
-export const useBillableItems = () => {
+export const useBillableItems = (serviceTypeUuid: string = "") => {
     const url = `${restBaseUrl}/billing/billableService?v=custom:(uuid,name,shortName,serviceStatus,serviceType:(uuid,display),servicePrices:(uuid,name,price,paymentMode),concept:(uuid))`;
     const { data, isLoading, error } = useSWR<{ data: { results: Array<OpenmrsResource> } }>(url, openmrsFetch);
     const [searchTerm, setSearchTerm] = useState('');
-    const filteredItems =
+    let filteredItems =
         data?.data?.results?.filter((item) => item.name.toLowerCase().includes(searchTerm.toLowerCase())) ?? [];
+
+    if (serviceTypeUuid) {
+        filteredItems = filteredItems?.filter(item => item?.serviceType?.uuid === serviceTypeUuid);
+    }
+
     return {
         lineItems: filteredItems,
         isLoading,
         error,
         searchTerm,
         setSearchTerm,
+    };
+};
+
+export const usePatientBills = (patientUuid: string, billStatus: string = 'PENDING') => {
+    const url = `${restBaseUrl}/billing/bill?patientUuid=${patientUuid}&status=${billStatus}&v=custom:(uuid,lineItems,dateCreated)`;
+
+    const {
+        data,
+        error,
+        isLoading,
+        isValidating,
+        mutate: mutated,
+    } = useSWR<{ data: { results: Array<OpenmrsResource> } }>(url, openmrsFetch, {
+        errorRetryCount: 2,
+    });
+
+    const results = data?.data?.results ?? [];
+
+    const today = dayjs().startOf('day');
+
+    const currentDayBills = results.filter((bill) => {
+        const billDate = dayjs(bill?.dateCreated).startOf('day');
+        return billDate.isSame(today);
+    });
+
+    return {
+        currentDayBills,
+        error,
+        isLoading,
+        isValidating,
+        mutated,
     };
 };
 
@@ -28,6 +65,11 @@ export const useCashPoint = () => {
 
 export const createPatientBill = (payload) => {
     const postUrl = `${restBaseUrl}/billing/bill`;
+    return openmrsFetch<{ uuid: string }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+};
+
+export const updatePatientBill = (billUuid: string, payload) => {
+    const postUrl = `${restBaseUrl}/billing/bill/${billUuid}`;
     return openmrsFetch<{ uuid: string }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
 };
 
