@@ -18,7 +18,7 @@ import {
 import { PaymentDetail, type QueueEntryDto, type ServiceQueue } from '../../../registry/types';
 import { PatientCategories } from '../../../shared/constants/patient-category';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
-import { showSnackbar, useSession, useVisit, type Visit } from '@openmrs/esm-framework';
+import { showSnackbar, useConfig, useSession, useVisit, type Visit } from '@openmrs/esm-framework';
 
 interface VisitBillingFormProps {
   patientUuid: string;
@@ -44,6 +44,7 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+  const { registrationBillableServices } = useConfig();
 
   useEffect(() => {
     getPaymentMethods();
@@ -104,7 +105,10 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
     const paymentBillableServices: ServicePrice[] = [];
     servicePrices.forEach((sp) => {
       if (sp.paymentMode) {
-        if (sp.paymentMode.uuid === paymentMode.uuid) {
+        if (
+          sp.paymentMode.uuid === paymentMode.uuid &&
+          registrationBillableServices.includes(sp.billableService.uuid)
+        ) {
           paymentBillableServices.push(sp);
         }
       }

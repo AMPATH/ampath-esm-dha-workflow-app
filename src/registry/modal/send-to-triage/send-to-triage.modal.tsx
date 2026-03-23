@@ -16,7 +16,7 @@ import {
   TextInput,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import { type Patient, useSession, showSnackbar, type Visit } from '@openmrs/esm-framework';
+import { type Patient, useSession, showSnackbar, type Visit, useConfig } from '@openmrs/esm-framework';
 import {
   type HieClient,
   type CreateVisitDto,
@@ -87,6 +87,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
+  const { registrationBillableServices } = useConfig();
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
 
@@ -280,7 +281,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     const paymentBillableServices: ServicePrice[] = [];
     servicePrices.forEach((sp) => {
       if (sp.paymentMode) {
-        if (sp.paymentMode.uuid === paymentMode.uuid) {
+        if (
+          sp.paymentMode.uuid === paymentMode.uuid &&
+          registrationBillableServices.includes(sp.billableService.uuid)
+        ) {
           paymentBillableServices.push(sp);
         }
       }
