@@ -92,6 +92,21 @@ export const configSchema = {
     _description: 'HIE Endpoint',
     _default: '',
   },
+  claimsBaseUrl: {
+    _type: Type.String,
+    _description: '',
+    _default: '',
+  },
+  claimsKey: {
+    _type: Type.String,
+    _description: '',
+    _default: '',
+  },
+  registrationBillableServices: {
+    _type: Type.String,
+    _description: 'Billable services e.g consultation',
+    _default: '',
+  },
 };
 
 export type Config = {
@@ -136,6 +151,9 @@ export interface ConfigObject {
   subDomainUrl: string;
   etlBaseUrl: string;
   hieBaseUrl: string;
+  claimsBaseUrl: string;
+  claimsKey: string;
+  registrationBillableServices: Array<string>;
   // vitals: VitalsConfigObject;
 }
 
