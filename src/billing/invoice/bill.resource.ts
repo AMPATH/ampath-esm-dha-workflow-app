@@ -40,7 +40,7 @@ export async function editBillLineItem(billUuid: string, editBillLineItemDto: Ed
 }
 
 export async function fetchPatientBills(patientUuid: string): Promise<Bill[]> {
-  const billUrl = `${restBaseUrl}/billing/bill?v=full&patient=${patientUuid}`;
+  const billUrl = `${restBaseUrl}/billing/bill?v=full&patientUuid=${patientUuid}`;
   const resp = await openmrsFetch<Bill>(billUrl);
   const result = await resp.json();
   return result.results ?? [];
