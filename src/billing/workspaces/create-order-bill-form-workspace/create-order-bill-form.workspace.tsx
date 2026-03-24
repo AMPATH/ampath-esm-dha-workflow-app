@@ -25,7 +25,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 }) => {
     const { t } = useTranslation();
     const isTablet = useLayoutType() === 'tablet';
-    const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(serviceTypeUuid);
+    const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(); //useBillableItems(serviceTypeUuid);
     const { currentDayBills } = usePatientBills(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const cashPointUuid = cashPoints?.[0]?.uuid ?? '';
