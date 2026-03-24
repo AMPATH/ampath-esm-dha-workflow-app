@@ -10,6 +10,7 @@ import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
 import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, usePatientBills } from "./create-order-bill-form.resource";
+import { generateUpdateBillLineItems } from "../../utils";
 
 interface CreateOrderBillFormProps {
     closeWorkspace: () => void;
@@ -90,9 +91,10 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             if (currentDayBills && currentDayBills.length) {
                 const bill = currentDayBills[0];
                 const billUuid = bill?.uuid;
-                const lineItems = [...bill?.lineItems, ...billableItems];
+                const initialLineItems = generateUpdateBillLineItems(bill, lineItems);
+                const lineItemsPayload = [...initialLineItems, ...billableItems];
                 billPayload = {
-                    lineItems: lineItems
+                    lineItems: lineItemsPayload
                 }
                 response = await updatePatientBill(billUuid, billPayload);
             } else {
@@ -101,22 +103,27 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                     cashPoint: cashPointUuid,
                     patient: order?.patient?.uuid,
                     status: 'PENDING',
+                    payments: []
                 };
                 response = await createPatientBill(billPayload);
             }
 
-            let billUuid = response.data.uuid;
+            const billUuidResp = response?.data?.uuid;
 
-            const hiePayload = {
-                bill_uuid: billUuid,
-                order_no: order?.orderNumber
-            };
+            if (billUuidResp) {
+                const hiePayload = {
+                    bill_uuid: billUuidResp,
+                    order_no: order?.orderNumber
+                };
 
-            try {
-                await createOrderBillInHie(hiePayload);
-            } catch (error) {
-                await removePatientBill(billUuid);
-                throw error;
+                try {
+                    await createOrderBillInHie(hiePayload);
+                } catch (error) {
+                    await removePatientBill(billUuidResp);
+                    throw error;
+                }
+            } else {
+                throw new Error("Bill uuid not found!");
             }
 
             showSnackbar({
