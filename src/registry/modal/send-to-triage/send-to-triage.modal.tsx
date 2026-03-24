@@ -46,6 +46,8 @@ import { PatientCategories } from '../../../shared/constants/patient-category';
 import { VisitTypeUuids } from '../../../shared/constants/visit-types';
 import { type Bill } from '../../../billing/types';
 import { fetchPatientBills } from '../../../billing/invoice/bill.resource';
+import { type QueueEntry } from '../../../types/types';
+import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/service-queues.resource';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -83,7 +85,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [selectedInsuranceScheme, setSelectedInsuranceScheme] = useState<string>('');
   const [selectedInsurancePolicy, setSelectedInsurancePolicy] = useState<string>('');
   const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
+  const [currentQueueEntry, setCurrentQueueEntry] = useState<QueueEntry>();
   const [patientBills, setPatientBills] = useState<Bill[]>([]);
+  const [billCreated, setBillCreated] = useState<boolean>(false);
+  const [disableSubmission, setDisableSubmission] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
@@ -117,9 +122,22 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     getBillableServices();
     getCashPoints();
     getPatientBills();
+    getPatientActiveQueue();
   }, [patients]);
   if (!patients) {
     return <>No Client data</>;
+  }
+
+  async function getPatientActiveQueue() {
+    if (patients && patients.length > 0) {
+      const activePatient = patients[0];
+      try {
+        const resp = await getActiveQueueEntryByPatientUuid(activePatient.uuid);
+        setCurrentQueueEntry(resp.length > 0 ? resp[0] : null);
+      } catch (error) {
+        showAlert('error', 'Error getting patient active queue', '');
+      }
+    }
   }
 
   async function getPatientBills() {
@@ -145,7 +163,19 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     });
   }
   const sendToTriage = async () => {
-    if (!validateVisitQueueBill()) return;
+    if (disableSubmission) {
+      showAlert(
+        'error',
+        'Form already Submitted',
+        'Form has already been submitted, please wait for the visit,queue and bill to be created',
+      );
+      return;
+    }
+    setDisableSubmission(true);
+    if (!validateVisitQueueBill()) {
+      setDisableSubmission(false);
+      return;
+    }
     setLoading(true);
     try {
       const newVisit = await createPatientVisit();
@@ -161,9 +191,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
         let createBillResp = null;
         if (selectedPaymentDetail === PaymentDetail.Paying) {
           const createBillDto = generateCreateBillDto();
-          if (isValidCreateBillDto(createBillDto)) {
+          if (isValidCreateBillDto(createBillDto) && !billCreated) {
             createBillResp = await createBill(createBillDto);
             if (createBillResp) {
+              setBillCreated(true);
               showAlert('success', 'Bill succesfully created', '');
             }
           } else {
@@ -171,11 +202,15 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
           }
         }
 
-        if ((queueEntryResp && PaymentDetail.Paying && createBillResp) || (queueEntryResp && PaymentDetail.NonPaying)) {
+        if (
+          (queueEntryResp && PaymentDetail.Paying && (createBillResp || billCreated)) ||
+          (queueEntryResp && PaymentDetail.NonPaying)
+        ) {
           onModalClose({ success: true });
         }
       }
     } catch (error) {
+      setDisableSubmission(false);
       showAlert('error', error.message ?? 'Error creating visit', '');
     } finally {
       setLoading(false);
@@ -188,6 +223,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     }
     if (!selectedPaymentDetail) {
       showAlert('error', 'Please select a paying or non paying option', '');
+      return false;
+    }
+
+    if (!isValidServiceQueueSelected()) {
       return false;
     }
 
@@ -256,9 +295,25 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     const vt = selectedVisitType.selectedItem.id;
     setSelectedVisitType(vt);
   };
+  const isValidServiceQueueSelected = () => {
+    if (!currentQueueEntry) {
+      return true;
+    }
+    if (currentQueueEntry.queue.uuid) {
+      showAlert(
+        'error',
+        'Patient already in queue',
+        `Patient is already in the ${currentQueueEntry.queue.display} queue, remove them first or contact support`,
+      );
+      return false;
+    }
+    return true;
+  };
   const serviceChangeHandler = ($event: any) => {
-    const sq = $event.target.value as unknown as string;
-    setSelectedServiceQueue(sq);
+    if (isValidServiceQueueSelected()) {
+      const sq = $event.target.value as unknown as string;
+      setSelectedServiceQueue(sq);
+    }
   };
   const priorityChangeHandler = (priorityUuid: string) => {
     setSelectedPriority(priorityUuid);
@@ -510,7 +565,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
         onSecondarySubmit={() => onModalClose({ success: false })}
         onRequestClose={() => onModalClose({ success: false })}
         onRequestSubmit={sendToTriage}
-        primaryButtonText="Send to Triage"
+        primaryButtonText={loading ? 'Sending...please wait' : 'Send to Triage'}
         secondaryButtonText="Cancel"
       >
         <ModalBody>
