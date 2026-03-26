@@ -1,7 +1,7 @@
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import { getClaimsUrl, getClaimsKey } from '../../shared/utils/get-base-url';
 
-async function claimsFetch(path: string, method: string = 'GET') {
+async function claimsFetch(path: string, method: string = 'GET', body?: any) {
   try {
     const [baseUrl, claimsKey] = await Promise.all([getClaimsUrl(), getClaimsKey()]);
 
@@ -11,6 +11,7 @@ async function claimsFetch(path: string, method: string = 'GET') {
         'AMPATH-CLAIMS-KEY': claimsKey,
         'Content-Type': 'application/json',
       },
+      body: body ? JSON.stringify(body) : undefined,
     });
 
     return res?.data;
@@ -33,6 +34,10 @@ export async function raiseSHAClaim(billId: string) {
   }
 
   return claimsFetch(`/claims/${billId}`, 'POST');
+}
+
+export async function UpdateBillItemStatus(payload: any) {
+  return claimsFetch(`/bill-item/status`, 'POST', payload);
 }
 
 export async function fetchBillsByDate(billDate: string) {

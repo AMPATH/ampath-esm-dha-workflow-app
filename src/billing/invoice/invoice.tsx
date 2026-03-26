@@ -27,7 +27,14 @@ import {
 import { navigate, showSnackbar } from '@openmrs/esm-framework';
 
 import { Download, Receipt, DocumentAdd, Subtract, Money, View } from '@carbon/react/icons';
-import { fetchBillById, processPayment, fetchPaymentModes, checkClaimStatus, raiseSHAClaim } from '../api/billing.api';
+import {
+  fetchBillById,
+  processPayment,
+  fetchPaymentModes,
+  checkClaimStatus,
+  raiseSHAClaim,
+  UpdateBillItemStatus,
+} from '../api/billing.api';
 import EligibilityTags from '../../registry/eligibility/eliigibility-tags/eligibility-tags';
 
 type LineItemStatus = 'PENDING' | 'PAID' | 'CLAIMED' | 'WAIVED';
@@ -88,7 +95,7 @@ const formatBillDate = (dateString?: string) => {
 
   const timeStr = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true });
 
-  if (isToday) return timeStr;
+  if (isToday) return `Today ${timeStr}`;
   if (isYesterday) return `Yesterday ${timeStr}`;
 
   return date.toLocaleString(undefined, {
@@ -100,6 +107,8 @@ const formatBillDate = (dateString?: string) => {
     hour12: true,
   });
 };
+
+const formatCurrency = (value: number) => `Ksh ${value.toLocaleString()}`;
 
 // Add headers for transaction logs
 const logHeaders = [
@@ -161,7 +170,6 @@ const BillDetails: React.FC = () => {
   const billState = bill?.status || '';
   const patientName = bill?.patient?.display || '';
 
-  // const [items, setItems] = useState<LineItem[]>(initialItems);
   const [logs, setLogs] = useState<PaymentLog[]>([]);
   const [modalType, setModalType] = useState<
     'CASH' | 'WAIVER' | 'SHA' | 'CHECK_SHA' | 'EDIT_QUANTITY' | 'CONFIRM_DELETE' | null
@@ -217,7 +225,9 @@ const BillDetails: React.FC = () => {
   const hasClaimedSha = claimedShaItems.length > 0;
 
   // All Cash items fully paid
-  const allCashSettled = items.filter((i) => i.payerType === 'CASH').every((i) => getBalance(i) === 0);
+  const allCashSettled = items
+    .filter((i) => (i.payerType ?? '').toUpperCase() === 'CASH')
+    .every((i) => (i.status ?? '').toUpperCase() === 'PAID');
 
   const selectedCashItems = items.filter((i) => i.selected && i.payerType === 'CASH' && i.status === 'PENDING');
 
@@ -285,9 +295,7 @@ const BillDetails: React.FC = () => {
 
   // ----- Render Raise SHA Claim Button -----
   const showShaClaimButton = () => {
-    if (shaOnlyBill) return true;
-    if (hasPendingSha && allCashSettled) return true;
-    return false;
+    return hasPendingSha && (shaOnlyBill || allCashSettled);
   };
 
   const statusTag = (status: LineItemStatus) => {
@@ -350,7 +358,11 @@ const BillDetails: React.FC = () => {
 
       // Find the UUID for Cash
       const cashMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'cash');
-      if (!cashMode) showAlert('error', 'Cash Payment', 'Cash payment mode not found');
+      if (!cashMode) {
+        setCashLoading(false);
+        showAlert('error', 'Cash Payment', 'Cash payment mode not found');
+        return;
+      }
       const cashUuid = cashMode.uuid;
 
       // 2️⃣ Prepare payload for line item payments
@@ -362,7 +374,26 @@ const BillDetails: React.FC = () => {
 
       // 3️⃣ Call payment endpoint
       const response = await processPayment(billId, payload);
-      if (!response.ok) showAlert('success', 'Cash Payment', 'Payment processing successful');
+      if (!response.ok) {
+        setCashLoading(false);
+        showAlert('error', 'Cash Payment', 'Payment processing failed');
+        return;
+      }
+
+      const statusPayload = {
+        billUuid: billId,
+        cashModeUuid: cashUuid,
+        billItemsUuid: selectedCashItems.map((item) => item.id),
+      };
+
+      const statusResponse = await UpdateBillItemStatus(statusPayload);
+      if (!statusResponse?.success) {
+        setCashLoading(false);
+        showAlert('error', 'Cash Payment', statusResponse?.message ?? 'Status update failed');
+        return;
+      }
+
+      showAlert('success', 'Cash Payment', 'Payment processed successfully');
 
       // 4️⃣ Re-fetch bill and update local state instead of manual update
       const refreshedBill = await fetchBillById(billId);
@@ -705,24 +736,8 @@ const BillDetails: React.FC = () => {
                       </Button>
                     )}
 
-                    {totalBalance > 0 ? (
-                      <Button
-                        disabled
-                        size="sm"
-                        kind="tertiary"
-                        renderIcon={Download}
-                        onClick={() => handlePrintInvoice()}
-                      >
-                        Print Invoice
-                      </Button>
-                    ) : (
-                      <Button
-                        disabled
-                        size="sm"
-                        kind="tertiary"
-                        renderIcon={Receipt}
-                        onClick={() => handlePrintReceipt()}
-                      >
+                    {totalBalance === 0 && (
+                      <Button disabled size="sm" kind="tertiary" renderIcon={Receipt} onClick={handlePrintReceipt}>
                         Print Receipt
                       </Button>
                     )}
@@ -805,8 +820,8 @@ const BillDetails: React.FC = () => {
                     rows={bill.payments.map((p: any) => ({
                       id: p.uuid,
                       type: p.instanceType?.name || '-',
-                      amount: `Ksh ${p.amount}`,
-                      amountTendered: `Ksh ${p.amountTendered || '-'}`,
+                      amount: formatCurrency(p.amount),
+                      amountTendered: p.amountTendered ? formatCurrency(p.amountTendered) : '-',
                       dateCreated: formatBillDate(p.dateCreated),
                     }))}
                     headers={[
