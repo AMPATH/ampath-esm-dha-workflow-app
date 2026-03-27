@@ -15,7 +15,6 @@ import {
   Search,
   InlineLoading,
   AISkeletonText,
-  Button,
   DatePicker,
   DatePickerInput,
 } from '@carbon/react';
@@ -24,7 +23,6 @@ import { ConfigurableLink, navigate } from '@openmrs/esm-framework';
 import { spacing05 } from '@carbon/themes';
 import './billingTotalsRow.component.scss';
 import { fetchBillsByDate } from '../api/billing.api';
-import { showSnackbar } from '@openmrs/esm-styleguide';
 
 type BillStatus = 'UNPAID' | 'PAID' | 'CLAIM_SUBMITTED';
 
@@ -38,6 +36,7 @@ type Bill = {
   status: BillStatus;
   total: string;
   items: string;
+  billItems: any;
   raisedBy: string;
   createdAt: Date;
 };
@@ -61,6 +60,33 @@ async function fetchBills(date: string): Promise<Bill[]> {
     });
 
     const services = billNode.billItems?.map((i: any) => i.billName).join(', ') ?? '';
+
+    const totalAmount =
+      billNode.billItems?.reduce((sum: number, i: any) => sum + Number(i.price ?? 0) * Number(i.quantity ?? 1), 0) ?? 0;
+
+    const shaAmount =
+      billNode.billItems
+        ?.filter((i: any) => i.paymentMode.toUpperCase() === 'SHA')
+        .reduce((sum: number, i: any) => sum + Number(i.price ?? 0) * Number(i.quantity ?? 1), 0) ?? 0;
+
+    const cashAmount =
+      billNode.billItems
+        ?.filter((i: any) => i.paymentMode.toUpperCase() === 'CASH')
+        .reduce((sum: number, i: any) => sum + Number(i.price ?? 0) * Number(i.quantity ?? 1), 0) ?? 0;
+
+    const formatCurrency = (amt: number) =>
+      `Ksh ${amt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    let amountDisplay = '';
+    if (shaAmount > 0 && cashAmount > 0) {
+      amountDisplay = `SHA: ${formatCurrency(shaAmount)}, Cash: ${formatCurrency(cashAmount)} (Total: ${formatCurrency(totalAmount)})`;
+    } else if (shaAmount > 0) {
+      amountDisplay = `SHA: ${formatCurrency(shaAmount)}`;
+    } else if (cashAmount > 0) {
+      amountDisplay = `Cash: ${formatCurrency(cashAmount)}`;
+    } else {
+      amountDisplay = formatCurrency(0);
+    }
 
     const hasSha = billNode.billItems?.some((i: any) => i.paymentMode === 'SHA') ?? false;
 
@@ -87,8 +113,9 @@ async function fetchBills(date: string): Promise<Bill[]> {
       paymentMode,
       date: `${dateStr}, ${timeStr}`,
       status,
-      total: Number(billNode.totalAmount ?? 0).toFixed(2),
       items: services,
+      total: amountDisplay,
+      billItems: billNode.billItems ?? [],
       createdAt,
     });
   });
@@ -167,11 +194,7 @@ const StatusTag = ({ status }: { status: BillStatus }) => {
 const { Table, TableHead, TableRow, TableHeader, TableBody, TableCell } = DataTable;
 
 const BillsTable = ({
-  rows,
-  search,
-  setSearch,
-  filterDate,
-  setFilterDate,
+  rows
 }: {
   rows: Bill[];
   search: string;
@@ -179,20 +202,7 @@ const BillsTable = ({
   filterDate: Date | null;
   setFilterDate: (val: Date | null) => void;
 }) => {
-  const [redirecting, setRedirecting] = useState(false);
-
-  const goToPatientBill = (rowId: string) => {
-    setRedirecting(true);
-
-    const [billUuid, patientUuid] = rowId.split('|');
-
-    // Let loading render before route change
-    setTimeout(() => {
-      navigate({
-        to: `${window.spaBase}/home/billing/patient/${patientUuid}/${billUuid}`,
-      });
-    }, 50);
-  };
+  const [redirecting] = useState(false);
 
   return (
     <>
@@ -390,6 +400,40 @@ const BillingTotalsRow: React.FC = () => {
     [billsForDate],
   );
 
+  const { cashTotal, shaTotal, pendingTotal } = useMemo(() => {
+    let cash = 0;
+    let sha = 0;
+    let pending = 0;
+
+    billsForDate.forEach((bill: any) => {
+      const items = bill.billItems ?? [];
+
+      items.forEach((item: any) => {
+        const amount = Number(item.price ?? 0) * Number(item.quantity ?? 1);
+        const mode = item.paymentMode?.toUpperCase();
+        const status = item.paymentStatus?.toUpperCase();
+
+        if (mode === 'CASH' && status === 'PAID') {
+          cash += amount;
+        }
+
+        if (mode === 'SHA' && status === 'PAID') {
+          sha += amount;
+        }
+
+        if (status === 'PENDING') {
+          pending += amount;
+        }
+      });
+    });
+
+    return {
+      cashTotal: cash,
+      shaTotal: sha,
+      pendingTotal: pending,
+    };
+  }, [billsForDate]);
+
   const filterBillsBy = (status?: BillStatus) => {
     const start = new Date(filterDate);
     start.setHours(0, 0, 0, 0);
@@ -414,39 +458,63 @@ const BillingTotalsRow: React.FC = () => {
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<Money size={25} />}
-              label="Revenue Collected"
+              label="Cash Paid"
               value={
                 loading ? (
                   <AISkeletonText />
                 ) : (
-                  `Ksh ${revenueToday.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  `Ksh ${cashTotal.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
                 )
               }
-              style={{ backgroundColor: '#DFF6F0', color: '#00B37E', padding: spacing05 }}
+              style={{ backgroundColor: '#DFF6F0', color: '#00B37E', padding: spacing05, height: '100%' }}
             />
           </Column>
+
+          <Column lg={4} md={8} sm={4}>
+            <StatTile
+              icon={<Hospital size={25} />}
+              label="Amount Claimed"
+              value={
+                loading ? (
+                  <AISkeletonText />
+                ) : (
+                  `Ksh ${shaTotal.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                )
+              }
+              style={{ backgroundColor: '#F4EBFF', color: '#8C41FF', padding: spacing05, height: '100%' }}
+            />
+          </Column>
+
+          <Column lg={4} md={8} sm={4}>
+            <StatTile
+              icon={<PendingFilled size={25} />}
+              label="Pending Amount"
+              value={
+                loading ? (
+                  <AISkeletonText />
+                ) : (
+                  `Ksh ${pendingTotal.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                )
+              }
+              style={{ backgroundColor: '#FFF5D9', color: '#F2B01F', padding: spacing05, height: '100%' }}
+            />
+          </Column>
+
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<WarningAlt size={25} />}
               label="Unpaid Bills"
               value={loading ? <AISkeletonText /> : counts.unpaid}
-              style={{ backgroundColor: '#FFF5D9', color: '#F2B01F', padding: spacing05 }}
-            />
-          </Column>
-          <Column lg={4} md={8} sm={4}>
-            <StatTile
-              icon={<CheckmarkFilled size={25} />}
-              label="Paid Bills"
-              value={loading ? <AISkeletonText /> : counts.paid}
-              style={{ backgroundColor: '#E7F0FF', color: '#0F62FE', padding: spacing05 }}
-            />
-          </Column>
-          <Column lg={4} md={8} sm={4}>
-            <StatTile
-              icon={<Hospital size={25} />}
-              label="Submitted Claims"
-              value={loading ? <AISkeletonText /> : counts.submittedClaims}
-              style={{ backgroundColor: '#F4EBFF', color: '#8C41FF', padding: spacing05 }}
+              style={{ backgroundColor: '#FFEDE1', color: '#FF6B35', padding: spacing05, height: '100%' }}
             />
           </Column>
         </Grid>
@@ -485,25 +553,28 @@ const BillingTotalsRow: React.FC = () => {
           <Tabs>
             <TabList style={{ paddingLeft: spacing05 }}>
               <Tab>
-                Unpaid{' '}
+                Unpaid (All Payment Modes){' '}
                 <Tag type="red" size="sm">
                   {loading ? <AISkeletonText /> : counts.unpaid}
                 </Tag>
               </Tab>
               <Tab>
-                Paid{' '}
+                Paid (Cash){' '}
                 <Tag type="green" size="sm">
                   {loading ? <AISkeletonText /> : counts.paid}
                 </Tag>
               </Tab>
               <Tab>
-                Submitted Claims{' '}
-                <Tag type="blue" size="sm">
+                Submitted Claims (SHA/Co-Pay){' '}
+                <Tag type="purple" size="sm">
                   {loading ? <AISkeletonText /> : counts.submittedClaims}
                 </Tag>
               </Tab>
               <Tab>
-                All <Tag size="sm">{loading ? <AISkeletonText /> : counts.all}</Tag>
+                All{' '}
+                <Tag type="blue" size="sm">
+                  {loading ? <AISkeletonText /> : counts.all}
+                </Tag>
               </Tab>
             </TabList>
 

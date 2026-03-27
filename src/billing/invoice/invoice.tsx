@@ -26,7 +26,16 @@ import {
 } from '@carbon/react';
 import { navigate, showSnackbar } from '@openmrs/esm-framework';
 
-import { Download, Receipt, DocumentAdd, Subtract, Money, View } from '@carbon/react/icons';
+import {
+  Receipt,
+  DocumentAdd,
+  Subtract,
+  Money,
+  View,
+  CheckmarkFilled,
+  WarningAlt,
+  PendingFilled,
+} from '@carbon/react/icons';
 import {
   fetchBillById,
   processPayment,
@@ -95,8 +104,8 @@ const formatBillDate = (dateString?: string) => {
 
   const timeStr = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: 'numeric', hour12: true });
 
-  if (isToday) return `Today ${timeStr}`;
-  if (isYesterday) return `Yesterday ${timeStr}`;
+  if (isToday) return `Today, ${timeStr}`;
+  if (isYesterday) return `Yesterday, ${timeStr}`;
 
   return date.toLocaleString(undefined, {
     year: 'numeric',
@@ -219,9 +228,13 @@ const BillDetails: React.FC = () => {
 
   const pendingShaItems = items.filter((i) => i.status === 'PENDING' && i.payerType.toUpperCase() === 'SHA');
 
-  const claimedShaItems = items.filter((i) => i.status === 'CLAIMED' && i.payerType.toUpperCase() === 'SHA');
-
   const hasPendingSha = pendingShaItems.length > 0;
+
+  const isSha = (i: LineItem) => (i.payerType ?? '').toUpperCase() === 'SHA';
+  const status = (i: LineItem) => (i.status ?? '').toUpperCase();
+
+  const claimedShaItems = items.filter((i) => isSha(i) && ['CLAIMED', 'PAID'].includes(status(i)));
+
   const hasClaimedSha = claimedShaItems.length > 0;
 
   // All Cash items fully paid
@@ -295,7 +308,17 @@ const BillDetails: React.FC = () => {
 
   // ----- Render Raise SHA Claim Button -----
   const showShaClaimButton = () => {
-    return hasPendingSha && (shaOnlyBill || allCashSettled);
+    // Show Raise Claim if pending SHA exists
+    if (hasPendingSha && (shaOnlyBill || allCashSettled)) {
+      return 'RAISE';
+    }
+
+    // Show Check Status if all SHA items are already claimed/paid
+    if (!hasPendingSha && hasClaimedSha) {
+      return 'STATUS';
+    }
+
+    return null;
   };
 
   const statusTag = (status: LineItemStatus) => {
@@ -321,29 +344,10 @@ const BillDetails: React.FC = () => {
     reference: l.reference ?? l.claimNumber ?? '-',
   }));
 
-  const handleRaiseSHAClaim = async () => {
-    if (!billId) return;
-
-    try {
-      setShaLoading(true);
-      const { results } = await raiseSHAClaim(billId);
-      showSnackbar({ kind: 'success', title: 'SHA Claim', subtitle: 'Claim raised successfully' });
-
-      // Optionally refresh bill
-      const refreshedBill = await fetchBillById(billId);
-      setBill(refreshedBill);
-    } catch (err: any) {
-      console.error(err);
-      showSnackbar({ kind: 'error', title: 'SHA Claim', subtitle: err.responseBody || 'Failed to raise claim' });
-    } finally {
-      setShaLoading(false);
-    }
-  };
-
   const billStatus = () => {
     if (totalBalance === 0) return 'Fully Settled';
     if (totalBalance < billTotal) return 'Partially Settled';
-    return '';
+    return 'Unpaid';
   };
 
   const processCashPayment = async () => {
@@ -513,6 +517,8 @@ const BillDetails: React.FC = () => {
     setWaiverLoading(false);
   };
 
+  const shaButtonState = showShaClaimButton();
+
   const applySHAClaim = async () => {
     try {
       setShaLoading(true);
@@ -624,6 +630,16 @@ const BillDetails: React.FC = () => {
     window.open(receiptUrl, '_blank');
   };
 
+  const getClaimTagType = (status?: string) => {
+    const s = status?.toLowerCase() || '';
+
+    if (s.includes('approved') || s.includes('paid')) return 'green';
+    if (s.includes('pending')) return 'warm-gray';
+    if (s.includes('rejected') || s.includes('failed')) return 'red';
+
+    return 'cool-gray';
+  };
+
   const handleRaiseShaConfirm = () => {
     const confirmed = window.confirm(
       'Raise SHA claim for this bill?\n\nConfirm that all cash items are settled if any and that there are no additional items to add to the claim.',
@@ -654,7 +670,6 @@ const BillDetails: React.FC = () => {
               {crId && locationUuid && <EligibilityTags crId={crId} locationUuid={locationUuid} />}
             </>
           )}
-          {/* {loading ? <SkeletonText width="200px" /> : <h5 style={{ marginBottom: '1rem' }}>{patientName}</h5>} */}
 
           {/* Row with three columns */}
           <Grid fullWidth>
@@ -692,7 +707,31 @@ const BillDetails: React.FC = () => {
             {/* Left Section */}
             <Column lg={12}>
               <Tile>
-                {/* Header with buttons */}
+                {!allCashSettled && (
+                  <Tile
+                    style={{
+                      background: '#fff5f5',
+                      border: '1px solid #f5c2c2',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      marginBottom: '1rem',
+                      width: '100%',
+                    }}
+                  >
+                    <p
+                      style={{
+                        color: '#da1e28',
+                        margin: 0,
+                        fontSize: '0.9rem',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      Please select the Cash item(s) above and click <strong>"Pay Cash"</strong> to continue. SHA claims
+                      (if applicable) will be available once all Cash payments are completed.
+                    </p>
+                  </Tile>
+                )}
+
                 <div
                   style={{
                     display: 'flex',
@@ -704,7 +743,6 @@ const BillDetails: React.FC = () => {
                   <h4>
                     <u>Bill Items</u>
                   </h4>
-
                   <Stack orientation="horizontal" gap={2}>
                     {selectedCashItems.length > 0 && (
                       <Button disabled={loading} renderIcon={Money} size="sm" onClick={() => setModalType('CASH')}>
@@ -712,15 +750,27 @@ const BillDetails: React.FC = () => {
                       </Button>
                     )}
 
-                    {showShaClaimButton() && (
+                    {shaButtonState === 'RAISE' && (
                       <Button
                         disabled={loading || checkingClaim}
                         size="sm"
                         kind="secondary"
-                        renderIcon={hasPendingSha ? DocumentAdd : View}
-                        onClick={hasPendingSha ? handleRaiseShaConfirm : handleCheckSHAClaim}
+                        renderIcon={DocumentAdd}
+                        onClick={handleRaiseShaConfirm}
                       >
-                        {hasPendingSha ? 'Raise SHA Claim' : checkingClaim ? 'Checking...' : 'Check SHA Claim Status'}
+                        Raise SHA Claim
+                      </Button>
+                    )}
+
+                    {shaButtonState === 'STATUS' && (
+                      <Button
+                        disabled={loading || checkingClaim}
+                        size="sm"
+                        kind="secondary"
+                        renderIcon={View}
+                        onClick={handleCheckSHAClaim}
+                      >
+                        {checkingClaim ? 'Checking Status...' : 'Check SHA Claim Status'}
                       </Button>
                     )}
 
@@ -729,7 +779,7 @@ const BillDetails: React.FC = () => {
                         disabled={loading}
                         renderIcon={Subtract}
                         size="sm"
-                        kind="primary"
+                        kind="tertiary"
                         onClick={() => setModalType('WAIVER')}
                       >
                         Apply Waiver
@@ -861,29 +911,108 @@ const BillDetails: React.FC = () => {
 
             {/* Right Summary */}
             <Column lg={4}>
-              <Tile>
-                <h4 style={{ paddingBottom: '1rem' }}>
+              <Tile style={{ padding: '1.5rem' }}>
+                <h4 style={{ marginBottom: '1rem' }}>
                   <u>Bill Summary</u>
                 </h4>
 
-                <p>
-                  <strong>Status:</strong> {loading ? <SkeletonText width="100px" /> : statusText}
-                </p>
-                <p>
-                  <strong>Total:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + billTotal}
-                </p>
-                <p>
-                  <strong>Paid:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalPaid}
-                </p>
-                <p>
-                  <strong>Waived:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalWaived}
-                </p>
-                <p>
-                  <strong>Claimed:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalClaimed}
-                </p>
-                <p>
-                  <strong>Balance:</strong> {loading ? <SkeletonText width="100px" /> : 'Ksh ' + totalBalance}
-                </p>
+                <Stack gap={3}>
+                  {/* Status */}
+                  <Tag type={totalBalance === 0 ? 'green' : totalBalance < billTotal ? 'teal' : 'red'}>
+                    {totalBalance === 0 && <CheckmarkFilled size={12} style={{ marginRight: 4 }} />}
+                    {totalBalance > 0 && totalBalance < billTotal && (
+                      <WarningAlt size={12} style={{ marginRight: 4 }} />
+                    )}
+                    {totalBalance === billTotal && <PendingFilled size={12} style={{ marginRight: 4 }} />}
+                    {statusText}
+                  </Tag>
+
+                  {/* Divider */}
+                  <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0' }} />
+
+                  {/* Total */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Total</span>
+                    <strong>
+                      {loading ? (
+                        <SkeletonText width="100px" />
+                      ) : (
+                        `Ksh ${Number(billTotal).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      )}
+                    </strong>
+                  </div>
+
+                  {/* Paid */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#24a148' }}>Paid</span>
+                    <strong style={{ color: '#24a148' }}>
+                      {loading ? (
+                        <SkeletonText width="100px" />
+                      ) : (
+                        `Ksh ${Number(totalPaid).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      )}
+                    </strong>
+                  </div>
+
+                  {/* Claimed */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#0f62fe' }}>Claimed</span>
+                    <strong style={{ color: '#0f62fe' }}>
+                      {loading ? (
+                        <SkeletonText width="100px" />
+                      ) : (
+                        `Ksh ${Number(totalClaimed).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      )}
+                    </strong>
+                  </div>
+
+                  {/* Waived */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#8a3ffc' }}>Waived</span>
+                    <strong style={{ color: '#8a3ffc' }}>
+                      {loading ? (
+                        <SkeletonText width="100px" />
+                      ) : (
+                        `Ksh ${Number(totalWaived).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      )}
+                    </strong>
+                  </div>
+
+                  {/* Divider */}
+                  <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0' }} />
+
+                  {/* Balance */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontWeight: 500 }}>Balance</span>
+                    <strong
+                      style={{
+                        color: totalBalance > 0 ? '#da1e28' : '#24a148',
+                        fontSize: '1.1rem',
+                      }}
+                    >
+                      {loading ? (
+                        <SkeletonText width="100px" />
+                      ) : (
+                        `Ksh ${Number(totalBalance).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`
+                      )}
+                    </strong>
+                  </div>
+                </Stack>
               </Tile>
             </Column>
           </Grid>
@@ -891,7 +1020,6 @@ const BillDetails: React.FC = () => {
       </Column>
 
       {/* ================= MODALS ================= */}
-
       {/* Cash Payment */}
       <Modal
         open={modalType === 'CASH'}
@@ -992,26 +1120,96 @@ const BillDetails: React.FC = () => {
       {/* SHA Claim */}
       <Modal
         open={modalType === 'SHA'}
-        modalHeading="SHA Claim"
+        modalHeading="Confirm SHA Claim"
         primaryButtonText={shaLoading ? 'Submitting...' : 'Submit Claim'}
         secondaryButtonText="Cancel"
         primaryButtonDisabled={shaLoading}
         onRequestClose={() => setModalType(null)}
         onRequestSubmit={applySHAClaim}
       >
-        <ul>
-          {pendingShaItems.map((i) => (
-            <li key={i.id}>
-              {i.service} - Ksh {getBalance(i)}
-            </li>
-          ))}
-        </ul>
+        <Stack gap={4}>
+          {/* ===== Warning ===== */}
+          <Tile>
+            <p style={{ color: '#da1e28', fontWeight: 500, marginBottom: '0.5rem' }}>
+              Ensure all cash items are settled before submitting this claim.
+            </p>
+          </Tile>
 
-        <p style={{ marginTop: '1rem' }}>
-          <strong>Total: Ksh {pendingShaItems.reduce((acc, i) => acc + getBalance(i), 0)}</strong>
-        </p>
+          {/* ===== Info ===== */}
+          <Tile>
+            <p style={{ marginBottom: '0.5rem' }}>
+              You are about to submit the following items for <strong>SHA claim</strong>.
+            </p>
+            <p style={{ color: '#6f6f6f', marginBottom: 0 }}>
+              Please confirm all services are correct before proceeding.
+            </p>
+          </Tile>
+
+          {/* ===== Items Table ===== */}
+          <Tile>
+            <h5 style={{ marginBottom: '1rem' }}>Claim Items</h5>
+
+            <DataTable
+              rows={pendingShaItems.map((i) => ({
+                id: i.id,
+                service: i.service,
+                quantity: i.quantity,
+                unitPrice: `Ksh ${Number(i.price).toLocaleString()}`,
+                total: `Ksh ${getBalance(i).toLocaleString()}`,
+              }))}
+              headers={[
+                { key: 'service', header: 'Service' },
+                { key: 'quantity', header: 'Qty' },
+                { key: 'unitPrice', header: 'Unit Price' },
+                { key: 'total', header: 'Total' },
+              ]}
+            >
+              {({ rows, headers, getHeaderProps, getRowProps }) => (
+                <Table size="sm" useZebraStyles>
+                  <TableHead>
+                    <TableRow>
+                      {headers.map((h) => (
+                        <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
+                          {h.header}
+                        </TableHeader>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.id} {...getRowProps({ row })}>
+                        {row.cells.map((cell) => (
+                          <TableCell key={cell.id}>{cell.value}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </DataTable>
+          </Tile>
+
+          {/* ===== Summary ===== */}
+          <Tile>
+            <Grid fullWidth>
+              <Column lg={8}>
+                <p>
+                  <strong>Items:</strong> {pendingShaItems.length}
+                </p>
+              </Column>
+
+              <Column lg={8} style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                  Total: Ksh {pendingShaItems.reduce((acc, i) => acc + getBalance(i), 0).toLocaleString()}
+                </p>
+              </Column>
+            </Grid>
+          </Tile>
+        </Stack>
       </Modal>
 
+      {/* claim status */}
       <Modal
         open={modalType === 'CHECK_SHA'}
         modalHeading="SHA Claim Status"
@@ -1021,52 +1219,127 @@ const BillDetails: React.FC = () => {
         onRequestSubmit={() => setModalType(null)}
       >
         {claimResponse ? (
-          <div>
-            <p>
-              <strong>Bill UUID:</strong> {claimResponse.billUuid}
-            </p>
-            <p>
-              <strong>Patient:</strong> {claimResponse.patientFullName} ({claimResponse.gender})
-            </p>
-            <p>
-              <strong>Facility:</strong> {claimResponse.facilityName} ({claimResponse.facilityLevel})
-            </p>
-            <p>
-              <strong>Status:</strong> {claimResponse.claim_Status}
-            </p>
-            <p>
-              <strong>Response:</strong> {claimResponse.claim_Response}
-            </p>
+          <Stack gap={4}>
+            <Tile>
+              <h5 style={{ marginBottom: '0.5rem' }}>Patient Information</h5>
+              <p>
+                <strong>Name:</strong> {claimResponse.patientFullName}
+              </p>
+              <p>
+                <strong>Gender:</strong> {claimResponse.gender}
+              </p>
+
+              <h5 style={{ marginTop: '1rem', marginBottom: '0.5rem' }}>Facility</h5>
+              <p>
+                {claimResponse.facilityName} ({claimResponse.facilityLevel})
+              </p>
+            </Tile>
+
+            <Tile>
+              <h5 style={{ marginBottom: '0.5rem' }}>Claim Details</h5>
+
+              <p>
+                <strong>Status:</strong>{' '}
+                <Tag type={getClaimTagType(claimResponse.claim_Status)}>{claimResponse.claim_Status}</Tag>
+              </p>
+
+              <p>
+                <strong>Response:</strong> {claimResponse.claim_Response || '-'}
+              </p>
+            </Tile>
 
             {claimResponse.services?.length > 0 && (
-              <>
-                <strong>Services:</strong>
-                <ul>
-                  {claimResponse.services.map((s: any) => (
-                    <li key={s.serviceCode}>
-                      {s.serviceDisplay} (Code: {s.serviceCode}) - Qty: {s.quantity} - Total: Ksh{' '}
-                      {s.totalAmount.toFixed(2)}
-                    </li>
-                  ))}
-                </ul>
-              </>
+              <Tile>
+                <h5 style={{ marginBottom: '1rem' }}>Services</h5>
+
+                <DataTable
+                  rows={claimResponse.services.map((s: any) => ({
+                    id: s.serviceCode,
+                    name: s.serviceDisplay,
+                    code: s.serviceCode,
+                    quantity: s.quantity,
+                    amount: `Ksh ${Number(s.totalAmount).toLocaleString()}`,
+                  }))}
+                  headers={[
+                    { key: 'name', header: 'Service' },
+                    { key: 'code', header: 'Code' },
+                    { key: 'quantity', header: 'Qty' },
+                    { key: 'amount', header: 'Total Amount' },
+                  ]}
+                >
+                  {({ rows, headers, getHeaderProps, getRowProps }) => (
+                    <Table size="sm">
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((h) => (
+                            <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
+                              {h.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+
+                      <TableBody>
+                        {rows.map((row) => (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            {row.cells.map((cell) => (
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </DataTable>
+              </Tile>
             )}
 
             {claimResponse.diagnoses?.length > 0 && (
-              <>
-                <strong>Diagnoses:</strong>
-                <ul>
-                  {claimResponse.diagnoses.map((d: any) => (
-                    <li key={d.Code}>
-                      {d.Display} (Code: {d.Code})
-                    </li>
-                  ))}
-                </ul>
-              </>
+              <Tile>
+                <h5 style={{ marginBottom: '1rem' }}>Diagnoses</h5>
+
+                <DataTable
+                  rows={claimResponse.diagnoses.map((d: any, index: number) => ({
+                    id: `${d.Code}-${index}`,
+                    name: d.Display,
+                    code: d.Code,
+                  }))}
+                  headers={[
+                    { key: 'name', header: 'Diagnosis' },
+                    { key: 'code', header: 'Code' },
+                  ]}
+                >
+                  {({ rows, headers, getHeaderProps, getRowProps }) => (
+                    <Table size="sm">
+                      <TableHead>
+                        <TableRow>
+                          {headers.map((h) => (
+                            <TableHeader key={h.key} {...getHeaderProps({ header: h })}>
+                              {h.header}
+                            </TableHeader>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+
+                      <TableBody>
+                        {rows.map((row) => (
+                          <TableRow key={row.id} {...getRowProps({ row })}>
+                            {row.cells.map((cell) => (
+                              <TableCell key={cell.id}>{cell.value}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </DataTable>
+              </Tile>
             )}
-          </div>
+          </Stack>
         ) : (
-          <p>No claim data available.</p>
+          <Tile>
+            <p>No claim data available.</p>
+          </Tile>
         )}
       </Modal>
     </Grid>
