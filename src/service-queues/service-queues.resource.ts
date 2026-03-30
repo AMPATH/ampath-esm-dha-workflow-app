@@ -320,3 +320,42 @@ export async function getServiceQueueDailyPatientListReport(
     return [];
   }
 }
+export async function getQueueEntryByLocationUuid(locationUuid: string): Promise<QueueEntry[]> {
+  const queueUrl = `${restBaseUrl}/queue-entry`;
+  const v =
+    'custom:(uuid,display,queue,status,patient:(uuid,display,person),visit:(uuid,display,startDatetime,stopDatetime),priority,priorityComment,sortWeight,startedAt,endedAt,locationWaitingFor,queueComingFrom,providerWaitingFor,previousQueueEntry)';
+  const params = {
+    location: locationUuid,
+    v: v,
+    isEnded: 'false',
+    totalCount: 'true',
+  };
+  const queryString = new URLSearchParams(params).toString();
+  const response = await openmrsFetch(`${queueUrl}?${queryString}`);
+  const result = await response.json();
+  return result.results;
+}
+
+export async function deleteQueueEntry(queueEntryUuid: string): Promise<any> {
+  const queueUrl = `${restBaseUrl}/queue-entry/${queueEntryUuid}?!purge`;
+  const response = await openmrsFetch(queueUrl, {
+    method: 'DELETE',
+  });
+  return response;
+}
+
+export async function endQueueEntry(entryQueueUuid: string, endedAt: string): Promise<QueueEntryResult[]> {
+  const queueEntryUrl = `${restBaseUrl}/queue-entry/${entryQueueUuid}`;
+  const params = {
+    endedAt: endedAt,
+  };
+  const response = await openmrsFetch(queueEntryUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+  const result = await response.json();
+  return result.data;
+}
