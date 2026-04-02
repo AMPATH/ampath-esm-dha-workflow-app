@@ -71,6 +71,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             const unitPriceTxt = data?.unitPrice;
             const serviceUuid = unitPriceTxt?.split("#")[0];
             const servicePriceUuid = unitPriceTxt?.split("#")[1];
+            const lineItemOrder = order?.orderNumber?.split("-")[1] ?? null;
 
             const billableItems = lineItems
                 .filter((item) => item.uuid === serviceUuid)
@@ -81,7 +82,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                     price: item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.price || '0.000',
                     priceName: item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.name || 'Default',
                     priceUuid: servicePriceUuid || '',
-                    lineItemOrder: index,
+                    lineItemOrder: Number(lineItemOrder) ?? index,
                     paymentStatus: 'PENDING',
                 }));
             let billPayload = {};
