@@ -16,7 +16,6 @@ import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboa
 import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
 import { accountingDashboardMeta } from './dashboard-meta/accounting-dashboard.meta';
 import { registersDashboardMeta } from './dashboard-meta/registers-dashboard.meta';
-import { reportsDashboardMeta } from './dashboard-meta/reports-dashboard.meta';
 import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta';
 import { mchQueueDashboardMeta } from './dashboard-meta/mch-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
@@ -115,10 +114,6 @@ export const accountingDashboard = getAsyncLifecycle(() => import('./accounting/
 export const registersDashboardLink = getSyncLifecycle(createDashboardLink(registersDashboardMeta), options);
 
 export const registersDashboard = getAsyncLifecycle(() => import('./registers/registers.component'), options);
-
-export const reportsDashboardLink = getSyncLifecycle(createDashboardLink(reportsDashboardMeta), options);
-
-export const reportsDashboard = getAsyncLifecycle(() => import('./reports/reports.component'), options);
 
 export const bookingsDashboardLink = getSyncLifecycle(createDashboardLink(bookingsDashboardMeta), options);
 

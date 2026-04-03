@@ -1,6 +1,6 @@
 export const billingDashboardMeta = {
   path: 'billing',
   slot: 'ampath-billing-dashboard-slot',
-  title: 'Billing',
+  title: 'Accounting',
   basePath: `${window.spaBase}/home`,
 };

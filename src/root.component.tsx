@@ -37,7 +37,6 @@ const Root: React.FC = () => {
           <Route path="laboratory" element={<LaboratoryComponent />} />
           <Route path="pharmacy" element={<PharmacyComponent />} />
           <Route path="appointments" element={<AppointmentsComponent />} />
-          <Route path="accounting" element={<AccountingComponent />} />
           <Route path="bookings/daily" element={<DailyBookings />} />
           <Route path="mch/triage" element={<MchTriage />} />
           <Route path="mch/consultation" element={<MchConsultation />} />
