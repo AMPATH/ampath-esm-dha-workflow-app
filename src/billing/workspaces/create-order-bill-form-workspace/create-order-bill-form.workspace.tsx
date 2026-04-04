@@ -87,7 +87,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                 }));
             let billPayload = {};
 
-            let response: FetchResponse<{ uuid: string }> | undefined;
+            let response: FetchResponse<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }> | undefined;
 
             if (currentDayBills && currentDayBills.length) {
                 const bill = currentDayBills[0];
@@ -110,11 +110,13 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             }
 
             const billUuidResp = response?.data?.uuid;
+            const lineItemUuid = response?.data?.lineItems?.find(v => v?.lineItemOrder === Number(lineItemOrder))?.uuid;
 
             if (billUuidResp) {
                 const hiePayload = {
                     bill_uuid: billUuidResp,
-                    order_no: order?.orderNumber
+                    order_no: order?.orderNumber,
+                    line_item_uuid: lineItemUuid
                 };
 
                 try {

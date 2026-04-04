@@ -65,12 +65,12 @@ export const useCashPoint = () => {
 
 export const createPatientBill = (payload) => {
     const postUrl = `${restBaseUrl}/billing/bill`;
-    return openmrsFetch<{ uuid: string }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+    return openmrsFetch<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
 };
 
 export const updatePatientBill = (billUuid: string, payload) => {
     const postUrl = `${restBaseUrl}/billing/bill/${billUuid}`;
-    return openmrsFetch<{ uuid: string }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+    return openmrsFetch<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
 };
 
 export const removePatientBill = (uuid) => {
