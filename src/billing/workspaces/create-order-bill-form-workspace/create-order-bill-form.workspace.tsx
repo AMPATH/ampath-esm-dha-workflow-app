@@ -45,6 +45,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         control,
         watch,
         handleSubmit,
+        setValue,
         formState: { errors, isDirty, isSubmitting },
     } = useForm<CreateOrderBillFormSchema>({
         resolver: zodResolver(validationSchema),
@@ -53,14 +54,36 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
     });
 
+    const initialPriceName = useMemo(() => {
+        let priceName = "";
+        if (currentDayBills && currentDayBills.length) {
+            const bill = currentDayBills[0];
+            priceName = bill?.lineItems?.find(i => i?.billableService?.toUpperCase() === "CONSULTATION")?.priceName;
+        }
+        return priceName;
+    }, [currentDayBills]);
+
     const selectedBillableItem = useWatch({ control, name: 'billableItem' });
     const billableItem = useMemo(() => {
         if (selectedBillableItem) {
-            const filteredItems = lineItems.filter(item => item?.uuid === selectedBillableItem);
+            let filteredItems = lineItems.filter(item => item?.uuid === selectedBillableItem);
             return filteredItems;
         }
         return [];
-    }, [selectedBillableItem])
+    }, [selectedBillableItem, initialPriceName]);
+
+    const initialUnitPriceUuid = useMemo(() => {
+        if (billableItem && billableItem.length && initialPriceName) {
+            const servicePrices = billableItem[0]?.servicePrices ?? [];
+            const serviceUuid = billableItem[0]?.uuid ?? "";
+
+            const initialServicePriceUuid = servicePrices?.find(sP => sP?.paymentMode?.name?.toUpperCase() === initialPriceName.toUpperCase())?.uuid;
+            const value = serviceUuid + "#" + initialServicePriceUuid;
+            setValue("unitPrice", value );
+            return value;
+        }
+        return null;
+    }, [billableItem, initialPriceName])
 
     const onSubmit = async (data) => {
         try {
@@ -252,6 +275,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                                     onChange={(e) => {
                                                         field.onChange(e.target.value);
                                                     }}
+                                                defaultValue={initialUnitPriceUuid ?? null}
                                                 >
                                                     <SelectItem value="" text="Select service price" />
                                                     {
