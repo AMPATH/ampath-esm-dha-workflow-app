@@ -78,6 +78,7 @@ export enum HieIdentificationType {
   Cr = 'id',
   TemporaryDependantID = 'Temporary Dependant ID',
   BirthCertificate = 'Birth Certificate',
+  BirthNotification = 'Birth Notification',
 }
 
 export interface HieIdentifications {

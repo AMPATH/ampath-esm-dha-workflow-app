@@ -304,6 +304,9 @@ export function getAmrsIdentifierTypeUuid(hieIdentifierName: string) {
     case HieIdentificationType.TemporaryDependantID:
       idTypeUuid = IdentifierTypesUuids.TEMPORARY_DEPENDANT_ID_UUID;
       break;
+    case HieIdentificationType.BirthNotification:
+      idTypeUuid = IdentifierTypesUuids.BIRTH_NOTIFICATION_UUID;
+      break;
   }
   return idTypeUuid;
 }
