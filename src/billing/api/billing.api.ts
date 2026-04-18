@@ -64,6 +64,18 @@ export async function checkClaimStatus(billUuid: string) {
   return claimsFetch(`/claims/${billUuid}/status`);
 }
 
+export async function updateBillStatus(billUuid: string) {
+  if (!billUuid) {
+    return {
+      success: false,
+      data: null,
+      message: 'Bill UUID is required',
+    };
+  }
+
+  return claimsFetch(`/bills/${billUuid}/status`);
+}
+
 export async function fetchBillById(billId: string) {
   const res = await openmrsFetch(`${restBaseUrl}/billing/bill/${billId}`);
   return res.data;
