@@ -35,6 +35,7 @@ import {
   CheckmarkFilled,
   WarningAlt,
   PendingFilled,
+  ResultNew,
 } from '@carbon/react/icons';
 import {
   fetchBillById,
@@ -85,6 +86,8 @@ const headers = [
   { key: 'select', header: 'Select' },
   { key: 'actions', header: 'Actions' },
 ];
+
+const INSURANCE_MODES = ['PHC', 'SHIF', 'ECCIF', 'SHA'];
 
 const formatBillDate = (dateString?: string) => {
   if (!dateString) return '';
@@ -226,11 +229,13 @@ const BillDetails: React.FC = () => {
   // SHA flags
   const shaOnlyBill = items.length > 0 && items.every((i) => (i.payerType || '').toUpperCase() === 'SHA');
 
-  const pendingShaItems = items.filter((i) => i.status === 'PENDING' && i.payerType.toUpperCase() === 'SHA');
+  const pendingShaItems = items.filter(
+    (i) => i.status === 'PENDING' && INSURANCE_MODES.includes(i.payerType.toUpperCase()),
+  );
 
   const hasPendingSha = pendingShaItems.length > 0;
 
-  const isSha = (i: LineItem) => (i.payerType ?? '').toUpperCase() === 'SHA';
+  const isSha = (i: LineItem) => INSURANCE_MODES.includes((i.payerType ?? '').toUpperCase());
   const status = (i: LineItem) => (i.status ?? '').toUpperCase();
 
   const claimedShaItems = items.filter((i) => isSha(i) && ['CLAIMED', 'PAID'].includes(status(i)));
@@ -265,12 +270,14 @@ const BillDetails: React.FC = () => {
     const payer = (i.payerType ?? '').toUpperCase();
     const status = (i.status ?? '').toUpperCase();
 
-    if (payer === 'SHA' && (status === 'CLAIMED' || status === 'PAID')) {
+    if (INSURANCE_MODES.includes(payer) && (status === 'CLAIMED' || status === 'PAID')) {
       return acc + (i.claimedAmount ?? i.price * i.quantity);
     }
 
     return acc;
   }, 0);
+
+  const schemes = [...new Set(pendingShaItems.map((i) => i.payerType))].join(', ');
 
   const showAlert = (type: string, title: string, subTitle: string) => {
     showSnackbar({
@@ -526,6 +533,10 @@ const BillDetails: React.FC = () => {
       const paymentModesResponse = await fetchPaymentModes();
       const shaMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'sha');
 
+      const shaModes11 = paymentModesResponse.results.filter((mode) =>
+        INSURANCE_MODES.includes(mode.name.toUpperCase()),
+      );
+
       if (!shaMode) {
         showAlert('error', 'SHA Claim', 'SHA payment mode not found. Please contact support.');
         setShaLoading(false);
@@ -630,6 +641,14 @@ const BillDetails: React.FC = () => {
     window.open(receiptUrl, '_blank');
   };
 
+  const finalizeBill = () => {
+    const confirmed = window.confirm('Finalize bill? This action cannot be undone.');
+    if (confirmed) {
+      alert('Bill finalized! (This is a placeholder action)');
+      // handlePrintReceipt();
+    }
+  };
+
   const getClaimTagType = (status?: string) => {
     const s = status?.toLowerCase() || '';
 
@@ -655,7 +674,7 @@ const BillDetails: React.FC = () => {
       {/* Breadcrumb & Bill Info */}
       <Column lg={16} style={{ marginTop: '1rem' }}>
         <Breadcrumb style={{ marginBottom: '1rem' }}>
-          <BreadcrumbItem onClick={navigateToBillingPage}>Bills</BreadcrumbItem>
+          <BreadcrumbItem onClick={navigateToBillingPage}>Billing Dashboard</BreadcrumbItem>
           <BreadcrumbItem isCurrentPage>{loading ? <SkeletonText width="120px" /> : billNumber}</BreadcrumbItem>
         </Breadcrumb>
 
@@ -786,7 +805,13 @@ const BillDetails: React.FC = () => {
                       </Button>
                     )}
 
-                    {totalBalance === 0 && (
+                    {totalBalance === 0 && billState === 'PENDING' && (
+                      <Button size="sm" kind="primary" renderIcon={ResultNew} onClick={finalizeBill}>
+                        Finalize Bill
+                      </Button>
+                    )}
+
+                    {totalBalance === 0 && billState === 'PAID' && (
                       <Button disabled size="sm" kind="tertiary" renderIcon={Receipt} onClick={handlePrintReceipt}>
                         Print Receipt
                       </Button>
@@ -936,7 +961,7 @@ const BillDetails: React.FC = () => {
 
                   {/* Total */}
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{fontWeight: 'bold'}}>Total</span>
+                    <span style={{ fontWeight: 'bold' }}>Total</span>
                     <strong>
                       {loading ? (
                         <SkeletonText width="100px" />
@@ -1124,7 +1149,7 @@ const BillDetails: React.FC = () => {
       {/* SHA Claim */}
       <Modal
         open={modalType === 'SHA'}
-        modalHeading="Confirm SHA Claim"
+        modalHeading={`Confirm ${schemes} Claim`}
         primaryButtonText={shaLoading ? 'Submitting...' : 'Submit Claim'}
         secondaryButtonText="Cancel"
         primaryButtonDisabled={shaLoading}
@@ -1135,7 +1160,7 @@ const BillDetails: React.FC = () => {
           {/* ===== Info ===== */}
           <Tile>
             <p style={{ marginBottom: '0.5rem' }}>
-              You are about to submit the following items for <strong>SHA claim</strong>.
+              You are about to submit the following items for <strong>{schemes} claim</strong>.
             </p>
             <p style={{ color: '#6f6f6f', marginBottom: 0 }}>
               Please confirm all services are correct before proceeding.

@@ -41,6 +41,8 @@ type Bill = {
   createdAt: Date;
 };
 
+const SHA_INSURANCE_MODES = ['PHC', 'SHIF', 'ECCIF', 'SHA'];
+
 async function fetchBills(date: string): Promise<Bill[]> {
   const res = await fetchBillsByDate(date);
   const bills: Bill[] = [];
@@ -66,12 +68,12 @@ async function fetchBills(date: string): Promise<Bill[]> {
 
     const shaAmount =
       billNode.billItems
-        ?.filter((i: any) => i.paymentMode.toUpperCase() === 'SHA')
+        ?.filter((i: any) => SHA_INSURANCE_MODES.includes((i.paymentMode ?? '').toUpperCase()))
         .reduce((sum: number, i: any) => sum + Number(i.price ?? 0) * Number(i.quantity ?? 1), 0) ?? 0;
 
     const cashAmount =
       billNode.billItems
-        ?.filter((i: any) => i.paymentMode.toUpperCase() === 'CASH')
+        ?.filter((i: any) => (i.paymentMode ?? '').toUpperCase() === 'CASH')
         .reduce((sum: number, i: any) => sum + Number(i.price ?? 0) * Number(i.quantity ?? 1), 0) ?? 0;
 
     const formatCurrency = (amt: number) =>
@@ -88,7 +90,8 @@ async function fetchBills(date: string): Promise<Bill[]> {
       amountDisplay = formatCurrency(0);
     }
 
-    const hasSha = billNode.billItems?.some((i: any) => i.paymentMode === 'SHA') ?? false;
+    const hasSha =
+      billNode.billItems?.some((i: any) => SHA_INSURANCE_MODES.includes((i.paymentMode ?? '').toUpperCase())) ?? false;
 
     let status: BillStatus;
     let paymentMode: string;
@@ -417,7 +420,7 @@ const BillingTotalsRow: React.FC = () => {
           cash += amount;
         }
 
-        if (mode === 'SHA' && status === 'PAID') {
+        if (SHA_INSURANCE_MODES.includes(mode) && status === 'PAID') {
           sha += amount;
         }
 
@@ -555,7 +558,7 @@ const BillingTotalsRow: React.FC = () => {
           <Column lg={4} md={8} sm={4}>
             <StatTile
               icon={<Hospital size={25} />}
-              label="Amount Claimed"
+              label="Amount Claimed (SHA)"
               value={
                 loading ? (
                   <AISkeletonText />
