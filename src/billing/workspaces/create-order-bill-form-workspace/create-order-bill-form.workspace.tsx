@@ -74,17 +74,15 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         return [];
     }, [selectedBillableItem, initialPriceName]);
 
-    // const isSHAEligible = useMemo(() => {
-    //     if (identifiers) {
-    //         return identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
-    //     }
-    //     return false;
-    // }, [identifiers]);
+    const isSHAEligible = useMemo(() => {
+        if (identifiers) {
+            return identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
+        }
+        return false;
+    }, [identifiers]);
 
     const servicePrices = useMemo(() => {
         if (billableItem && billableItem.length && identifiers) {
-            const isSHAEligible = identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
-            console.log(isSHAEligible);
             let sPs = billableItem[0]?.servicePrices ?? [];
             return sPs;
         }
