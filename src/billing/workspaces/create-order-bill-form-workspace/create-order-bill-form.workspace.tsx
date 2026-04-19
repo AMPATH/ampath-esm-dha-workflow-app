@@ -79,7 +79,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
             const initialServicePriceUuid = servicePrices?.find(sP => sP?.paymentMode?.name?.toUpperCase() === initialPriceName.toUpperCase())?.uuid;
             const value = serviceUuid + "#" + initialServicePriceUuid;
-            setValue("unitPrice", value );
+            setValue("unitPrice", value);
             return value;
         }
         return null;
@@ -98,16 +98,20 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
             const billableItems = lineItems
                 .filter((item) => item.uuid === serviceUuid)
-                .map((item, index) => ({
-                    billableService: item.uuid,
-                    quantity: data.quantity,
-                    item: conceptUuid,
-                    price: item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.price || '0.000',
-                    priceName: item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.name || 'Default',
-                    priceUuid: servicePriceUuid || '',
-                    lineItemOrder: Number(lineItemOrder) ?? index,
-                    paymentStatus: 'PENDING',
-                }));
+                .map((item, index) => {
+                    const price = item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.price || 0;
+                    const paymentStatus = price == 0 ? "PAID" : "PENDING";
+                    return {
+                        billableService: item.uuid,
+                        quantity: data.quantity,
+                        item: conceptUuid,
+                        price: price,
+                        priceName: item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.name || 'Default',
+                        priceUuid: servicePriceUuid || '',
+                        lineItemOrder: Number(lineItemOrder) ?? index,
+                        paymentStatus: paymentStatus,
+                    }
+                });
             let billPayload = {};
 
             let response: FetchResponse<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }> | undefined;
@@ -275,7 +279,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                                     onChange={(e) => {
                                                         field.onChange(e.target.value);
                                                     }}
-                                                defaultValue={initialUnitPriceUuid ?? null}
+                                                    defaultValue={initialUnitPriceUuid ?? null}
                                                 >
                                                     <SelectItem value="" text="Select service price" />
                                                     {
