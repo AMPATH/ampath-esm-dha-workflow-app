@@ -137,6 +137,13 @@ export const configSchema = {
     _description: 'Outpatient care settings uuid',
     _default: '',
   },
+  paymentModes: {
+    shaPaymentModeUuid: {
+      _type: Type.String,
+      _description: 'SHA payment mode',
+      _default: '1be55f87-2931-41e0-89c8-8f5652c7c303'
+    }
+  }
 };
 
 export type Config = {

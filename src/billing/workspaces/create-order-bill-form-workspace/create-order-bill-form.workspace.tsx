@@ -9,8 +9,9 @@ import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Sta
 import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
-import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, usePatientBills } from "./create-order-bill-form.resource";
+import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
 import { generateUpdateBillLineItems } from "../../utils";
+import { IdentifierTypesUuids } from "../../../resources/identifier-types";
 
 interface CreateOrderBillFormProps {
     closeWorkspace: () => void;
@@ -27,6 +28,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const isTablet = useLayoutType() === 'tablet';
     const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(); //useBillableItems(serviceTypeUuid);
     const { currentDayBills } = usePatientBills(order?.patient?.uuid);
+    const { identifiers } = usePatientIdentifiers(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const cashPointUuid = cashPoints?.[0]?.uuid ?? '';
     const conceptUuid = order?.concept?.uuid;
@@ -72,9 +74,25 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         return [];
     }, [selectedBillableItem, initialPriceName]);
 
+    // const isSHAEligible = useMemo(() => {
+    //     if (identifiers) {
+    //         return identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
+    //     }
+    //     return false;
+    // }, [identifiers]);
+
+    const servicePrices = useMemo(() => {
+        if (billableItem && billableItem.length && identifiers) {
+            const isSHAEligible = identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
+            console.log(isSHAEligible);
+            let sPs = billableItem[0]?.servicePrices ?? [];
+            return sPs;
+        }
+        return [];
+    }, [billableItem, identifiers]);
+
     const initialUnitPriceUuid = useMemo(() => {
         if (billableItem && billableItem.length && initialPriceName) {
-            const servicePrices = billableItem[0]?.servicePrices ?? [];
             const serviceUuid = billableItem[0]?.uuid ?? "";
 
             const initialServicePriceUuid = servicePrices?.find(sP => sP?.paymentMode?.name?.toUpperCase() === initialPriceName.toUpperCase())?.uuid;
@@ -83,7 +101,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             return value;
         }
         return null;
-    }, [billableItem, initialPriceName])
+    }, [billableItem, initialPriceName]);
 
     const onSubmit = async (data) => {
         try {
@@ -267,7 +285,6 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                             control={control}
                             name="unitPrice"
                             render={({ field }) => {
-                                const servicePrices = billableItem[0]?.servicePrices ?? [];
                                 const serviceUuid = billableItem[0]?.uuid ?? "";
 
                                 return (
