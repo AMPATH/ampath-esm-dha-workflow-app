@@ -62,10 +62,6 @@ export const navLinksConfig = [
     title: 'Accounting',
   },
   {
-    to: 'registers',
-    title: 'Registers',
-  },
-  {
     to: 'reports',
     title: 'Reports',
   },

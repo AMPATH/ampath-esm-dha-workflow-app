@@ -117,23 +117,6 @@
       "offline": true
     },
     {
-      "name": "registers-dashboard-link",
-      "component": "registersDashboardLink",
-      "slot": "homepage-dashboard-slot",
-      "meta": {
-        "name": "registers",
-        "slot": "registers-dashboard-slot",
-        "title": "Registers"
-      },
-      "online": true,
-      "offline": false
-    },
-    {
-      "component": "registers",
-      "name": "registers",
-      "slot": "registers-dashboard-slot"
-    },
-    {
       "name": "bookings-dashboard-link",
       "component": "bookingsDashboardLink",
       "slot": "homepage-dashboard-slot",
