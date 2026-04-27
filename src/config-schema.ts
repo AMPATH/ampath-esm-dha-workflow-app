@@ -198,6 +198,9 @@ export interface ConfigObject {
   outPatientCareSettingUuid: string;
   orderEncounterTypeUuid: string;
   // vitals: VitalsConfigObject;
+  paymentModes: {
+    shaPaymentModeUuid: string;
+  }
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
