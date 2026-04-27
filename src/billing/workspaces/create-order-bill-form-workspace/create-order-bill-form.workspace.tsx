@@ -3,14 +3,16 @@ import { useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { validationSchema, type CreateOrderBillFormSchema } from "./schema";
-import { FetchResponse, OpenmrsResource, ResponsiveWrapper, showSnackbar, useDebounce, useLayoutType } from "@openmrs/esm-framework";
+import { FetchResponse, OpenmrsResource, ResponsiveWrapper, showSnackbar, useConfig, useDebounce, useLayoutType } from "@openmrs/esm-framework";
 import { useTranslation } from "react-i18next";
 import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Stack, TextInput, InlineNotification, ButtonSet, Button, InlineLoading, Search, Layer, Tile, FormLabel } from "@carbon/react";
 import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
-import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, usePatientBills } from "./create-order-bill-form.resource";
+import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
 import { generateUpdateBillLineItems } from "../../utils";
+import { IdentifierTypesUuids } from "../../../resources/identifier-types";
+import { type ConfigObject } from "../../../config-schema";
 
 interface CreateOrderBillFormProps {
     closeWorkspace: () => void;
@@ -27,9 +29,11 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const isTablet = useLayoutType() === 'tablet';
     const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(); //useBillableItems(serviceTypeUuid);
     const { currentDayBills } = usePatientBills(order?.patient?.uuid);
+    const { identifiers } = usePatientIdentifiers(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const cashPointUuid = cashPoints?.[0]?.uuid ?? '';
     const conceptUuid = order?.concept?.uuid;
+    const { paymentModes } = useConfig<ConfigObject>();
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm.trim());
     const searchInputRef = useRef(null);
@@ -72,9 +76,24 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         return [];
     }, [selectedBillableItem, initialPriceName]);
 
+    const isSHAEligible = useMemo(() => {
+        if (identifiers) {
+            return identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
+        }
+        return false;
+    }, [identifiers]);
+
+    const servicePrices = useMemo(() => {
+        if (billableItem && billableItem.length && identifiers) {
+            let sPs = billableItem[0]?.servicePrices ?? [];
+            sPs = sPs && sPs.length && !isSHAEligible ? sPs.filter(v => v?.paymentMode?.uuid !== paymentModes?.shaPaymentModeUuid) : sPs;
+            return sPs;
+        }
+        return [];
+    }, [billableItem, identifiers]);
+
     const initialUnitPriceUuid = useMemo(() => {
         if (billableItem && billableItem.length && initialPriceName) {
-            const servicePrices = billableItem[0]?.servicePrices ?? [];
             const serviceUuid = billableItem[0]?.uuid ?? "";
 
             const initialServicePriceUuid = servicePrices?.find(sP => sP?.paymentMode?.name?.toUpperCase() === initialPriceName.toUpperCase())?.uuid;
@@ -83,7 +102,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             return value;
         }
         return null;
-    }, [billableItem, initialPriceName])
+    }, [billableItem, initialPriceName]);
 
     const onSubmit = async (data) => {
         try {
@@ -267,7 +286,6 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                             control={control}
                             name="unitPrice"
                             render={({ field }) => {
-                                const servicePrices = billableItem[0]?.servicePrices ?? [];
                                 const serviceUuid = billableItem[0]?.uuid ?? "";
 
                                 return (

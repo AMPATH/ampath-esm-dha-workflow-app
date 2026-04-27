@@ -83,3 +83,21 @@ export const createOrderBillInHie = async (payload) => {
     const url = `${hieBaseUrl}/bill-order`;
     return postJson<{ bill_uuid: string }>(url, payload);
 }
+
+export const usePatientIdentifiers = (patientUuid: string) => {
+    const customRepresentation = `custom:(identifiers:(identifier,identifierType:(uuid,display)))`;
+    const url = `/ws/rest/v1/patient/${patientUuid}?v=${customRepresentation}`;
+    const { data, isLoading, error } = useSWR<{
+        data: {
+            identifiers: Array<{
+                identifier: string,
+                identifierType: {
+                    uuid: string,
+                    display: string
+                }
+            }>
+        }
+    }>(url, openmrsFetch);
+
+    return { isLoading, error, identifiers: data?.data?.identifiers };
+};
