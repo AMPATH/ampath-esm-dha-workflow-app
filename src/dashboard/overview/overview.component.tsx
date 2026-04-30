@@ -1,4 +1,4 @@
-import { FluidDropdown, Tile } from '@carbon/react';
+import { FluidDropdown, Tab, TabList, TabPanel, TabPanels, Tabs, Tile } from '@carbon/react';
 import React, { useState } from 'react';
 import { UserMultiple, CheckmarkFilled, Time, Hospital, Chemistry, Medication } from '@carbon/react/icons';
 
@@ -107,7 +107,26 @@ const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount, das
           <h4 className={styles.text}>{dashboardSummary?.average_waiting_minutes ?? 0} mins</h4>
         </Tile>
       </div>
-      <Chart />
+      <div className={styles.tabsContainer}>
+        <Tabs>
+          <TabList>
+            <Tab>Daily</Tab>
+            <Tab>Weekly</Tab>
+            <Tab>Monthly</Tab>
+          </TabList>
+          <TabPanels>
+            <TabPanel>
+              <Chart dashboardId="1bdad7e2-e9a7-4cb5-886c-185f63b2eae0" />
+            </TabPanel>
+            <TabPanel>
+              <Chart dashboardId="0c59e7cd-2eba-4426-9d52-1db0866e0377" />
+            </TabPanel>
+            <TabPanel>
+              <Chart dashboardId="fe8606e8-2160-4914-860a-f5abc386d9c1" />
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+      </div>
     </>
   );
 };

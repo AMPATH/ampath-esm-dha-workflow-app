@@ -1,11 +1,12 @@
 import { openmrsFetch } from '@openmrs/esm-framework';
 import { getEtlBaseUrl } from '../shared/utils/get-base-url';
 
-export async function fetchGuestToken(locationUuid: string): Promise<string> {
+export async function fetchGuestToken(locationUuid: string, dashboardId: string): Promise<string> {
   const etlBaseUrl = await getEtlBaseUrl();
   const supersetTokenUrl = `${etlBaseUrl}/superset-token`;
   const params = {
     locationUuid: locationUuid,
+    dashboardId: dashboardId,
   };
   const queryString = new URLSearchParams(params).toString();
   const response = await openmrsFetch(`${supersetTokenUrl}?${queryString}`);
