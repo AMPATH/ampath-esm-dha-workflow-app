@@ -7,9 +7,11 @@ import { getSubDomainUrl } from '../../shared/utils/get-base-url';
 
 import styles from './chart.component.scss';
 
-interface ChartProps {}
+interface ChartProps {
+  dashboardId: string;
+}
 
-const Chart: React.FC<ChartProps> = () => {
+const Chart: React.FC<ChartProps> = ({ dashboardId }) => {
   const ref = useRef<HTMLDivElement>(null);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
@@ -33,10 +35,10 @@ const Chart: React.FC<ChartProps> = () => {
 
   useEffect(() => {
     embedDashboard({
-      id: '81cc98fd-5195-4404-bf38-2c8cd5509747',
+      id: dashboardId,
       supersetDomain: `${subDomainUrl}/superset`,
       mountPoint: ref.current!,
-      fetchGuestToken: async () => await fetchGuestToken(locationUuid),
+      fetchGuestToken: async () => await fetchGuestToken(locationUuid, dashboardId),
       dashboardUiConfig: {
         hideTitle: true,
         filters: {
