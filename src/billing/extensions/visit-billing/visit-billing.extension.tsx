@@ -18,13 +18,14 @@ import {
 import { PaymentDetail, type QueueEntryDto, type ServiceQueue } from '../../../registry/types';
 import { PatientCategories } from '../../../shared/constants/patient-category';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
-import { showSnackbar, useConfig, useSession, useVisit, type Visit } from '@openmrs/esm-framework';
+import { showSnackbar, useConfig, usePatient, useSession, useVisit, type Visit } from '@openmrs/esm-framework';
 
 interface VisitBillingFormProps {
   patientUuid: string;
   setExtraVisitInfo: (state) => void;
 }
 const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExtraVisitInfo }) => {
+  const { isLoading, error, patient } = usePatient(patientUuid);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [selectedPaymentDetail, setSelectedPaymentDetail] = useState<string>();
   const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice>(null);
@@ -44,7 +45,8 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
-  const { registrationBillableServices } = useConfig();
+  const { registrationBillableServices, nonSHAPaymentModes } = useConfig();
+  const hasCrNo = useMemo(()=>patientHasCrNo(),[patient])
 
   useEffect(() => {
     getPaymentMethods();
@@ -60,6 +62,10 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
       });
     }
   }, [selectedBillableService, selectedCashPoint]);
+
+  if(isLoading || error){
+     return <></>
+  }
 
   async function getCashPoints() {
     const cp = await fetchCashPoints();
@@ -87,7 +93,28 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
 
   async function getPaymentMethods() {
     const methods = await fetchPaymentModes();
-    setPaymentModes(methods);
+    let allowedPaymentMethods = [];
+    if(!hasCrNo){
+       allowedPaymentMethods = methods.filter((p)=>{
+           return nonSHAPaymentModes.includes(p.uuid);
+       });
+    }else{
+       allowedPaymentMethods = methods;
+    }
+    setPaymentModes(allowedPaymentMethods);
+  }
+  function patientHasCrNo(){
+    let identifiers = [];
+    if(patient && patient.identifier){
+        identifiers = patient.identifier ?? [];
+    }
+     const hasCrNo = identifiers.some((id)=>{
+        if(!id || !id.type){
+          return false;
+        }
+        return id.type.text === 'CR';
+     });
+     return hasCrNo;
   }
   const paymentMethodHandler = (selectedPaymentModeUuid: string) => {
     const selectedPaymentMode = paymentModes.find((pm) => {
