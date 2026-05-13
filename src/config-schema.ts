@@ -137,12 +137,10 @@ export const configSchema = {
     _description: 'Outpatient care settings uuid',
     _default: '',
   },
-  paymentModes: {
-    shaPaymentModeUuid: {
-      _type: Type.String,
-      _description: 'SHA payment mode',
-      _default: '1be55f87-2931-41e0-89c8-8f5652c7c303'
-    }
+  nonSHAPaymentModes: {
+    _type: Type.Array,
+    _description: 'NON SHA payment modes',
+    _default: []
   }
 };
 
@@ -198,9 +196,7 @@ export interface ConfigObject {
   outPatientCareSettingUuid: string;
   orderEncounterTypeUuid: string;
   // vitals: VitalsConfigObject;
-  paymentModes: {
-    shaPaymentModeUuid: string;
-  }
+  nonSHAPaymentModes: Array<string>;
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
