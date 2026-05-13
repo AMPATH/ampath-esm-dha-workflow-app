@@ -33,7 +33,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { cashPoints } = useCashPoint();
     const cashPointUuid = cashPoints?.[0]?.uuid ?? '';
     const conceptUuid = order?.concept?.uuid;
-    const { paymentModes } = useConfig<ConfigObject>();
+    const { nonSHAPaymentModes } = useConfig<ConfigObject>();
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm.trim());
     const searchInputRef = useRef(null);
@@ -86,7 +86,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const servicePrices = useMemo(() => {
         if (billableItem && billableItem.length && identifiers) {
             let sPs = billableItem[0]?.servicePrices ?? [];
-            sPs = sPs && sPs.length && !isSHAEligible ? sPs.filter(v => v?.paymentMode?.uuid !== paymentModes?.shaPaymentModeUuid) : sPs;
+            // add the non-sha payments
+            sPs = sPs && sPs.length && !isSHAEligible ? sPs.filter(v => nonSHAPaymentModes.includes(v?.paymentMode?.uuid)) : sPs;
             return sPs;
         }
         return [];
