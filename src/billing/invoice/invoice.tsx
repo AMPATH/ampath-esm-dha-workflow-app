@@ -531,9 +531,8 @@ const BillDetails: React.FC = () => {
       setShaLoading(true);
 
       const paymentModesResponse = await fetchPaymentModes();
-      const shaMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'sha');
 
-      const shaModes11 = paymentModesResponse.results.filter((mode) =>
+      const shaMode = paymentModesResponse.results.find((mode) =>
         INSURANCE_MODES.includes(mode.name.toUpperCase()),
       );
 
