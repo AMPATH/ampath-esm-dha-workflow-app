@@ -39,6 +39,7 @@
       "name": "registry-dashboard-link",
       "component": "registryDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Client Registry Dashboard"],
       "meta": {
         "name": "registry",
         "slot": "client-registry-dashboard-slot",
@@ -51,12 +52,14 @@
     {
       "component": "registryExtension",
       "name": "registry",
-      "slot": "client-registry-dashboard-slot"
+      "slot": "client-registry-dashboard-slot",
+      "privileges": ["O3 View Client Registry Dashboard"]
     },
     {
       "name": "triage-dashboard-link",
       "component": "triageDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Triage Dashboard"],
       "meta": {
         "name": "triage",
         "slot": "triage-queue-dashboard-slot",
@@ -68,7 +71,8 @@
     {
       "component": "triageQueueExtension",
       "name": "triage",
-      "slot": "triage-queue-dashboard-slot"
+      "slot": "triage-queue-dashboard-slot",
+      "privileges": ["O3 View Triage Dashboard"]
     },
     {
       "name": "consultation-dashboard-link",
@@ -200,6 +204,7 @@
       "name": "ampath-billing-dashboard-link",
       "component": "billingDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Accounting Dashboard"],
       "meta": {
         "name": "billing",
         "slot": "ampath-billing-dashboard-slot",
@@ -211,7 +216,8 @@
     {
       "component": "billingRoot",
       "name": "billing",
-      "slot": "ampath-billing-dashboard-slot"
+      "slot": "ampath-billing-dashboard-slot",
+      "privileges": ["O3 View Accounting Dashboard"]
     },
      {
       "name": "ampath-billing-checkin-form",
