@@ -78,6 +78,7 @@
       "name": "consultation-dashboard-link",
       "component": "consultationDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Consultation Dashboard"],
       "meta": {
         "name": "consultation",
         "slot": "consultation-dashboard-slot",
@@ -89,7 +90,8 @@
     {
       "component": "consultationQueue",
       "name": "consultation",
-      "slot": "consultation-dashboard-slot"
+      "slot": "consultation-dashboard-slot",
+      "privileges": ["O3 View Consultation Dashboard"]
     },
     {
       "name": "mnch-dashboard-link",
