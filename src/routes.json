@@ -95,6 +95,7 @@
       "name": "mnch-dashboard-link",
       "component": "mnchQueueDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View MNCH Dashboard"],
       "meta": {
         "name": "mnch",
         "slot": "mnch-dashboard-slot",
@@ -106,12 +107,14 @@
     {
       "component": "mnchQueueDashboard",
       "name": "mnch",
-      "slot": "mnch-dashboard-slot"
+      "slot": "mnch-dashboard-slot",
+      "privileges": ["O3 View MNCH Dashboard"]
     },
     {
       "name": "pharmacy-dashboard-link",
       "component": "pharmacyDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Pharmacy Dashboard"],
       "meta": {
         "name": "dispensing",
         "slot": "dispensing-dashboard-slot",
@@ -124,6 +127,7 @@
       "name": "bookings-dashboard-link",
       "component": "bookingsDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Bookings Dashboard"],
       "meta": {
         "name": "bookings",
         "slot": "bookings-dashboard-slot",
@@ -135,7 +139,8 @@
     {
       "component": "bookings",
       "name": "bookings",
-      "slot": "bookings-dashboard-slot"
+      "slot": "bookings-dashboard-slot",
+      "privileges": ["O3 View Bookings Dashboard"]
     },
     {
       "name": "service-queue-admin-dashboard-link",
@@ -158,6 +163,7 @@
       "name": "admissions-dashboard-link",
       "component": "admissionsDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": ["O3 View Admissions Dashboard"],
       "meta": {
         "name": "admissions-dashboard",
         "slot": "admissions-dashboard-slot",
@@ -169,7 +175,8 @@
     {
       "component": "admissionsDashboard",
       "name": "admissions-dashboard",
-      "slot": "admissions-dashboard-slot"
+      "slot": "admissions-dashboard-slot",
+      "privileges": ["O3 View Admissions Dashboard"]
     },
     {
       "component": "serviceQueueBannerComponent",
