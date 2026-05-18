@@ -19,6 +19,7 @@ import { QueueEntryPriority, QueueEntryStatus, type TagColor } from '../../types
 import { getTagClassByPriority } from '../../shared/utils/get-tag-type';
 import { useSession } from '@openmrs/esm-framework';
 import { checkInRoom, checkOutRoom, isCheckedIn } from './check-in.service';
+import { userHasAccess } from '@openmrs/esm-framework';
 
 interface QueueListProps {
   queueRoom: string;
@@ -63,6 +64,10 @@ const QueueList: React.FC<QueueListProps> = ({
   );
   const sortedQueueEntries = useMemo(() => generatePatientWaitingList(), [queueEntries]);
   const filteredQueueEntries = useMemo(() => filterQueueBySearchString(), [queueEntries, searchString]);
+  const canClearQueue = userHasAccess('O3 Clear Triage Queue',{
+    privileges: session.user?.privileges ?? [],
+    roles: session.user?.roles ?? []
+  });
   function generatePatientWaitingList() {
     return [...urgentEntries, ...priorityEntries, ...nonUrgentEntries];
   }
@@ -149,7 +154,7 @@ const QueueList: React.FC<QueueListProps> = ({
                 </Button>
                 {sortedQueueEntries.length > 0 ? (
                   <>
-                    <Button kind="danger" onClick={clearQueue}>
+                    <Button kind="danger" onClick={clearQueue} disabled={!canClearQueue}>
                       Clear Queue
                     </Button>
                   </>
