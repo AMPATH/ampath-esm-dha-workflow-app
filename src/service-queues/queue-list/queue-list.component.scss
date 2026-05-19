@@ -11,6 +11,21 @@
     justify-content: flex-end;
     width: 100%;
     column-gap: 10px;
+    .filters{
+        display: flex;
+        flex-direction: row;
+        width: 80%;
+        column-gap: 15px;
+        .filter{
+            width: 45%;
+        }
+    }
+    .actionBtns{
+        display: flex;
+        flex-direction: row;
+        width: 20%;
+        column-gap: 15px;
+    }
 }
 .tableSection{
     display: flex;
@@ -18,9 +33,8 @@
     width: 100%;
     row-gap: 10px;
 }
-.searchInput{
-    width: 40%;
-}
+
+
 
 .nonUrgentTag{
     background-color:rgb(167, 240, 186);

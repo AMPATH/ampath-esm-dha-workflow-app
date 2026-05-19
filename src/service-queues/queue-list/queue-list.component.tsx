@@ -1,5 +1,6 @@
 import {
   Button,
+  ComboBox,
   Link,
   OverflowMenu,
   OverflowMenuItem,
@@ -47,6 +48,7 @@ const QueueList: React.FC<QueueListProps> = ({
   const session = useSession();
   const provider = session.currentProvider;
   const [checkIn, setCheckin] = useState<boolean>(isProviderCheckedIn());
+  const [selectedStatus,setSelectedStatus] = useState<string>('');
 
   const [searchString, setSearchString] = useState<string>();
   const urgentEntries = useMemo(
@@ -62,14 +64,33 @@ const QueueList: React.FC<QueueListProps> = ({
     () => sortQueueByPriorityAndWaitTime(queueEntries, QueueEntryPriority.NonUrgent),
     [queueEntries],
   );
-  const sortedQueueEntries = useMemo(() => generatePatientWaitingList(), [queueEntries]);
-  const filteredQueueEntries = useMemo(() => filterQueueBySearchString(), [queueEntries, searchString]);
+  const sortedQueueEntries = useMemo(() => generatePatientWaitingList(), [queueEntries,selectedStatus]);
+  const filteredQueueEntries = useMemo(() => filterQueueBySearchString(), [queueEntries, searchString,selectedStatus]);
   const canClearQueue = userHasAccess('O3 Clear Triage Queue',{
     privileges: session.user?.privileges ?? [],
     roles: session.user?.roles ?? []
   });
+  const statusOptions = [
+        {
+          text: 'ALL',
+          id: '',
+        },
+        {
+          text: 'IN SERVICE',
+          id: 'IN SERVICE',
+        },
+        {
+          text: 'WAITING',
+          id: 'WAITING',
+        },
+  ];
   function generatePatientWaitingList() {
-    return [...urgentEntries, ...priorityEntries, ...nonUrgentEntries];
+    return [...urgentEntries, ...priorityEntries, ...nonUrgentEntries].filter((qe)=>{
+       if(!selectedStatus){
+          return true;
+       }
+       return qe.status === selectedStatus;
+    });
   }
 
   function sortQueueByPriorityAndWaitTime(queueEntries: QueueEntryResult[], priority: QueueEntryPriority) {
@@ -134,29 +155,54 @@ const QueueList: React.FC<QueueListProps> = ({
       return name;
     }
   }
+  function statusChangeHandler(selectedStatus: { selectedItem: { id: string; text: string } }){
+    let status = '';
+    if(selectedStatus && selectedStatus.selectedItem){
+        status = selectedStatus.selectedItem.id;
+    }
+    
+    setSelectedStatus(status);
+  }
   return (
     <>
       <div className={styles.queueListLayout}>
         <div className={styles.actionHeader}>
-          <>
-            <div className={styles.searchInput}>
+          <div className={styles.filters}>
+           <div className={styles.filter}>
+              <ComboBox
+                        onChange={statusChangeHandler}
+                        id="queue-status-combobox"
+                        items={statusOptions}
+                        itemToString={(item) => (item ? item.text : '')}
+                        titleText="Status"
+                />
+            </div>
+           <div className={styles.filter}>
               <TextInput
                 id="queue-search"
-                labelText=""
+                labelText="Name"
                 onChange={(e) => handlQueueSearch(e.target.value)}
                 placeholder="Enter patient name to filter"
               />
             </div>
+           
+          </div>
+          <div className={styles.actionBtns}>
+            
             {checkIn ? (
               <>
+                <div>
                 <Button kind="secondary" onClick={handleCheckout}>
                   Check Out
                 </Button>
+                </div>
                 {sortedQueueEntries.length > 0 ? (
                   <>
+                  <div>
                     <Button kind="danger" onClick={clearQueue} disabled={!canClearQueue}>
                       Clear Queue
                     </Button>
+                  </div>
                   </>
                 ) : (
                   <></>
@@ -164,12 +210,14 @@ const QueueList: React.FC<QueueListProps> = ({
               </>
             ) : (
               <>
+              <div>
                 <Button kind="primary" onClick={handleCheckin}>
                   Check In
                 </Button>
+              </div>
               </>
             )}
-          </>
+          </div>
         </div>
         <div className={styles.tableSection}>
           <Table>
