@@ -147,6 +147,7 @@
     {
       "name": "service-queue-admin-dashboard-link",
       "component": "serviceQueuesAdminLink",
+      "privileges": ["O3 View Service Queue Admin Panel"],
       "slot": "app-menu-slot",
       "meta": {
         "name": "service-queue-admin",
@@ -159,7 +160,8 @@
     {
       "component": "serviceQueueAdmin",
       "name": "service-queue-admin",
-      "slot": "service-queue-admin-dashboard-slot"
+      "slot": "service-queue-admin-dashboard-slot",
+      "privileges": ["O3 View Service Queue Admin Panel"]
     },
     {
       "name": "admissions-dashboard-link",
