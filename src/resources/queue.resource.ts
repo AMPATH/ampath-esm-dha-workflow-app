@@ -1,5 +1,5 @@
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
-import { type QueueEntryDto, type ServiceQueueApiResponse } from '../registry/types';
+import { type ServiceQueue, type QueueEntryDto, type ServiceQueueApiResponse } from '../registry/types';
 import { getLocationByUuid } from '../shared/services/location.resource';
 
 export async function fetchServiceQueuesByLocationUuid<T>(locationUuid: string): Promise<ServiceQueueApiResponse> {
@@ -37,7 +37,7 @@ export async function createQueueEntry(createQueueEntryDto: QueueEntryDto) {
   return response.json();
 }
 
-export async function getFacilityServiceQueues(locationUuid: string) {
+export async function getFacilityServiceQueues(locationUuid: string): Promise<ServiceQueue[] | undefined> {
   const currentLocation = await getLocationByUuid(locationUuid);
   if (!currentLocation) return;
   const parentLocation = currentLocation.parentLocation;
@@ -49,7 +49,7 @@ export async function getFacilityServiceQueues(locationUuid: string) {
     childLocations.map((c) => {
       return c.uuid;
     }) ?? [];
-  let sqs = [];
+  let sqs: ServiceQueue[] = [];
   if (childLocationUuids.length > 0) {
     for (let i = 0; i < childLocationUuids.length; i++) {
       const s = await fetchServiceQueuesByLocationUuid(childLocationUuids[i]);

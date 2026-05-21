@@ -50,6 +50,7 @@ import { fetchPatientBills } from '../../../billing/invoice/bill.resource';
 import { type QueueEntry } from '../../../types/types';
 import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/service-queues.resource';
 import { createOrderEncounter } from '../../../shared/services/encounters.resource';
+import { type ConfigObject } from '../../../config-schema';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -100,18 +101,19 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     shaConsulationConceptUuid,
     outPatientCareSettingUuid,
     orderEncounterTypeUuid,
-  } = useConfig();
+    registrationServicequeues
+  } = useConfig<ConfigObject>();
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
 
   const visitTypeOptions = useMemo(
     () => [
       {
-        text: 'OPD Visit',
+        text: 'OPD',
         id: VisitTypeUuids.OPD_VISIT_TYPE_UUID,
       },
       {
-        text: 'Inpatient Visit',
+        text: 'Inpatient',
         id: VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID,
       },
     ],
@@ -473,8 +475,9 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   async function getServiceQueues() {
     try {
       const sqs = await getFacilityServiceQueues(locationUuid);
-      if (sqs.length > 0) {
-        setServiceQueues(sqs);
+      if (sqs && sqs.length > 0) {
+        const triageServiceQueues = getTriageServiceQueues(sqs);
+        setServiceQueues(triageServiceQueues);
       }
     } catch (e) {
       showSnackbar({
@@ -483,6 +486,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
         subtitle: e.message ?? 'An error occurred while fetching service queues, please try agin',
       });
     }
+  }
+  function getTriageServiceQueues(serviceQueues: ServiceQueue[]){
+      return serviceQueues.filter((sq)=>{
+          return registrationServicequeues.includes(sq.uuid ?? '')
+      });
   }
 
   async function getPaymentMethods() {
@@ -780,7 +788,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         id="visit-type-combobox"
                         items={visitTypeOptions}
                         itemToString={(item) => (item ? item.text : '')}
-                        titleText="Select a Visit Type"
+                        titleText="Patient Type"
                       />
                     </div>
                     <div className={styles.formControl}>
@@ -788,7 +796,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         <SelectItem value="" text="Select" />;
                         {serviceQueues &&
                           serviceQueues.map((sq) => {
-                            return <SelectItem value={sq.uuid} text={`${sq.display} (${sq.location.display ?? ''})`} />;
+                            return <SelectItem value={sq.uuid} text={`${sq.display}`} />;
                           })}
                       </Select>
                     </div>
