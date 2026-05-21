@@ -51,6 +51,7 @@ import { type QueueEntry } from '../../../types/types';
 import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/service-queues.resource';
 import { createOrderEncounter } from '../../../shared/services/encounters.resource';
 import { type ConfigObject } from '../../../config-schema';
+import { PatientTypes } from '../../../shared/constants/patient-type';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -73,6 +74,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 }) => {
   const [selectedPatient, setSelectedPatient] = useState<Patient>();
   const [selectedVisitType, setSelectedVisitType] = useState<string>();
+  const [selectedPatientType, setSelectedPatientType] = useState<string>();
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>();
   const [selectedServiceQueue, setSelectedServiceQueue] = useState<string>();
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
@@ -115,6 +117,24 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       {
         text: 'Inpatient',
         id: VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID,
+      },
+    ],
+    [client],
+  );
+
+  const patientTypeOptions = useMemo(
+    () => [
+      {
+        text: 'Walk-in',
+        id: PatientTypes.WALK_IN_UUID,
+      },
+      {
+        text: 'Self-referral',
+        id: PatientTypes.SELF_RERERRAL_UUID,
+      },
+     {
+        text: 'Referral from other Facility',
+        id: PatientTypes.REFERRAL_FROM_ANOTHER_FACILITY_UUID,
       },
     ],
     [client],
@@ -388,6 +408,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     });
     setSelectedCashPoint(selectedCashPoint);
   };
+  const patientTypeHandler = (selectedPatientType: { selectedItem: { id: string; text: string } }) => {
+    const pt = selectedPatientType.selectedItem.id;
+    setSelectedPatientType(pt);
+  };
   const insuranceSchemeHandler = (selectedInsuranceScheme: string) => {
     setSelectedInsuranceScheme(selectedInsuranceScheme);
   };
@@ -424,6 +448,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
     if (!createVisitDto.visitType) {
       showAlert('error', 'Please select a visit', '');
+      return false;
+    }
+    if(!selectedPatientType){
+      showAlert('error', 'Please select a patient type', '');
       return false;
     }
     return true;
@@ -469,6 +497,18 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
         attributeType: '8553afa0-bdb9-4d3c-8a98-05fa9350aa85',
         value: selectedPaymentMode.uuid,
       });
+    }
+    if(selectedPatientType) {
+        attributes.push({
+          attributeType: 'fbc0702d-b4c9-4968-be63-af8ad3ad6239',
+          value: selectedPatientType,
+        });
+    }
+    if(selectedPaymentDetail === PaymentDetail.NonPaying){
+        attributes.push({
+            attributeType: 'df0362f9-782e-4d92-8bb2-3112e9e9eb3c',
+            value: 'true',
+        });
     }
     return attributes;
   }
@@ -668,6 +708,15 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                 </div>
                 <div className={styles.formSection}>
                   <div className={styles.formRow}>
+                     <div className={styles.formControl}>
+                          <ComboBox
+                            onChange={patientTypeHandler}
+                            id="patient-type-combobox"
+                            items={patientTypeOptions}
+                            itemToString={(item) => (item ? item.text : '')}
+                            titleText="Patient Type"
+                          />
+                    </div>
                     <div className={styles.formControl}>
                       <Select
                         id="payment-details"
@@ -788,7 +837,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         id="visit-type-combobox"
                         items={visitTypeOptions}
                         itemToString={(item) => (item ? item.text : '')}
-                        titleText="Patient Type"
+                        titleText="Visit Type"
                       />
                     </div>
                     <div className={styles.formControl}>
