@@ -141,6 +141,11 @@ export const configSchema = {
     _type: Type.Array,
     _description: 'NON SHA payment modes',
     _default: []
+  },
+  registrationServicequeues:{
+     _type: Type.Array,
+    _description: 'Service Queues to display at send to triage',
+    _default: []
   }
 };
 
@@ -197,6 +202,7 @@ export interface ConfigObject {
   orderEncounterTypeUuid: string;
   // vitals: VitalsConfigObject;
   nonSHAPaymentModes: Array<string>;
+  registrationServicequeues: Array<string>;
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
