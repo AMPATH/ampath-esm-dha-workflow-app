@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './visit-billing.extension.scss';
-import { Select, SelectItem, TextInput } from '@carbon/react';
+import { ComboBox, Select, SelectItem, TextInput } from '@carbon/react';
 import {
   createBill,
   fetchBillableServices,
@@ -15,10 +15,11 @@ import {
   type BillableService,
   type CreateBillDto,
 } from '../../../shared/types';
-import { PaymentDetail, type QueueEntryDto, type ServiceQueue } from '../../../registry/types';
+import { PaymentDetail, VisitAttribute, type QueueEntryDto, type ServiceQueue } from '../../../registry/types';
 import { PatientCategories } from '../../../shared/constants/patient-category';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
 import { showSnackbar, useConfig, usePatient, useSession, useVisit, type Visit } from '@openmrs/esm-framework';
+import { PatientTypes } from '../../../shared/constants/patient-type';
 
 interface VisitBillingFormProps {
   patientUuid: string;
@@ -27,6 +28,7 @@ interface VisitBillingFormProps {
 const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExtraVisitInfo }) => {
   const { isLoading, error, patient } = usePatient(patientUuid);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
+  const [selectedPatientType, setSelectedPatientType] = useState<string>();
   const [selectedPaymentDetail, setSelectedPaymentDetail] = useState<string>();
   const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice>(null);
   const [filteredBillableServices, setFilteredBillableServices] = useState<ServicePrice[]>(null);
@@ -47,6 +49,27 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
   const { registrationBillableServices, nonSHAPaymentModes } = useConfig();
   const hasCrNo = useMemo(()=>patientHasCrNo(),[patient])
+  const patientTypeOptions = useMemo(
+      () => [
+        {
+          text: 'Walk-in',
+          id: PatientTypes.WALK_IN_UUID,
+        },
+        {
+          text: 'Self-referral',
+          id: PatientTypes.SELF_RERERRAL_UUID,
+        },
+       {
+          text: 'Referral from other Facility',
+          id: PatientTypes.REFERRAL_FROM_ANOTHER_FACILITY_UUID,
+        },
+        {
+          text: 'Referral from Community',
+          id: PatientTypes.REFERRED_BY_COMMUNITY_HEALTH_WORKER_UUID,
+        },
+      ],
+      [patient],
+    );
 
   useEffect(() => {
     getPaymentMethods();
@@ -58,10 +81,10 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
     if (selectedBillableService && selectedCashPoint) {
       setExtraVisitInfo({
         handleCreateExtraVisitInfo: createPatientBill,
-        attributes: [],
+        attributes: getVisitAttributes(),
       });
     }
-  }, [selectedBillableService, selectedCashPoint]);
+  }, [selectedBillableService, selectedCashPoint,selectedPatientType,selectedPaymentMode,selectedInsurancePolicy]);
 
   if(isLoading || error){
      return <></>
@@ -315,11 +338,60 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
     return payload;
   }
 
+  const patientTypeHandler = (selectedPatientType: { selectedItem: { id: string; text: string } }) => {
+    const pt = selectedPatientType.selectedItem.id;
+    setSelectedPatientType(pt);
+  };
+
+    function getVisitAttributes(): VisitAttribute[] {
+      const attributes: VisitAttribute[] = [];
+      if (selectedInsuranceScheme) {
+        attributes.push({
+          attributeType: '3a988e33-a6c0-4b76-b924-01abb998944b',
+          value: selectedInsuranceScheme,
+        });
+      }
+      if (selectedInsurancePolicy) {
+        attributes.push({
+          attributeType: 'aac48226-d143-4274-80e0-264db4e368ee',
+          value: selectedInsurancePolicy,
+        });
+      }
+      if (selectedPaymentMode) {
+        attributes.push({
+          attributeType: '8553afa0-bdb9-4d3c-8a98-05fa9350aa85',
+          value: selectedPaymentMode.uuid,
+        });
+      }
+      if(selectedPatientType) {
+          attributes.push({
+            attributeType: 'fbc0702d-b4c9-4968-be63-af8ad3ad6239',
+            value: selectedPatientType,
+          });
+      }
+      if(selectedPaymentDetail === PaymentDetail.NonPaying){
+          attributes.push({
+              attributeType: 'df0362f9-782e-4d92-8bb2-3112e9e9eb3c',
+              value: 'true',
+          });
+      }
+      return attributes;
+  }
+
   return (
     <>
       <div className={styles.visitLayout}>
         <div className={styles.formSection}>
           <div className={styles.formRow}>
+             <div className={styles.formControl}>
+                          <ComboBox
+                            onChange={patientTypeHandler}
+                            id="patient-type-combobox"
+                            items={patientTypeOptions}
+                            itemToString={(item) => (item ? item.text : '')}
+                            titleText="Patient Type"
+                          />
+            </div>
             <div className={styles.formControl}>
               <Select
                 id="payment-details"
