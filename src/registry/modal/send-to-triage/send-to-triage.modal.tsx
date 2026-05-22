@@ -125,16 +125,20 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const patientTypeOptions = useMemo(
     () => [
       {
-        text: 'Walk-in',
+        text: 'Walk-In',
         id: PatientTypes.WALK_IN_UUID,
       },
       {
-        text: 'Self-referral',
+        text: 'Self-Referral',
         id: PatientTypes.SELF_RERERRAL_UUID,
       },
      {
-        text: 'Referral from other Facility',
+        text: 'Referral from another Facility',
         id: PatientTypes.REFERRAL_FROM_ANOTHER_FACILITY_UUID,
+      },
+      {
+        text: 'Referral from Community',
+        id: PatientTypes.REFERRED_BY_COMMUNITY_HEALTH_WORKER_UUID,
       },
     ],
     [client],
