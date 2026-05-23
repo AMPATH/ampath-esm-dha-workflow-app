@@ -10,10 +10,7 @@ import AppointmentsComponent from './appointments/appointments.component';
 import PharmacyComponent from './pharmacy/pharmacy.component';
 import Consultation from './service-queues/consultation/consultation.component';
 import Dashboard from './dashboard/dashboard.component';
-import AccountingComponent from './accounting/accounting.component';
 import DailyBookings from './bookings/daily/daily-bookings.component';
-import MchTriage from './mch/queues/triage/mch-triage';
-import MchConsultation from './mch/queues/consultation/mch-consultation';
 import Mortuary from './mortuary/mortuary.component';
 import ServiceQueueAdminDashboard from './service-queues/admin/service-queue-admin-dashboard.component';
 import AdmissionsDashboard from './admissions/admissions-dashboard.component';
@@ -38,8 +35,6 @@ const Root: React.FC = () => {
           <Route path="pharmacy" element={<PharmacyComponent />} />
           <Route path="appointments" element={<AppointmentsComponent />} />
           <Route path="bookings/daily" element={<DailyBookings />} />
-          <Route path="mch/triage" element={<MchTriage />} />
-          <Route path="mch/consultation" element={<MchConsultation />} />
           <Route path="mortuary" element={<Mortuary />} />
           <Route path="service-queue-admin" element={<ServiceQueueAdminDashboard />} />
           <Route path="admissions-dashboard" element={<AdmissionsDashboard />} />
