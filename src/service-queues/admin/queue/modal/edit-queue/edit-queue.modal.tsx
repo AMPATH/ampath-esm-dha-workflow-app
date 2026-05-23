@@ -136,6 +136,10 @@ const EditQueueModal: React.FC<EditQueueModalProps> = ({ open, queue, onModalClo
                       value={QUEUE_SERVICE_UUIDS.MCH_CLINICAL_CONSULTATION_SERVICE_UUID}
                       text="Maternal Child Health Consultation Service"
                     />
+                     <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.MATERNITY_TRIAGE_SERVICE_UUID}
+                      text="Maternity Triage"
+                    />
                   </Select>
                 </div>
               </div>
