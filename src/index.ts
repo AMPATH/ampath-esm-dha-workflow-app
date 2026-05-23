@@ -1,9 +1,3 @@
-/**
- * This is the entrypoint file of the application. It communicates the
- * important features of this microfrontend to the app shell. It
- * connects the app shell to the React application(s) that make up this
- * microfrontend.
- */
 import { getAsyncLifecycle, defineConfigSchema, getSyncLifecycle } from '@openmrs/esm-framework';
 import { configSchema } from './config-schema';
 import { registryDashboardMeta } from './dashboard-meta/registry-dashboard.meta';
@@ -16,7 +10,6 @@ import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboa
 import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
 import { accountingDashboardMeta } from './dashboard-meta/accounting-dashboard.meta';
 import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta';
-import { mchQueueDashboardMeta } from './dashboard-meta/mch-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
 import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
@@ -114,9 +107,9 @@ export const bookingsDashboardLink = getSyncLifecycle(createDashboardLink(bookin
 
 export const bookings = getAsyncLifecycle(() => import('./bookings/bookings.component'), options);
 
-export const mnchQueueDashboardLink = getSyncLifecycle(createDashboardLink(mchQueueDashboardMeta), options);
+export const mnchQueueDashboardLink = getAsyncLifecycle(() => import('./side-nav-menu/mnch-nav-links'), options);
 
-export const mnchQueueDashboard = getAsyncLifecycle(() => import('./mch/mch-queues.component'), options);
+export const MNCHRoot = getAsyncLifecycle(() => import('./mnch/mnch-root'), options);
 
 export const serviceQueueAdmin = getAsyncLifecycle(
   () => import('./service-queues/admin/service-queue-admin-dashboard.component'),

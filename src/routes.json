@@ -107,7 +107,7 @@
       "offline": true
     },
     {
-      "component": "mnchQueueDashboard",
+      "component": "MNCHRoot",
       "name": "mnch",
       "slot": "mnch-dashboard-slot",
       "privileges": ["O3 View MNCH Dashboard"]

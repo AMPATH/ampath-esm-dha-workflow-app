@@ -1,6 +1,6 @@
 export const mchQueueDashboardMeta = {
   path: 'mnch',
   slot: 'mnch-queue-dashboard-slot',
-  title: 'MNCH',
+  title: 'MCH',
   basePath: `${window.spaBase}/home`,
 };
