@@ -44,10 +44,12 @@ import {
   checkClaimStatus,
   raiseSHAClaim,
   UpdateBillItemStatus,
+  finalizeBill,
 } from '../api/billing.api';
 import EligibilityTags from '../../registry/eligibility/eliigibility-tags/eligibility-tags';
 
 type LineItemStatus = 'PENDING' | 'PAID' | 'CLAIMED' | 'WAIVED';
+
 
 type LineItem = {
   id: string;
@@ -88,6 +90,7 @@ const headers = [
 ];
 
 const INSURANCE_MODES = ['PHC', 'SHIF', 'ECCIF', 'SHA'];
+const CASH_MODES = ['CASH', 'MPESA'];
 
 const formatBillDate = (dateString?: string) => {
   if (!dateString) return '';
@@ -244,10 +247,17 @@ const BillDetails: React.FC = () => {
 
   // All Cash items fully paid
   const allCashSettled = items
-    .filter((i) => (i.payerType ?? '').toUpperCase() === 'CASH')
-    .every((i) => (i.status ?? '').toUpperCase() === 'PAID');
+  .filter((i) =>
+    CASH_MODES.includes((i.payerType ?? '').toUpperCase())
+  )
+  .every((i) => (i.status ?? '').toUpperCase() === 'PAID');
 
-  const selectedCashItems = items.filter((i) => i.selected && i.payerType === 'CASH' && i.status === 'PENDING');
+  const selectedCashItems = items.filter(
+    (i) =>
+      i.selected &&
+      CASH_MODES.includes((i.payerType ?? '').toUpperCase()) &&
+      i.status === 'PENDING'
+  );
 
   // const totalBalance = items.reduce((acc, i) => acc + getBalance(i), 0);
   const totalPaid = items.reduce((acc, i) => {
@@ -256,7 +266,7 @@ const BillDetails: React.FC = () => {
     const qty = Number(i.quantity ?? 0);
     const price = Number(i.price ?? 0);
 
-    if (payer === 'CASH' && status === 'PAID') {
+    if (CASH_MODES.includes(payer) && status === 'PAID') {
       return acc + qty * price;
     }
 
@@ -368,17 +378,44 @@ const BillDetails: React.FC = () => {
       const paymentModesResponse = await fetchPaymentModes();
 
       // Find the UUID for Cash
-      const cashMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'cash');
-      if (!cashMode) {
+
+      // const cashMode = paymentModesResponse.results.find((mode) => mode.name.toLowerCase() === 'cash');
+      // if (!cashMode) {
+      //   setCashLoading(false);
+      //   showAlert('error', 'Cash Payment', 'Cash payment mode not found');
+      //   return;
+      // }
+      // const cashUuid = cashMode.uuid;
+
+      const selectedPaymentType = selectedCashItems[0]?.payerType?.toUpperCase();
+
+      const paymentMode = paymentModesResponse.results.find(
+        (mode) =>
+          (mode.name ?? '').toUpperCase() === selectedPaymentType,
+      );
+
+      if (!paymentMode) {
         setCashLoading(false);
-        showAlert('error', 'Cash Payment', 'Cash payment mode not found');
+
+        showAlert(
+          'error',
+          selectedPaymentType || 'Payment',
+          `${selectedPaymentType || 'Selected'} payment mode not found`,
+        );
+
         return;
       }
-      const cashUuid = cashMode.uuid;
+
+      const paymentUuid = paymentMode.uuid;
+
+      const selectedPaymentName =
+        selectedCashItems.length > 0
+          ? selectedCashItems[0]?.payerType || 'Payment'
+          : 'Payment';
 
       // 2️⃣ Prepare payload for line item payments
       const payload = {
-        instanceType: cashUuid,
+        instanceType: paymentUuid,
         amount: selectedCashItems.reduce((acc, i) => acc + getBalance(i), 0),
         amountTendered: selectedCashItems.reduce((acc, i) => acc + getBalance(i), 0),
       };
@@ -393,7 +430,7 @@ const BillDetails: React.FC = () => {
 
       const statusPayload = {
         billUuid: billId,
-        cashModeUuid: cashUuid,
+        cashModeUuid: paymentUuid,
         billItemsUuid: selectedCashItems.map((item) => item.id),
       };
 
@@ -436,6 +473,11 @@ const BillDetails: React.FC = () => {
       showAlert('error', 'Cash Payment', 'Payment failed. Please try again.');
     }
   };
+
+  const paymentName =
+  selectedCashItems.length > 0
+    ? selectedCashItems[0].payerType
+    : 'Payment';
 
   const handleCheckSHAClaim = async () => {
     if (!billId) return showSnackbar({ kind: 'error', title: 'SHA Claim Status', subtitle: 'Bill ID is required' });
@@ -640,11 +682,36 @@ const BillDetails: React.FC = () => {
     window.open(receiptUrl, '_blank');
   };
 
-  const finalizeBill = () => {
+  const finalizePatientBill = () => {
     const confirmed = window.confirm('Finalize bill? This action cannot be undone.');
     if (confirmed) {
-      alert('Bill finalized! (This is a placeholder action)');
-      // handlePrintReceipt();
+      setLoading(true);
+      finalizeBill(billId)
+        .then(() => {
+          showAlert('success', 'Finalize Bill', 'Bill finalized successfully');
+          // Refresh bill details
+          return fetchBillById(billId);
+        })
+        .then((refreshedBill) => {
+          setBill(refreshedBill);
+          const mappedItems: LineItem[] =
+            refreshedBill?.lineItems?.map((li: any) => ({
+              id: li.uuid,
+              service: li.billableService || 'Service',
+              payerType: (li.priceName && li.priceName.toUpperCase()) || 'CASH',
+              supportsSha: li.supportsSha || false,
+              waiverAllowed: li.waiverAllowed || false,
+              quantity: li.quantity || 1,
+              price: li.price || 0,
+              status: (li.paymentStatus?.toUpperCase() as LineItemStatus) || 'PENDING',
+            })) || [];
+          setItems(mappedItems);
+        })
+        .catch((error) => {
+          console.error('Failed to finalize bill', error);
+          showAlert('error', 'Finalize Bill', 'Failed to finalize bill. Please try again.');
+        })
+        .finally(() => setLoading(false));
     }
   };
 
@@ -744,7 +811,7 @@ const BillDetails: React.FC = () => {
                         lineHeight: 1.5,
                       }}
                     >
-                      Please select cash item(s) to continue. SHA claims (if any) will be available after all cash
+                      Please select cash/M-Pesa item(s) to continue. SHA claims (if any) will be available after all cash
                       payments are completed.
                     </p>
                   </Tile>
@@ -764,7 +831,7 @@ const BillDetails: React.FC = () => {
                   <Stack orientation="horizontal" gap={2}>
                     {selectedCashItems.length > 0 && (
                       <Button disabled={loading} renderIcon={Money} size="sm" onClick={() => setModalType('CASH')}>
-                        Pay Selected Cash Items
+                        Pay Selected {paymentName} Items
                       </Button>
                     )}
 
@@ -805,7 +872,7 @@ const BillDetails: React.FC = () => {
                     )}
 
                     {totalBalance === 0 && billState === 'PENDING' && (
-                      <Button size="sm" kind="primary" renderIcon={ResultNew} onClick={finalizeBill}>
+                      <Button size="sm" kind="primary" renderIcon={ResultNew} onClick={finalizePatientBill}>
                         Finalize Bill
                       </Button>
                     )}
@@ -857,7 +924,11 @@ const BillDetails: React.FC = () => {
                                     id={`select-${i.id}`}
                                     labelText=""
                                     checked={shaOnlyBill ? true : !!i.selected}
-                                    disabled={i.status !== 'PENDING' || shaOnlyBill || i.payerType !== 'CASH'}
+                                    disabled={
+                                      i.status !== 'PENDING' ||
+                                      shaOnlyBill ||
+                                      !CASH_MODES.includes((i.payerType ?? '').toUpperCase())
+                                    }
                                     onChange={() => toggleSelect(i.id)}
                                   />
                                 </TableCell>
@@ -1051,7 +1122,7 @@ const BillDetails: React.FC = () => {
       {/* Cash Payment */}
       <Modal
         open={modalType === 'CASH'}
-        modalHeading="Cash Payment"
+        modalHeading={`Confirm Payment for ${paymentName} Items`}
         primaryButtonText={cashLoading ? 'Processing...' : 'Submit'}
         secondaryButtonText="Cancel"
         primaryButtonDisabled={cashLoading}
