@@ -33,7 +33,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { cashPoints } = useCashPoint();
     const cashPointUuid = cashPoints?.[0]?.uuid ?? '';
     const conceptUuid = order?.concept?.uuid;
-    const { nonSHAPaymentModes } = useConfig<ConfigObject>();
+    const { nonSHAPaymentModes, consultationBillableServiceNames } = useConfig<ConfigObject>();
     const [searchTerm, setSearchTerm] = useState('');
     const debouncedSearchTerm = useDebounce(searchTerm.trim());
     const searchInputRef = useRef(null);
@@ -62,7 +62,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         let priceName = "";
         if (currentDayBills && currentDayBills.length) {
             const bill = currentDayBills[0];
-            priceName = bill?.lineItems?.find(i => i?.billableService?.toUpperCase() === "CONSULTATION")?.priceName;
+            priceName = bill?.lineItems?.find(i => consultationBillableServiceNames.includes(i?.billableService?.toUpperCase()))?.priceName;
         }
         return priceName;
     }, [currentDayBills]);
