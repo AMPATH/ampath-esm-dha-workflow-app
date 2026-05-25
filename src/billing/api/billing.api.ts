@@ -86,6 +86,18 @@ export async function fetchPaymentModes() {
   return res.data;
 }
 
+export async function finalizeBill(billUuid: string) {
+  if (!billUuid) {
+    return {
+      success: false,
+      data: null,
+      message: 'Bill UUID is required',
+    };
+  }
+
+  return claimsFetch(`/bills/${billUuid}/status`, 'POST');
+}
+
 export async function processPayment(billId: string, payload: any) {
   return openmrsFetch(`${restBaseUrl}/billing/bill/${billId}/payment`, {
     method: 'POST',
