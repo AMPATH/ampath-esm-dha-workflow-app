@@ -1,3 +1,4 @@
+import { openmrsFetch } from '@openmrs/esm-framework';
 import { getHieBaseUrl } from '../shared/utils/get-base-url';
 import {
   type ClientRegistrySearchRequest,
@@ -10,7 +11,7 @@ import {
 export type ClientRegistrySearchResponse = any[];
 
 export async function postJson<T>(url: string, payload: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await openmrsFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
