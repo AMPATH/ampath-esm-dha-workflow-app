@@ -54,6 +54,7 @@ export type RequestCustomOtpDto = {
   identificationNumber: string | number;
   identificationType: string;
   locationUuid: string;
+  phoneNumber: string;
 };
 
 export interface RequestCustomOtpResponse {

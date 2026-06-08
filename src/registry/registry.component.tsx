@@ -14,7 +14,7 @@ import {
 } from '@carbon/react';
 import React, { useState } from 'react';
 import styles from './registry.component.scss';
-import { type HieClient, IDENTIFIER_TYPES, type IdentifierType, type RequestCustomOtpDto } from './types';
+import { type ClientRegistrySearchRequest, type HieClient, IDENTIFIER_TYPES, type IdentifierType, type RequestCustomOtpDto } from './types';
 import { fetchClientRegistryData } from './registry.resource';
 import { type Patient, showSnackbar, useSession } from '@openmrs/esm-framework';
 import OtpVerificationModal from './modal/otp-verification-modal/otp-verification-modal';
@@ -47,17 +47,12 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const handleSearchPatient = async () => {
     setLoading(true);
     try {
-      const payload = {
-        identificationNumber: identifierValue,
-        identificationType: identifierType,
-        locationUuid,
-      };
+      const searchClientPayload = getSearchClientDto();
 
-      if (!isValidCustomSmsPayload(payload)) return false;
+      if (!isValidSeatchClientPayload(searchClientPayload)) return false;
 
-      setRequestCustomOtpDto(payload);
 
-      const result = await fetchClientRegistryData(payload);
+      const result = await fetchClientRegistryData(searchClientPayload);
       const patients = Array.isArray(result) ? result : [];
 
       if (patients.length === 0) {
@@ -77,6 +72,39 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     }
   };
 
+  const getSearchClientDto = (): ClientRegistrySearchRequest =>{
+     return {
+        identificationNumber: identifierValue,
+        identificationType: identifierType,
+        locationUuid,
+      };
+  }
+
+   const isValidSeatchClientPayload = (payload: ClientRegistrySearchRequest): boolean => {
+    if (!payload.identificationNumber) {
+      showAlert('error', 'Please enter a valid identification number', '');
+      return false;
+    }
+    if (!payload.identificationType) {
+      showAlert('error', 'Please enter a valid identification type', '');
+      return false;
+    }
+    if (!payload.locationUuid) {
+      showAlert('error', 'No default location selected', '');
+      return false;
+    }
+    return true;
+  };
+
+  const generateCustomSmsPayload = (): RequestCustomOtpDto =>{
+    return {
+        identificationNumber: identifierValue,
+        identificationType: identifierType,
+        locationUuid,
+        phoneNumber: principal?.phone ?? ''
+      };
+  }
+
   const isValidCustomSmsPayload = (payload: RequestCustomOtpDto): boolean => {
     if (!payload.identificationNumber) {
       showAlert('error', 'Please enter a valid identification number', '');
@@ -88,6 +116,10 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     }
     if (!payload.locationUuid) {
       showAlert('error', 'No default location selected', '');
+      return false;
+    }
+    if(!payload.phoneNumber){
+      showAlert('error', 'No phone number selected', '');
       return false;
     }
     return true;
@@ -103,7 +135,12 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     setSelectedPatient(sp);
   };
   const handleOtpVerification = () => {
-    setDisplayOtpModal(true);
+    const smsPayload = generateCustomSmsPayload();
+    if(isValidCustomSmsPayload(smsPayload )) {
+       setRequestCustomOtpDto(smsPayload);
+       setDisplayOtpModal(true);
+    }
+    
   };
   const handleModelClose = () => {
     setDisplayOtpModal(false);

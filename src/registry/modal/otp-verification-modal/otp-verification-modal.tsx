@@ -37,6 +37,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   const [sessionId, setSessionId] = useState<string>('');
   const [overrideOtp, setOverideOtp] = useState<OtpOptions>(OtpOptions.NoOverride);
   const [alternativeIdNo, setAlternativeIdNo] = useState<string>();
+  const [alternativePhoneNo, setAlternativePhoneNo] = useState<string>();
 
   const handleSendOtp = async () => {
     if (!requestCustomOtpDto.identificationNumber && !alternativeIdNo) {
@@ -58,11 +59,12 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
     }
   };
   const getOtpPayload = (): RequestCustomOtpDto => {
-    let payload: RequestCustomOtpDto = null;
+    let payload: RequestCustomOtpDto;
     if (overrideOtp === OtpOptions.Override) {
       payload = {
         ...requestCustomOtpDto,
-        identificationNumber: alternativeIdNo,
+        identificationNumber: alternativeIdNo ?? '',
+        phoneNumber: alternativePhoneNo ?? ''
       };
     } else {
       payload = requestCustomOtpDto;
@@ -159,6 +161,9 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   const handleAlternativeIdNo = (alternativeNo: string) => {
     setAlternativeIdNo(alternativeNo);
   };
+  const handleAlternativePhoneNo = (alternativePhoneNo: string) => {
+    setAlternativePhoneNo(alternativePhoneNo);
+  };
   return (
     <>
       <Modal
@@ -204,10 +209,19 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                         <div className={styles.formControl}>
                           <TextInput
                             id="override-number"
-                            labelText="Use alternative ID number and OTP will be sent to their phone number"
+                            labelText="Alternative ID number"
                             onChange={(e) => handleAlternativeIdNo(e.target.value)}
                             required={true}
                             placeholder="Enter National ID"
+                          />
+                        </div>
+                         <div className={styles.formControl}>
+                          <TextInput
+                            id="override-phone"
+                            labelText="Alternative Phone number"
+                            onChange={(e) => handleAlternativePhoneNo(e.target.value)}
+                            required={true}
+                            placeholder="Enter Phone Number"
                           />
                         </div>
                       </>

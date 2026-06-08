@@ -1,3 +1,4 @@
+import { openmrsFetch } from '@openmrs/esm-framework';
 import { type HieClientEligibility, type EligibilityFilterDto } from '../../registry/types';
 import { getHieBaseUrl } from '../utils/get-base-url';
 
@@ -6,7 +7,7 @@ export async function getClientEligibityStatus(
 ): Promise<HieClientEligibility> {
   const hieBaseUrl = await getHieBaseUrl();
   const url = `${hieBaseUrl}/eligibility`;
-  const response = await fetch(url, {
+  const response = await openmrsFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
