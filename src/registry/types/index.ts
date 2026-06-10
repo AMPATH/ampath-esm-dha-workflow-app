@@ -1,13 +1,14 @@
 import { type Location, type Patient } from '@openmrs/esm-framework';
 
-export type IdentifierType = 'National ID' | 'Alien ID' | 'Passport' | 'Mandate Number' | 'Refugee ID';
+export type IdentifierType = 'National ID' | 'Alien ID' | 'Passport' | 'Mandate Number' | 'Refugee ID' | 'Birth Certificate';
 
 export const IDENTIFIER_TYPES: IdentifierType[] = [
   'National ID',
+  'Birth Certificate',
   'Alien ID',
   'Passport',
   'Mandate Number',
-  'Refugee ID',
+  'Refugee ID'
 ];
 
 export enum OtpStatus {
