@@ -6,7 +6,6 @@ export const IDENTIFIER_TYPES: IdentifierType[] = [
   'National ID',
   'Birth Certificate',
   'Alien ID',
-  'Passport',
   'Mandate Number',
   'Refugee ID'
 ];

@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { OtpOptions, OtpStatus, type RequestCustomOtpDto } from '../../types';
+import { HieIdentificationType, OtpOptions, OtpStatus, type RequestCustomOtpDto } from '../../types';
 import {
-  Button,
   FormLabel,
-  InlineLoading,
   Modal,
   ModalBody,
   RadioButton,
@@ -35,7 +33,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   const [otpStatus, setOtpStatus] = useState<string>(OtpStatus.Draft);
   const [loading, setLoading] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>('');
-  const [overrideOtp, setOverideOtp] = useState<OtpOptions>(OtpOptions.NoOverride);
+  const [overrideOtp, setOverideOtp] = useState<OtpOptions>(requestCustomOtpDto.phoneNumber ? OtpOptions.NoOverride : OtpOptions.Override);
   const [alternativeIdNo, setAlternativeIdNo] = useState<string>();
   const [alternativePhoneNo, setAlternativePhoneNo] = useState<string>();
 
@@ -64,6 +62,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
       payload = {
         ...requestCustomOtpDto,
         identificationNumber: alternativeIdNo ?? '',
+        identificationType: HieIdentificationType.NationalID,
         phoneNumber: alternativePhoneNo ?? ''
       };
     } else {
@@ -185,16 +184,19 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                 {otpStatus === OtpStatus.Draft ? (
                   <>
                     <RadioButtonGroup
-                      defaultSelected={OtpOptions.NoOverride}
+                      defaultSelected={requestCustomOtpDto.phoneNumber ? OtpOptions.NoOverride : OtpOptions.Override}
                       legendText="OTP Override"
                       onChange={(v) => handleOtpOverrideSelection(v as OtpOptions)}
                       name="override-button-default-group"
                     >
-                      <RadioButton
+                      {
+                        requestCustomOtpDto?.phoneNumber &&  <RadioButton
                         id="no-override"
                         labelText={`Send Code to Phone ${maskAllButFirstAndLastThree(phoneNumber)}?`}
                         value={OtpOptions.NoOverride}
                       />
+                      }
+                     
                       <RadioButton
                         id="override"
                         labelText="Send OTP to alternative contact"

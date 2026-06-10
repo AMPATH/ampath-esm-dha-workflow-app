@@ -118,10 +118,12 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       showAlert('error', 'No default location selected', '');
       return false;
     }
+    /*
     if(!payload.phoneNumber){
       showAlert('error', 'No phone number selected', '');
       return false;
     }
+      */
     return true;
   };
   const showAlert = (alertType: 'error' | 'success', title: string, subtitle: string) => {
