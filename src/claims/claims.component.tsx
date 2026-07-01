@@ -17,6 +17,7 @@ import {
     type ClientSubBenefit,
     VisitType,
     type ClaimResult,
+    type ClaimIntervention,
 } from './index';
 import { addIntervention } from './interventions.resource';
 import { showModal, showSnackbar, useSession, useVisit, Visit } from '@openmrs/esm-framework';
@@ -32,7 +33,7 @@ interface ClaimsComponentProps {
     otp?: string;
     onSelectChange: (key, value) => void;
     onClaimsVisitStart?: (payload: ClaimResult, selectedIntervention: Intervention) => void;
-    onAddIntervention?: (intervention: Intervention) => void;
+    onAddIntervention?: (intervention: ClaimIntervention) => void;
     onInterventionChange?: (intervention: Intervention | undefined) => void;
 }
 
@@ -113,7 +114,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
         } catch (err) {
             showSnackbar({
                 title: t('startingVisitError', 'Error starting visit'),
-                subtitle: `Error: ${err}`,
+                subtitle: `${err}`,
                 kind: 'error',
             });
         }
@@ -143,7 +144,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
         } catch (err) {
             showSnackbar({
                 title: t('addInterventionError', 'Error adding intervention'),
-                subtitle: `Error: ${err}`,
+                subtitle: `${err}`,
                 kind: 'error',
             });
         }

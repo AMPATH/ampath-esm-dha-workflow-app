@@ -13,7 +13,7 @@ import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatie
 import { generateUpdateBillLineItems } from "../../utils";
 import { IdentifierTypesUuids } from "../../../resources/identifier-types";
 import { type ConfigObject } from "../../../config-schema";
-import { type Intervention } from "../../../claims";
+import { type ClaimIntervention } from "../../../claims";
 import { getConsentToken, getServiceType } from "../../../shared/services/claims.resource";
 
 interface CreateOrderBillFormProps {
@@ -40,7 +40,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { nonSHAPaymentModes, consultationBillableServiceNames } = useConfig<ConfigObject>();
     const [searchTerm, setSearchTerm] = useState('');
     const [triggerAddIntervention, setTriggerAddIntervention] = useState<boolean>(false);
-    const [interventionResult, setInterventionResult] = useState<Intervention>();
+    const [interventionResult, setInterventionResult] = useState<ClaimIntervention>();
     const [pendingSubmitData, setPendingSubmitData] = useState<CreateOrderBillFormSchema | null>(null);
     const debouncedSearchTerm = useDebounce(searchTerm.trim());
     const searchInputRef = useRef(null);
@@ -124,7 +124,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         return null;
     }, [billableItem, initialPriceName]);
 
-    const onAddIntervention = (result: Intervention) => {
+    const onAddIntervention = (result: ClaimIntervention) => {
         setInterventionResult(result);
     }
 
@@ -185,21 +185,27 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             };
 
             if (interventionResult) {
-                const electivePreauth = interventionResult.requiresOncologyPreauth || interventionResult.requiresOpticalPreauth || interventionResult.requiresRadiologyPreauth
-                    || interventionResult.requiresRenalPreauth || interventionResult.requiresSurgicalPreauth;
-                const requiresPreauth = interventionResult.needsPreauth;
-                const requiredPreauthDocumentTypes = interventionResult.requiredPreauthDocumentTypes;
-                const applicableDocumentTypes = interventionResult.applicableDocumentTypes;
+                const electivePreauth = interventionResult.requires_oncology_preauth || interventionResult.requires_optical_preauth || interventionResult.requires_radiology_preauth
+                    || interventionResult.requires_renal_preauth || interventionResult.requires_surgical_preauth;
+                const requiresPreauth = interventionResult.needs_preauth;
+                const requiredPreauthDocumentTypes = interventionResult.required_preauth_document_types;
+                const applicableDocumentTypes = interventionResult.applicable_document_types;
 
-                const intervention = {
-                    intervention_code: interventionResult.code,
+                let intervention = {
+                    intervention_code: interventionResult.intervention_code,
                     consent_token: getConsentToken(activeVisit),
                     service_type: getServiceType(interventionResult, "OUTPATIENT"),
                     requires_preauth: requiresPreauth,
                     normal_preauth: requiresPreauth && !electivePreauth,
-                    elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth,
-                    applicable_document_types: applicableDocumentTypes && applicableDocumentTypes.length ? applicableDocumentTypes.join(",") : false,
-                    required_preauth_document_types: requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length ? requiredPreauthDocumentTypes.join(",") : false
+                    elective_preauth: electivePreauth
+                }
+
+                if (applicableDocumentTypes && applicableDocumentTypes.length) {
+                    intervention["applicable_document_types"] = applicableDocumentTypes.join(",");
+                }
+
+                if (requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length) {
+                    intervention["required_preauth_document_types"] = requiredPreauthDocumentTypes.join(",");
                 }
 
                 hiePayload = {

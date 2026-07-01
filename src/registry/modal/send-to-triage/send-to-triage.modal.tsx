@@ -50,7 +50,7 @@ import { type Bill } from '../../../billing/types';
 import { fetchPatientBills } from '../../../billing/invoice/bill.resource';
 import { type QueueEntry } from '../../../types/types';
 import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/service-queues.resource';
-import { createOrderEncounter } from '../../../shared/services/encounters.resource';
+import { createOrderEncounter, getOrder } from '../../../shared/services/encounters.resource';
 import { type ConfigObject } from '../../../config-schema';
 import { PatientTypes } from '../../../shared/constants/patient-type';
 import ClaimsConsentModal from '../otp-verification-modal/claims-consent';
@@ -115,7 +115,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [whitelistRequest, setWhitelistRequest] = useState(null);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otp, setOtp] = useState(null);
-  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | undefined>();
   const {
     registrationBillableServices,
     cashConsulationConceptUuid,
@@ -206,6 +205,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
   function onClaimsVisitStart(payload: ClaimResult, selectedIntervention: Intervention) {
     setClaimResult(payload);
+    setIntervention(selectedIntervention);
+  }
+
+  function onInterventionChange(selectedIntervention: Intervention) {
     setIntervention(selectedIntervention);
   }
 
@@ -302,9 +305,8 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
             }
             // create consulation order
             const encounter = await createOrder(selectedPatient.uuid, newVisit.uuid);
-
             // Add to bill order
-            const billOrderDto = generateBillOrderDto(encounter, createBillResp);
+            const billOrderDto = await generateBillOrderDto(encounter, createBillResp);
             await createOrderBillInHie(billOrderDto);
 
           } else {
@@ -728,13 +730,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   }
   function getOrderConcept(paymentMode: PaymentMode) {
     const paymentModeName = paymentMode.name.toLowerCase().trim();
-    if (paymentModeName.includes('cash')) {
+    if (paymentModeName.includes('cash') || paymentModeName.includes('mpesa')) {
       return cashConsulationConceptUuid;
-    } else if (paymentModeName.includes('sha')) {
-      return shaConsulationConceptUuid;
-    } else {
-      return '';
     }
+    return shaConsulationConceptUuid;
   }
   async function createOrder(patientUuid: string, visitUuid: string) {
     const createOrderPayload = generateOrderEncounterPayload(patientUuid, visitUuid);
@@ -753,12 +752,13 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     }
   }
 
-  function generateBillOrderDto(encounter: Encounter, createdBillResp: any) {
+  async function generateBillOrderDto(encounter: Encounter, createdBillResp: any) {
     try {
       const orders = encounter?.orders;
 
       if (orders && orders.length && createdBillResp) {
-        let order = orders[0];
+        let order1 = orders[0];
+        let order = await getOrder(order1?.uuid);
         const orderNumber = order?.orderNumber;
         const billUuid = createdBillResp?.uuid;
         const lineItemUuid = (() => {
@@ -784,15 +784,21 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
           const requiredPreauthDocumentTypes = interventionResult.requiredPreauthDocumentTypes;
           const applicableDocumentTypes = interventionResult.applicableDocumentTypes;
 
-          const interventionPayload = {
+          let interventionPayload = {
             intervention_code: interventionResult.code,
             consent_token: claimResult.authorization_code,
             service_type: getServiceType(interventionResult, visitType),
             requires_preauth: requiresPreauth,
             normal_preauth: requiresPreauth && !electivePreauth,
-            elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth,
-            applicable_document_types: applicableDocumentTypes && applicableDocumentTypes.length ? applicableDocumentTypes.join(",") : false,
-            required_preauth_document_types: requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length ? requiredPreauthDocumentTypes.join(",") : false
+            elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth
+          }
+
+          if (applicableDocumentTypes && applicableDocumentTypes.length) {
+            interventionPayload["applicable_document_types"] = applicableDocumentTypes.join(",");
+          }
+
+          if (requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length) {
+            interventionPayload["required_preauth_document_types"] = requiredPreauthDocumentTypes.join(",");
           }
 
           payload = {
@@ -816,7 +822,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     try {
       setSubmitting(true);
 
-      const response = await sendClaimsOTP(patient!.id, locationUuid!, selectedIntervention?.code);
+      const response = await sendClaimsOTP(patient!.id, locationUuid!, intervention?.code);
 
       if (response?.message?.includes('OTP')) {
         setOtpSent(true);
@@ -956,7 +962,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                       {hasSelectedPaymentMode('SHIF') ? (
                         <>
                           {/* <ClaimsComponent clientRegistryId={patientIdentifiers.crIdentifierId} onSelectChange={() => { }} /> */}
-                          <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: patientIdentifiers?.crIdentifierId, patientUuid: selectedPatient.uuid, triggerCreateVisit, otp, visitType, onSelectChange: () => { }, onClaimsVisitStart }} />
+                          <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: patientIdentifiers?.crIdentifierId, patientUuid: selectedPatient.uuid, triggerCreateVisit, otp, visitType, onSelectChange: () => { }, onClaimsVisitStart, onInterventionChange }} />
                         </>) : (<></>)
                       }
                       {hasSelectedPaymentMode('insurance') ? (

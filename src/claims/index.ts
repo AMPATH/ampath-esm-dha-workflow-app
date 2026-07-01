@@ -90,7 +90,7 @@ export type PreauthType = "NORMAL" | "SURGICAL" | "ONCOLOGY" | "RENAL" | "IMAGIN
 export type VisitType = "INPATIENT" | "OUTPATIENT";
 
 // Claim visit
-interface ClaimIntervention {
+export interface ClaimIntervention {
   id: string;
   intervention_code: string;
   intervention_name: string;
