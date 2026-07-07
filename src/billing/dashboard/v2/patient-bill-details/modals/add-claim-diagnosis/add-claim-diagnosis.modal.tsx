@@ -51,7 +51,10 @@ const AddClaimDiagnosisModal:React.FC<addClaimDiagnosisModal> = ({open,onClose,o
       consentToken: consentToken,
       interventionCode: interventionCode,
       locationUuid: locationUuid,
-      icdCode: amrsVisitDiagnosis.icd11_code
+      icdCode: amrsVisitDiagnosis.icd11_code,
+      practitionerIdentificationNumber: amrsVisitDiagnosis.practioner_nat_id,
+      practitionerIdentificationType: amrsVisitDiagnosis.practitioner_identifier_type,
+      practitionerRegulationBody: amrsVisitDiagnosis.practitioner_body
     };
   }
   function holderFunction(){
