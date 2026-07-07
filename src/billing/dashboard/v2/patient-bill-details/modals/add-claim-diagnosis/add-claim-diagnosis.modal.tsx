@@ -33,7 +33,8 @@ const AddClaimDiagnosisModal:React.FC<addClaimDiagnosisModal> = ({open,onClose,o
              title: 'Sucess Adding Claim Diagnosis',
              kind: 'success',
              subtitle: 'Claim Item added successfully'
-           })
+           });
+           onSuccess();
         }
     }catch(error){
        showSnackbar({
