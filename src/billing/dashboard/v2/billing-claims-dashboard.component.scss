@@ -1,18 +1,264 @@
-.bcLayout{
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    padding: 2% 2%;
-    row-gap: 10px;
-    .bcContent{
-        display: flex;
-        flex-direction: column;
-        width: 100%;
-        row-gap: 10px;
-        .bcContentFilters{
-            display: flex;
-            flex-direction: row;
-            justify-content: flex-end;
-        }
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: calc(100vh - 3rem);
+  padding: layout.$spacing-05;
+  background-color: $ui-01;
+  row-gap: layout.$spacing-05;
+}
+
+.breadcrumb {
+  margin: 0;
+}
+
+/* ---------- Page header ---------- */
+.pageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: layout.$spacing-04 layout.$spacing-05;
+}
+
+.pageHeadText {
+  min-width: 15rem;
+}
+
+.title {
+  @include type.type-style('heading-04');
+  color: $ui-05;
+  margin: 0 0 layout.$spacing-02;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  @include type.type-style('body-01');
+  color: $text-02;
+  margin: 0;
+  max-width: 60ch;
+}
+
+.facilityChip {
+  display: inline-flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+  padding: layout.$spacing-02 layout.$spacing-04;
+  background-color: $ui-02;
+  border: 1px solid $ui-03;
+  border-radius: 999px;
+  @include type.type-style('label-01');
+  color: $text-02;
+  white-space: nowrap;
+
+  svg {
+    color: colors.$blue-60;
+  }
+}
+
+/* ---------- KPI cards ---------- */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: layout.$spacing-04;
+}
+
+.kpiCard {
+  --tone: #{colors.$gray-70};
+  --tone-bg: #{$ui-01};
+
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-04 layout.$spacing-05;
+  text-align: left;
+  cursor: pointer;
+  background-color: $ui-02;
+  border: 1px solid $ui-03;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition:
+    box-shadow 100ms ease,
+    border-color 100ms ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: $ui-04;
+
+    .kpiArrow {
+      opacity: 1;
+      transform: translate(2px, -2px);
     }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--tone);
+    outline-offset: 2px;
+  }
+}
+
+.kpiIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 8px;
+  background-color: var(--tone-bg);
+  color: var(--tone);
+}
+
+.kpiBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.kpiTop {
+  display: flex;
+  align-items: baseline;
+  gap: layout.$spacing-03;
+}
+
+.kpiValue {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1;
+  color: $ui-05;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpiLabel {
+  @include type.type-style('heading-compact-01');
+  color: $ui-05;
+}
+
+.kpiCaption {
+  @include type.type-style('label-01');
+  color: $text-03;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpiArrow {
+  flex: 0 0 auto;
+  color: $text-03;
+  opacity: 0;
+  transition:
+    opacity 100ms ease,
+    transform 100ms ease;
+}
+
+.kpiZero {
+  .kpiValue {
+    color: $text-03;
+  }
+}
+
+/* tones */
+.toneAmber {
+  --tone: #8a6d00;
+  --tone-bg: #{colors.$yellow-10};
+}
+.toneBlue {
+  --tone: #{colors.$blue-60};
+  --tone-bg: #{colors.$blue-10};
+}
+.toneRed {
+  --tone: #{colors.$red-60};
+  --tone-bg: #{colors.$red-10};
+}
+.toneTeal {
+  --tone: #{colors.$teal-60};
+  --tone-bg: #{colors.$teal-10};
+}
+
+/* ---------- Content card ---------- */
+.card {
+  background-color: $ui-02;
+  border: 1px solid $ui-03;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: layout.$spacing-05 layout.$spacing-06 layout.$spacing-06;
+}
+
+.tabList {
+  margin-bottom: layout.$spacing-02;
+}
+
+.tabPill {
+  display: inline-block;
+  margin-left: layout.$spacing-03;
+  min-width: 1.15rem;
+  padding: 0 layout.$spacing-02;
+  border-radius: 999px;
+  background-color: var(--brand-01);
+  color: colors.$white;
+  font-size: 0.68rem;
+  line-height: 1.15rem;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.panel {
+  padding: layout.$spacing-05 0 0;
+}
+
+/* Contextual date filter (Bills, Claim visits) */
+.dateFilter {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: layout.$spacing-05;
+}
+
+.dateFilter :global(.cds--date-picker-input__wrapper),
+.dateFilter :global(.cds--date-picker) {
+  max-width: 14rem;
+}
+
+/* ---------- Uniform tables across every section ---------- */
+.page :global(.cds--data-table) {
+  width: 100%;
+}
+
+.page :global(.cds--data-table thead th) {
+  background-color: $ui-01;
+  border-block-start: 1px solid $ui-03;
+  border-block-end: 1px solid $ui-03;
+  block-size: 2.25rem;
+  color: $text-02;
+  letter-spacing: 0.02em;
+}
+
+.page :global(.cds--data-table tbody td) {
+  block-size: 2.5rem;
+  border-block-end: 1px solid $ui-03;
+}
+
+.page :global(.cds--data-table tbody tr:hover td) {
+  background-color: colors.$blue-10;
+}
+
+/* ---------- Tabs use the solution brand primary, not Carbon blue ---------- */
+.page :global(.cds--tabs__nav-item--selected .cds--tabs__nav-link),
+.page :global(.cds--tabs__nav-item--selected:hover .cds--tabs__nav-link),
+.page :global(.cds--tab--selected) {
+  border-block-end-color: var(--brand-03) !important;
+  box-shadow: inset 0 -2px 0 0 var(--brand-03);
+  color: $ui-05;
+}
+
+.page :global(.cds--tabs__nav-link:focus),
+.page :global(.cds--tabs__nav-link:active),
+.page :global(.cds--tab--list button:focus) {
+  outline-color: var(--brand-03);
 }
