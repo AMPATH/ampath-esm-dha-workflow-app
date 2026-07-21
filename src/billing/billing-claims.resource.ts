@@ -26,7 +26,6 @@ import { getHieBaseUrl } from '../claims/utils';
 import { type AmrsMaternityDiagnosis, type AmrsMaternityDiagnosisDto, type AmrsMaternityDiagnosisResponse, type AmrsVisitDiagnosis, type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosisResponse } from './types';
 import { useCallback } from 'react';
 import useSWR, { mutate } from 'swr';
-import { VisitType } from '../claims';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<FacilityBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -213,7 +212,7 @@ export async function closeClaim(closeClaimDto: CloseClaimDto) {
   return data ?? null;
 }
 
-export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: VisitType = "INPATIENT") {
+export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: string = "INPATIENT") {
   const { hieBaseUrl } = await getHieBaseUrl();
   let claimUrl = `${hieBaseUrl}/claim-submission`;
   if(visitType === "INPATIENT") {
