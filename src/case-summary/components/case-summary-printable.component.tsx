@@ -56,7 +56,6 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
           <KeyValue label="Name" value={demographics.name || EMPTY_VALUE} />
           <KeyValue label="DOB" value={formatDateSafe(demographics.birthDate)} />
           <KeyValue label="Gender" value={demographics.gender ?? EMPTY_VALUE} />
-          <KeyValue label="Patient ID" value={demographics.patientId ?? EMPTY_VALUE} />
           <KeyValue label="National ID" value={demographics.nationalId ?? EMPTY_VALUE} />
           <KeyValue label="CR Number" value={demographics.crNumber ?? EMPTY_VALUE} />
         </div>
