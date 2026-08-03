@@ -1,0 +1,193 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.document {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-06;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: layout.$spacing-02;
+  padding-bottom: layout.$spacing-04;
+  border-bottom: 1px solid $ui-03;
+  text-align: center;
+}
+
+.facility {
+  @include type.type-style('label-01');
+  color: $text-02;
+  text-transform: uppercase;
+}
+
+.title {
+  @include type.type-style('heading-compact-02');
+  color: $ui-05;
+  margin: 0;
+}
+
+.visitMeta {
+  @include type.type-style('body-compact-01');
+  color: $text-02;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+}
+
+.sectionTitle {
+  @include type.type-style('heading-compact-01');
+  color: $ui-05;
+  margin: 0;
+  padding-bottom: layout.$spacing-02;
+  border-bottom: 1px solid $ui-03;
+}
+
+.keyValueGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: layout.$spacing-04;
+}
+
+.keyValueItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.keyValueLabel {
+  @include type.type-style('label-01');
+  color: $text-02;
+}
+
+.keyValueValue {
+  @include type.type-style('body-compact-01');
+  color: $ui-05;
+}
+
+.mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.82rem;
+}
+
+.empty {
+  @include type.type-style('body-compact-01');
+  color: $text-02;
+  margin: 0;
+}
+
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+}
+
+.noteEntry {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.noteMeta {
+  @include type.type-style('label-01');
+  color: $text-02;
+}
+
+.testOrders {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-05;
+}
+
+.testOrder {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+  /* Keep an order and its result rows on one page where the printer allows it. */
+  break-inside: avoid;
+}
+
+.testOrderHead {
+  display: flex;
+  align-items: baseline;
+  gap: layout.$spacing-03;
+}
+
+.testOrderName {
+  @include type.type-style('heading-compact-01');
+  color: $ui-05;
+}
+
+.testOrderMeta {
+  @include type.type-style('label-01');
+  color: $text-02;
+}
+
+.abnormalValue {
+  font-weight: 600;
+  margin-right: layout.$spacing-02;
+}
+
+.noteHead {
+  display: flex;
+  align-items: baseline;
+  gap: layout.$spacing-03;
+  padding-bottom: 2px;
+  border-bottom: 1px solid $ui-03;
+}
+
+.noteName {
+  @include type.type-style('heading-compact-01');
+  color: $ui-05;
+}
+
+.noteTime {
+  @include type.type-style('label-01');
+  color: $text-02;
+}
+
+/* Label/value grid: with a dozen fields per encounter, aligned columns read far better
+   than run-on "LABEL: value" lines. Collapses to stacked rows on narrow screens. */
+.noteFields {
+  @include type.type-style('body-compact-01');
+  display: grid;
+  grid-template-columns: minmax(10rem, 20rem) 1fr;
+  gap: 2px layout.$spacing-05;
+  margin: layout.$spacing-03 0 0;
+
+  dt,
+  dd {
+    margin: 0;
+  }
+}
+
+.noteLabel {
+  color: $text-02;
+}
+
+.noteValue {
+  color: $ui-05;
+  white-space: pre-wrap;
+}
+
+.noteValueFull {
+  grid-column: 1 / -1;
+  color: $ui-05;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 42rem) {
+  .noteFields {
+    grid-template-columns: 1fr;
+  }
+
+  .noteLabel {
+    margin-top: layout.$spacing-02;
+  }
+}
