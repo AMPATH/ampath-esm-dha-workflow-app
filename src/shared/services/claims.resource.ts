@@ -31,7 +31,7 @@ export const getServiceType = (
   if (paymentMechanism.trim().toUpperCase() === 'CAPITATION') {
     return 'CAPITATION';
   }
-  if (paymentMechanism.trim().toUpperCase() === 'PER_DIEM') {
+  if (["PER DIEM", "PER_DIEM"].includes(paymentMechanism.trim().toUpperCase())) {
     return 'PER_DIEM';
   }
   if (accessPoint.trim().toUpperCase() === 'IP') {
@@ -39,9 +39,6 @@ export const getServiceType = (
   }
   if (accessPoint.trim().toUpperCase() === 'OP') {
     return 'OUTPATIENT';
-  }
-  if (paymentMechanism.trim().toUpperCase() === 'CASE BASED') {
-    return 'INPATIENT';
   }
   if (accessPoint.trim().toUpperCase() === 'OP AND IP') {
     return visitType;

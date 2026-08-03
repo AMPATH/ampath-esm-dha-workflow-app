@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, ComboBox, Select, SelectItem, Tag, TextInput } from '@carbon/react';
+import { Button, ComboBox, InlineNotification, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import { Close } from '@carbon/react/icons';
 import styles from './send-to-triage.modal.scss';
 import {
@@ -11,6 +11,7 @@ import {
   Encounter,
   usePatient,
   useVisit,
+  OpenmrsResource,
 } from '@openmrs/esm-framework';
 import {
   type HieClient,
@@ -49,10 +50,11 @@ import { type QueueEntry } from '../../../types/types';
 import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/service-queues.resource';
 import { createOrderEncounter, getOrder } from '../../../shared/services/encounters.resource';
 import { type ConfigObject } from '../../../config-schema';
-import { ClientSubBenefit, type ClaimResult, type Intervention, type VisitType } from '../../../claims';
+import { ClientSubBenefit, PreExistingIntervention, type ClaimResult, type Intervention, type VisitType } from '../../../claims';
 import { getServiceType } from '../../../shared/services/claims.resource';
 import PaymentMethodComponent from './payment-method.component';
 import ClaimsConsentExtension from '../otp-verification-modal/extension/claims-consent.extension';
+import { Order } from '@openmrs/esm-patient-common-lib';
 
 interface SendToQueueModalProps {
   patientUuid: string;
@@ -61,6 +63,9 @@ interface SendToQueueModalProps {
   onModalClose?: (modalCloseResp?: { success: boolean }) => void;
   addSHAClaimVisit?: boolean;
   isCash?: boolean;
+  order?: Order;
+  billableItem?: OpenmrsResource | null;
+  quantity?: number;
 }
 
 // Select the field's text on focus so typing replaces the (preselected) value.
@@ -78,6 +83,9 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
   onModalClose,
   addSHAClaimVisit,
   isCash,
+  order,
+  billableItem,
+  quantity = 1,
 }) => {
   const { patient } = usePatient(patientUuid);
   const [selectedPatientType, setSelectedPatientType] = useState<string>();
@@ -100,6 +108,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
   const [otp, setOtp] = useState('');
   const [authGuid, setAuthGuid] = useState('');
   const { activeVisit } = useVisit(patientUuid);
+  const [preExistingInterventions, setPreExistingInterventions] = useState<PreExistingIntervention[]>();
 
   const {
     registrationBillableServices,
@@ -123,6 +132,19 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
       }
     }
   }, [visitTypeUuid, VisitTypeUuids]);
+
+  const showBillableServices = useMemo(() => {
+    if (preExistingInterventions && preExistingInterventions.length) {
+      return false;
+    }
+    if (intervention && visitType) {
+      const serviceType = getServiceType(intervention, visitType);
+      if (serviceType === "PER_DIEM") {
+        return false;
+      }
+    }
+    return true;
+  }, [preExistingInterventions, intervention, visitType]);
 
   const patientIdentifiers = useMemo(() => {
     if (patient) {
@@ -190,10 +212,22 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
 
   // Preselect the first billable service for the payment mode (default index 0).
   useEffect(() => {
-    if (!selectedBillableService && filteredBillableServices?.length) {
-      setSelectedBillableService(filteredBillableServices[0]);
+    if (filteredBillableServices?.length) {
+      if (billableItem) {
+        const preselectedBillableService = filteredBillableServices.find(
+          (sp) => sp.billableService.uuid === billableItem.uuid,
+        );
+        if (preselectedBillableService) {
+          setSelectedBillableService(preselectedBillableService);
+          return;
+        }
+      }
+
+      if (!selectedBillableService) {
+        setSelectedBillableService(filteredBillableServices[0]);
+      }
     }
-  }, [filteredBillableServices, selectedBillableService]);
+  }, [filteredBillableServices, selectedBillableService, billableItem]);
 
   useEffect(() => {
     if (triggerCreateVisit && claimResult) {
@@ -215,7 +249,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     subBenefit: ClientSubBenefit,
     usePreselectedIntervention: boolean,
   ) {
-    if (usePreselectedIntervention) {
+    if (usePreselectedIntervention || !showBillableServices) {
       setBillCreated(true);
       showAlert('success', 'Bill succesfully updated', '');
       onModalClose({ success: true });
@@ -223,6 +257,16 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     setClaimResult(payload);
     setIntervention(selectedIntervention);
     setSelectedSubBenefit(subBenefit);
+  }
+
+  function onError(error: any) {
+    setLoading(false);
+  }
+
+  function hasPreExistingInterventions(preExistingInterventions1: PreExistingIntervention[]) {
+    if (preExistingInterventions1 && preExistingInterventions1.length) {
+      setPreExistingInterventions(preExistingInterventions1);
+    }
   }
 
   function onInterventionChange(selectedIntervention: Intervention) {
@@ -249,7 +293,6 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
   }
 
   const sendToTriage = async () => {
-    setLoading(true);
     try {
       const newVisit: Visit = await createPatientVisit();
       if (newVisit) {
@@ -270,18 +313,26 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
               setBillCreated(true);
               showAlert('success', 'Bill succesfully created', '');
             }
-            // create consulation order
-            const encounter = await createOrder(patientUuid, newVisit.uuid);
-            // Add to bill order
-            const billOrderDto = await generateBillOrderDto(encounter, createBillResp);
-            await createOrderBillInHie(billOrderDto);
+
+            if (order) {
+              const billOrderDto = await generateBillOrderDto(createBillResp);
+              if (billOrderDto) {
+                await createOrderBillInHie(billOrderDto);
+              }
+            } else {
+              const encounter = await createOrder(patientUuid, newVisit.uuid);
+              const billOrderDto = await generateBillOrderDto(createBillResp, encounter);
+              if (billOrderDto) {
+                await createOrderBillInHie(billOrderDto);
+              }
+            }
           } else {
             return false;
           }
         }
 
         if ((PaymentDetail.Paying && (createBillResp || billCreated)) || PaymentDetail.NonPaying) {
-          onModalClose({ success: true });
+          onModalClose?.({ success: true });
         }
       }
     } catch (error) {
@@ -320,11 +371,19 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     servicePrices: ServicePrice[],
   ): PayableBillableService[] {
     const paymentBillableServices: ServicePrice[] = [];
+    const useOrderBillableFilter = !!order && !!billableItem;
+
     servicePrices.forEach((sp) => {
-      if (sp.paymentMode) {
-        if (sp.paymentMode.uuid === paymentModeUuid && registrationBillableServices.includes(sp.billableService.uuid)) {
+      if (sp.paymentMode?.uuid !== paymentModeUuid) {
+        return;
+      }
+
+      if (useOrderBillableFilter) {
+        if (sp.billableService.uuid === billableItem.uuid) {
           paymentBillableServices.push(sp);
         }
+      } else if (registrationBillableServices.includes(sp.billableService.uuid)) {
+        paymentBillableServices.push(sp);
       }
     });
     return paymentBillableServices;
@@ -408,6 +467,18 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
         attributeType: '4962a633-c4f8-474c-857c-5c68c72fbbe3',
         value: claimResult.authorization_code,
       });
+
+      // scheme code
+      attributes.push({
+        attributeType: '79072572-80c0-4a38-9da0-afe207e3ef2d',
+        value: claimResult.scheme_code,
+      });
+
+      // service type
+      attributes.push({
+        attributeType: '97d892fe-38a4-4cfb-bdf7-2a03dff6e7cf',
+        value: claimResult.service_type,
+      });
     }
     return attributes;
   }
@@ -446,7 +517,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
       lineItems: [
         {
           billableService: selectedBillableService.billableService.uuid,
-          quantity: 1,
+          quantity: quantity ?? 1,
           price: selectedBillableService.price,
           priceName: selectedBillableService.name,
           priceUuid: selectedBillableService.uuid,
@@ -537,73 +608,69 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     }
   }
 
-  async function generateBillOrderDto(encounter: Encounter, createdBillResp: any) {
+  async function generateBillOrderDto(createdBillResp: any, encounter?: Encounter) {
     try {
-      const orders = encounter?.orders;
+      let orderNumber = order?.orderNumber ?? '';
 
-      if (orders && orders.length && createdBillResp) {
-        let order1 = orders[0];
-        let order = await getOrder(order1?.uuid);
-        const orderNumber = order?.orderNumber;
-        const billUuid = createdBillResp?.uuid;
-        const lineItemUuid = (() => {
-          if (createdBillResp?.lineItems && createdBillResp?.lineItems?.length) {
-            const lineItem = createdBillResp?.lineItems?.[0];
+      if (!orderNumber && encounter?.orders?.length) {
+        const fetchedOrder = await getOrder(encounter.orders[0]?.uuid);
+        orderNumber = fetchedOrder?.orderNumber ?? '';
+      }
 
-            return lineItem?.uuid as string;
-          }
-          return '';
-        })();
+      const billUuid = createdBillResp?.uuid;
+      const lineItemUuid = createdBillResp?.lineItems?.[0]?.uuid ?? '';
 
-        let payload = {
-          bill_uuid: billUuid,
-          order_no: orderNumber,
-          line_item_uuid: lineItemUuid,
+      let payload = {
+        bill_uuid: billUuid,
+        order_no: orderNumber,
+        line_item_uuid: lineItemUuid,
+      };
+
+      if (claimResult && intervention) {
+        const interventionResult = intervention;
+        const electivePreauth =
+          interventionResult.requiresOncologyPreauth ||
+          interventionResult.requiresOpticalPreauth ||
+          interventionResult.requiresRadiologyPreauth ||
+          interventionResult.requiresRenalPreauth ||
+          interventionResult.requiresSurgicalPreauth;
+        const requiresPreauth = interventionResult.needsPreauth;
+        const requiredPreauthDocumentTypes = interventionResult.requiredPreauthDocumentTypes;
+        const applicableDocumentTypes = interventionResult.applicableDocumentTypes;
+
+        let interventionPayload = {
+          sub_benefit_code: selectedSubBenefit ? selectedSubBenefit.code : '',
+          intervention_code: interventionResult.code,
+          consent_token: claimResult.authorization_code,
+          service_type: getServiceType(interventionResult, visitType),
+          requires_preauth: requiresPreauth,
+          normal_preauth: requiresPreauth && !electivePreauth,
+          elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth,
         };
 
-        if (claimResult && intervention) {
-          const interventionResult = intervention;
-          const electivePreauth =
-            interventionResult.requiresOncologyPreauth ||
-            interventionResult.requiresOpticalPreauth ||
-            interventionResult.requiresRadiologyPreauth ||
-            interventionResult.requiresRenalPreauth ||
-            interventionResult.requiresSurgicalPreauth;
-          const requiresPreauth = interventionResult.needsPreauth;
-          const requiredPreauthDocumentTypes = interventionResult.requiredPreauthDocumentTypes;
-          const applicableDocumentTypes = interventionResult.applicableDocumentTypes;
-
-          let interventionPayload = {
-            sub_benefit_code: selectedSubBenefit ? selectedSubBenefit.code : '',
-            intervention_code: interventionResult.code,
-            consent_token: claimResult.authorization_code,
-            service_type: getServiceType(interventionResult, visitType),
-            requires_preauth: requiresPreauth,
-            normal_preauth: requiresPreauth && !electivePreauth,
-            elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth,
-          };
-
-          if (patientUuid) {
-            intervention['patient_uuid'] = patientUuid;
-          }
-
-          if (applicableDocumentTypes && applicableDocumentTypes.length) {
-            interventionPayload['applicable_document_types'] = applicableDocumentTypes.join(',');
-          }
-
-          if (requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length) {
-            interventionPayload['required_preauth_document_types'] = requiredPreauthDocumentTypes.join(',');
-          }
-
-          payload = {
-            ...payload,
-            ...interventionPayload,
-          };
+        if (patientUuid) {
+          interventionPayload['patient_uuid'] = patientUuid;
         }
 
-        return payload;
+        if (applicableDocumentTypes && applicableDocumentTypes.length) {
+          interventionPayload['applicable_document_types'] = applicableDocumentTypes.join(',');
+        }
+
+        if (requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length) {
+          interventionPayload['required_preauth_document_types'] = requiredPreauthDocumentTypes.join(',');
+        }
+
+        payload = {
+          ...payload,
+          ...interventionPayload,
+        };
       }
-    } catch (error) {}
+
+      return payload;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
   }
 
   const handleSecondaryAction = () => {
@@ -615,15 +682,20 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
   };
 
   const handleSendClientToTriage = async () => {
-    if (isSha) {
-      if (claimResult) {
-        await sendToTriage();
-      } else {
-        setTriggerCreateVisit(true);
+    try {
+      setLoading(true);
+      if (isSha) {
+        if (claimResult) {
+          await sendToTriage();
+        } else {
+          setTriggerCreateVisit(true);
+        }
+        return;
       }
-      return;
+      await sendToTriage();
+    } catch (error) {
+      setLoading(false);
     }
-    await sendToTriage();
   };
 
   function onClientConsent({ otp, authGuid }: { otp?: string; authGuid?: string }) {
@@ -671,6 +743,22 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
         <div className={styles.drawerBody}>
           {patient && (
             <>
+              {
+                order && (
+                  <section className={styles.drawerSection}>
+                    <h5 className={styles.drawerSectionTitle}>
+                      Order details
+                    </h5>
+                    <div className={styles.formRow}>
+                      <InlineNotification
+                        kind="info"
+                        title={`${order?.orderNumber} - ${order?.display}`}
+                        lowContrast
+                      />
+                    </div>
+                  </section>
+                )
+              }
               <section className={styles.drawerSection}>
                 <h5 className={styles.drawerSectionTitle}>
                   Billing details
@@ -680,84 +768,6 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                     </Tag>
                   ) : null}
                 </h5>
-                <div className={styles.formRow}>
-                  {/* Selecting all on focus makes typing replace the value (search); Backspace
-                      on the untouched label clears the whole selection — no partial deletion. */}
-                  <div
-                    className={styles.formControl}
-                    onFocusCapture={selectInputText}
-                    onKeyDownCapture={(e) => {
-                      if (!selectedCashPoint || e.ctrlKey || e.metaKey || e.altKey) {
-                        return;
-                      }
-                      const showingLabel = (e.target as HTMLInputElement)?.value === (selectedCashPoint.name ?? '');
-                      if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedCashPoint(null);
-                      }
-                    }}
-                  >
-                    <ComboBox
-                      id="cash-point"
-                      titleText="Cash point"
-                      placeholder="Search cash point"
-                      items={facilityCashPoints ?? []}
-                      itemToString={(item) => item?.name ?? ''}
-                      shouldFilterItem={({ item, inputValue }) => {
-                        const selectedLabel = selectedCashPoint?.name ?? '';
-                        if (!inputValue || inputValue === selectedLabel) {
-                          return true;
-                        }
-                        return (item?.name ?? '').toLowerCase().includes(inputValue.toLowerCase());
-                      }}
-                      selectedItem={selectedCashPoint ?? null}
-                      onChange={({ selectedItem }) => setSelectedCashPoint(selectedItem ?? null)}
-                    />
-                  </div>
-                  <div
-                    className={styles.formControl}
-                    onFocusCapture={selectInputText}
-                    onKeyDownCapture={(e) => {
-                      if (!selectedBillableService || e.ctrlKey || e.metaKey || e.altKey) {
-                        return;
-                      }
-                      const label = `${selectedBillableService.billableService.display} (${selectedBillableService.name}: ${selectedBillableService.price})`;
-                      const showingLabel = (e.target as HTMLInputElement)?.value === label;
-                      if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setSelectedBillableService(null);
-                      }
-                    }}
-                  >
-                    <ComboBox
-                      id="billable-service"
-                      titleText="Billable service"
-                      placeholder="Search billable service"
-                      items={filteredBillableServices ?? []}
-                      itemToString={(item) =>
-                        item ? `${item.billableService.display} (${item.name}: ${item.price})` : ''
-                      }
-                      shouldFilterItem={({ item, inputValue }) => {
-                        const selectedLabel = selectedBillableService
-                          ? `${selectedBillableService.billableService.display} (${selectedBillableService.name}: ${selectedBillableService.price})`
-                          : '';
-                        if (!inputValue || inputValue === selectedLabel) {
-                          return true;
-                        }
-                        const text = item
-                          ? `${item.billableService.display} ${item.name} ${item.price}`.toLowerCase()
-                          : '';
-                        return text.includes(inputValue.toLowerCase());
-                      }}
-                      selectedItem={selectedBillableService ?? null}
-                      onChange={({ selectedItem }) =>
-                        selectedItem ? billableServicesHandler(selectedItem.uuid) : setSelectedBillableService(null)
-                      }
-                    />
-                  </div>
-                </div>
 
                 {selectedPaymentDetail === PaymentDetail.NonPaying && (
                   <div className={styles.formRow} style={{ marginTop: '1rem' }}>
@@ -791,13 +801,96 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                       otp,
                       authGuid,
                       visitType,
-                      onSelectChange: () => {},
+                      onSelectChange: () => { },
                       onClaimsVisitStart,
                       onInterventionChange,
+                      onError,
+                      hasPreExistingInterventions
                     }}
                   />
                 </section>
               )}
+
+              {
+                showBillableServices && <section className={styles.drawerSection}>
+                  <div className={styles.formRow}>
+                    <div
+                      className={styles.formControl}
+                      onFocusCapture={selectInputText}
+                      onKeyDownCapture={(e) => {
+                        if (!selectedCashPoint || e.ctrlKey || e.metaKey || e.altKey) {
+                          return;
+                        }
+                        const showingLabel = (e.target as HTMLInputElement)?.value === (selectedCashPoint.name ?? '');
+                        if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedCashPoint(null);
+                        }
+                      }}
+                    >
+                      <ComboBox
+                        id="cash-point"
+                        titleText="Cash point"
+                        placeholder="Search cash point"
+                        items={facilityCashPoints ?? []}
+                        itemToString={(item) => item?.name ?? ''}
+                        shouldFilterItem={({ item, inputValue }) => {
+                          const selectedLabel = selectedCashPoint?.name ?? '';
+                          if (!inputValue || inputValue === selectedLabel) {
+                            return true;
+                          }
+                          return (item?.name ?? '').toLowerCase().includes(inputValue.toLowerCase());
+                        }}
+                        selectedItem={selectedCashPoint ?? null}
+                        onChange={({ selectedItem }) => setSelectedCashPoint(selectedItem ?? null)}
+                      />
+                    </div>
+                    <div
+                      className={styles.formControl}
+                      onFocusCapture={selectInputText}
+                      onKeyDownCapture={(e) => {
+                        if (!selectedBillableService || e.ctrlKey || e.metaKey || e.altKey) {
+                          return;
+                        }
+                        const label = `${selectedBillableService.billableService.display} (${selectedBillableService.name}: ${selectedBillableService.price})`;
+                        const showingLabel = (e.target as HTMLInputElement)?.value === label;
+                        if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSelectedBillableService(null);
+                        }
+                      }}
+                    >
+                      <ComboBox
+                        id="billable-service"
+                        titleText="Billable service"
+                        placeholder="Search billable service"
+                        items={filteredBillableServices ?? []}
+                        itemToString={(item) =>
+                          item ? `${item.billableService.display} (${item.name}: ${item.price})` : ''
+                        }
+                        shouldFilterItem={({ item, inputValue }) => {
+                          const selectedLabel = selectedBillableService
+                            ? `${selectedBillableService.billableService.display} (${selectedBillableService.name}: ${selectedBillableService.price})`
+                            : '';
+                          if (!inputValue || inputValue === selectedLabel) {
+                            return true;
+                          }
+                          const text = item
+                            ? `${item.billableService.display} ${item.name} ${item.price}`.toLowerCase()
+                            : '';
+                          return text.includes(inputValue.toLowerCase());
+                        }}
+                        selectedItem={selectedBillableService ?? null}
+                        onChange={({ selectedItem }) =>
+                          selectedItem ? billableServicesHandler(selectedItem.uuid) : setSelectedBillableService(null)
+                        }
+                      />
+                    </div>
+                  </div>
+                </section>
+              }
 
               {selectedPaymentDetail === PaymentDetail.Paying && consentPatient && intervention && (
                 <section className={styles.consentSection}>

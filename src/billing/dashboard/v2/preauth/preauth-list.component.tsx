@@ -23,8 +23,9 @@ import { type PatientFacilityBillDetails } from '../types';
 import styles from './preauth-list.component.scss';
 import {
   fetchActiveVisitForPatient,
-  fetchNormalPreauthBillItems,
+  fetchPreauthBillItems,
   interventionFlagsFromBillItem,
+  needsElectivePreauth,
   preauthFormLabel,
   resolveConsentTokenForVisit,
 } from './preauth.resource';
@@ -40,6 +41,7 @@ type RowMeta = {
   kind: PreauthStatusDisplayKind;
   status?: string;
   preauthCode?: string;
+  notes?: string;
 };
 
 const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, onDateChange }) => {
@@ -56,7 +58,7 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
     if (!locationUuid || !billingDate) return;
     setLoading(true);
     try {
-      const data = await fetchNormalPreauthBillItems(locationUuid, billingDate);
+      const data = await fetchPreauthBillItems(locationUuid, billingDate);
       setItems(data);
 
       const metaMap: Record<string, RowMeta> = {};
@@ -75,22 +77,24 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
           }
           metaMap[key] = { kind: 'loading' };
 
-          const check = await checkPreauthStatus(token, locationUuid);
+          const check = await checkPreauthStatus(token, locationUuid, item.intervention_code);
           metaMap[key] = {
             kind: check.kind as PreauthCheckKind,
             status: check.status,
             preauthCode: check.preauthCode,
+            notes: check.notes,
           };
         } catch {
           // Visit fetch failed — still allow raise if ETL returned consent_token
           const token = item.consent_token || '';
           tokenMap[key] = token;
           if (token) {
-            const check = await checkPreauthStatus(token, locationUuid);
+            const check = await checkPreauthStatus(token, locationUuid, item.intervention_code);
             metaMap[key] = {
               kind: check.kind as PreauthCheckKind,
               status: check.status,
               preauthCode: check.preauthCode,
+              notes: check.notes,
             };
           } else {
             metaMap[key] = { kind: 'error', status: 'Visit lookup failed' };
@@ -119,13 +123,14 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
 
   const handleRaise = async (item: PatientFacilityBillDetails) => {
     const key = rowKey(item);
+    const elective = needsElectivePreauth(item);
     let token = rowTokens[key];
-    if (!token) {
+    if (!token && !elective) {
       const visit = await fetchActiveVisitForPatient(item.patient_uuid, locationUuid);
       token = resolveConsentTokenForVisit(visit) || item.consent_token || '';
       setRowTokens((p) => ({ ...p, [key]: token }));
     }
-    if (!token) {
+    if (!token && !elective) {
       showSnackbar({
         kind: 'error',
         title: 'No claim token on visit',
@@ -133,12 +138,17 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
       });
       return;
     }
+    // Elective may start without a claim token — workspace runs pre-visit authorize.
+    if (!token && elective) {
+      token = item.consent_token || '';
+    }
 
     const flags = interventionFlagsFromBillItem(item);
     launchWorkspace('preauth-form-workspace', {
       consentToken: token,
       patientUuid: item.patient_uuid,
       locationUuid,
+      isElective: elective,
       billItem: item,
       intervention: {
         code: flags.code,
@@ -152,7 +162,9 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
         applicableDocumentTypes: flags.applicableDocumentTypes,
       },
       onSuccess: async () => {
-        await invalidatePreauthPreview(token, locationUuid);
+        if (token) {
+          await invalidatePreauthPreview(token, locationUuid);
+        }
         load();
       },
     });
@@ -188,7 +200,7 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
       {loading ? (
         <DataTableSkeleton showHeader={false} rowCount={5} />
       ) : items.length === 0 ? (
-        <EmptyState message="No bill items needing normal preauth for this date." />
+        <EmptyState message="No bill items needing preauth for this date." />
       ) : filtered.length === 0 ? (
         <EmptyState message="No items match your search." />
       ) : (
@@ -209,7 +221,13 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
               const key = rowKey(item);
               const flags = interventionFlagsFromBillItem(item);
               const meta = rowMeta[key];
-              const canRaise = Boolean(rowTokens[key]) && meta?.kind !== 'finalised' && meta?.kind !== 'no_token';
+              const elective = needsElectivePreauth(item);
+              // Already-raised (pending / clarification / finalised) must not show Raise again.
+              const canRaise =
+                meta?.kind === 'not_raised' ||
+                meta?.kind === 'failed' ||
+                (elective && meta?.kind === 'no_token');
+              const showNotes = Boolean(meta?.notes?.trim()) && !canRaise;
               return (
                 <TableRow key={key}>
                   <TableCell>
@@ -222,8 +240,8 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
                   </TableCell>
                   <TableCell>{item.order_no ?? '—'}</TableCell>
                   <TableCell>
-                    <Tag size="sm" type="blue">
-                      {preauthFormLabel(flags)}
+                    <Tag size="sm" type={elective ? 'magenta' : 'blue'}>
+                      {elective ? 'Elective' : preauthFormLabel(flags)}
                     </Tag>
                   </TableCell>
                   <TableCell>{item.status ?? item.paid_status ?? '—'}</TableCell>
@@ -234,16 +252,16 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
                       preauthCode={meta?.preauthCode}
                       loading={!meta || meta.kind === 'loading'}
                     />
+                    {showNotes ? <div className={styles.notes}>{meta?.notes}</div> : null}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      kind="ghost"
-                      size="sm"
-                      disabled={!canRaise}
-                      onClick={() => handleRaise(item)}
-                    >
-                      Raise preauth
-                    </Button>
+                    {canRaise ? (
+                      <Button kind="ghost" size="sm" onClick={() => handleRaise(item)}>
+                        Raise preauth
+                      </Button>
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
                 </TableRow>
               );
