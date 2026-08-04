@@ -9,6 +9,24 @@ import PatientBillDetails from '../patient-bill-details/patient-bill-details';
 import TableToolbar from '../shared/table-toolbar.component';
 import EmptyState from '../shared/empty-state.component';
 
+// The status bucket last being read, held at module scope so it survives this tab
+// unmounting while the user stays inside billing — which is what opening a claim now does,
+// since a claim has its own route. Deliberately not persisted any further: a page reload
+// should start on the defaults. Cleared with the date filter when the user leaves billing
+// altogether (see resetFacilityBillsFilters callers).
+//
+// Kept per payer. Each payer is a separate instance of this component and both are mounted
+// at once inside the dashboard's tab panels, so a single slot would have them overwrite
+// each other's memory on every render — and the buckets aren't even the same vocabulary.
+const lastStatusFilterByPayer: Record<number, string> = {};
+
+/** Forget the remembered status buckets, so each tab opens on its default. */
+export function resetFacilityBillsFilters() {
+  for (const key of Object.keys(lastStatusFilterByPayer)) {
+    delete lastStatusFilterByPayer[Number(key)];
+  }
+}
+
 interface facilityBillsProps {
   billingDate: string;
   locationUuid: string;

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './patient-bill-details.scss';
+import { billPaymentModes, type PaymentModeDescriptor } from './payment-mode';
 import {
   type PatientFacilityBillsDto,
   type PatientFacilityBillDetails,
@@ -18,13 +19,27 @@ import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
 import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis, type AmrsMaternityDiagnosisDto } from '../../../types';
+// Bill status colours, matching the per-line-item tags on the bill items table below.
+const billStatusTagType = (status: string): 'green' | 'teal' | 'gray' => {
+  const s = (status ?? '').trim().toUpperCase();
+  if (s === 'PAID') return 'green';
+  if (s.includes('PARTIAL')) return 'teal';
+  return 'gray';
+};
+
 interface patientBillDetailsProps {
   patientUuid: string;
   locationUuid: string;
   billingDate: string;
   refreshToken: number;
 }
-const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, locationUuid, billingDate, refreshToken }) => {
+const PatientBillDetails: React.FC<patientBillDetailsProps> = ({
+  patientUuid,
+  locationUuid,
+  billingDate,
+  refreshToken,
+  onPaymentModeResolved,
+}) => {
   const [patientBillDetails, setPatientBillDetails] = useState<PatientFacilityBillDetails[]>([]);
   const [consentToken, setConsentToken] = useState<string>('');
   const [patientBillPayments, setPatientBillPayments] = useState<PatientPayment[]>([]);
@@ -114,7 +129,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
         return s.paid_status === 'POSTED';
       });
       if (hasPostedBill) {
-        return 'PARTIALLY PAID'
+        return 'PARTIALLY PAID';
       }
       const hasPendingBill = patientBillDetails.some((s) => {
         return s.paid_status === 'PENDING';
@@ -124,7 +139,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
       }
       return 'PAID';
     } else {
-      return status;
+      return '';
     }
   }
    async function getPatientAmrsVisitDiagnosis() {
@@ -164,12 +179,10 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
   }
   async function getPatientAmrsEncounterDiagnosis() {
     setEncounterDiagnosisLoading(true);
-    const amrsMaternityDiagnosisPayload =  getPatientAmrsVisitDiagnosisPayload();
+    const amrsMaternityDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
     try {
       const resp: any = await fetchPatientEncounterDiagnosis(amrsMaternityDiagnosisPayload);
-      const results = (resp ?? [])
-        .filter((r) => r?.uuid != null)
-        .map((v) => ({ ...v }));
+      const results = (resp ?? []).filter((r) => r?.uuid != null).map((v) => ({ ...v }));
       setEncounterDiagnosis(results);
     } catch (error) {
       showSnackbar({
@@ -185,13 +198,13 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     return {
       patientUuid: patientUuid,
       visitDate: billingDate,
-      locationUuid: locationUuid
+      locationUuid: locationUuid,
     };
   }
   function getPatientAmrsMaternityDiagnosisPayload(): AmrsMaternityDiagnosisDto {
     return {
       patientUuid: patientUuid,
-      billingDate: billingDate
+      billingDate: billingDate,
     };
   }
   return (

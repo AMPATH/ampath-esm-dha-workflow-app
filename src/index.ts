@@ -13,6 +13,7 @@ import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta'
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
 import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
+import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -108,11 +109,17 @@ export const bookings = getAsyncLifecycle(() => import('./bookings/bookings.comp
 
 export const mnchQueueDashboardLink = getAsyncLifecycle(() => import('./side-nav-menu/mnch-nav-links'), options);
 
-export const specializedClinicsDashboardLink = getAsyncLifecycle(() => import('./side-nav-menu/specialized-clinics-nav-links'), options);
+export const specializedClinicsDashboardLink = getAsyncLifecycle(
+  () => import('./side-nav-menu/specialized-clinics-nav-links'),
+  options,
+);
 
 export const MNCHRoot = getAsyncLifecycle(() => import('./mnch/mnch-root'), options);
 
-export const SpecializedClinicsRoot = getAsyncLifecycle(() => import('./specialized-clinics/specialized-clinics-root'), options);
+export const SpecializedClinicsRoot = getAsyncLifecycle(
+  () => import('./specialized-clinics/specialized-clinics-root'),
+  options,
+);
 
 export const serviceQueueAdmin = getAsyncLifecycle(
   () => import('./service-queues/admin/service-queue-admin-dashboard.component'),
@@ -139,6 +146,10 @@ export const patientAdmissionSummary = getAsyncLifecycle(
   () => import('./admissions/inpatient/inpatient-admissions.component'),
   options,
 );
+
+export const caseSummaryLink = getSyncLifecycle(openMrsCreateDashboardLink(caseSummaryMeta as any), options);
+
+export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
 export const billingDashboardLink = getAsyncLifecycle(
   () => import('./billing/billing-dashboard-link.component'),
   options,
@@ -203,8 +214,18 @@ export const preauthFormWorkspace = getAsyncLifecycle(
   options,
 );
 
+export const recordDetailsWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/claim-visits/shared/record-details.workspace'),
+  options,
+);
+
 export const payCashWorkspace = getAsyncLifecycle(
   () => import('./billing/dashboard/v2/clearance/pay-cash.component'),
+  options,
+);
+
+export const sendToQueueWorkspace = getAsyncLifecycle(
+  () => import('./registry/modal/send-to-triage/send-to-queue.modal'),
   options,
 );
 

@@ -47,6 +47,7 @@ export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Pr
   return (data.results ?? []).map((bill: any) => ({
     ...bill,
     bill_items: typeof bill.bill_items === 'string' ? JSON.parse(bill.bill_items) : bill.bill_items,
+    payments: typeof bill.payments === 'string' ? JSON.parse(bill.payments) : bill.payments,
   }));
 }
 
@@ -90,6 +91,50 @@ export async function fetchFacilityClaimVisits(claimVisitsDto: ClaimVisitsDto): 
   const response = await openmrsFetch(`${hieBaseUrl}/claims-visit?${queryString}`);
   const data = (await response.json()) as ClaimVisitReponse[];
   return data ?? [];
+}
+
+/** The authorization guid a claim visit is addressed by, from either half of the record. */
+export function claimVisitGuid(claimVisit: ClaimVisitReponse): string {
+  return (claimVisit?.authorizationGuid || claimVisit?.visitResponse?.authorization_guid || '').trim();
+}
+
+/**
+ * Find a claim visit by its authorization guid — the id the claim is addressed by in the
+ * URL. /claims-visit has no guid filter, so this narrows by location and matches the guid
+ * client-side: first within the date being read (one small response, and the case that
+ * comes up when a page is reloaded), then across the location when that misses, which is
+ * what makes a link to an older claim work at all.
+ *
+ * Returns null when nothing matches, including when the wider query fails — a claim that
+ * can't be found is the same outcome either way.
+ */
+export async function findClaimVisitByGuid(
+  guid: string,
+  locationUuid: string,
+  visitDate?: string,
+): Promise<ClaimVisitReponse | null> {
+  const wanted = (guid ?? '').trim().toLowerCase();
+  if (!wanted || !locationUuid) {
+    return null;
+  }
+  const matchIn = (visits: ClaimVisitReponse[]) =>
+    (visits ?? []).find((cv) => claimVisitGuid(cv).toLowerCase() === wanted) ?? null;
+
+  if (visitDate) {
+    try {
+      const sameDay = matchIn(await fetchFacilityClaimVisits({ locationUuid, visitDate }));
+      if (sameDay) {
+        return sameDay;
+      }
+    } catch {
+      // Fall through to the wider query rather than give up on the narrow one failing.
+    }
+  }
+  try {
+    return matchIn(await fetchFacilityClaimVisits({ locationUuid }));
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchProviderClaimPreview(
@@ -633,20 +678,6 @@ export const endVisit = async (visitUuid: string) => {
   return response.json();
 };
 
-export const getActiveVisits = async (locationUuid: string, billDate: string) => {
-  const etlBaseUrl = await getEtlBaseUrl();
-  try {
-    const url = `${etlBaseUrl}/facility/active-bill-visits?locationUuid=${locationUuid}&billingDate=${billDate}`;
-    const response = await openmrsFetch(url);
-    const data = await response.json();
-
-    return data.results ?? [];
-  } catch (error) {
-    console.error('Error fetching active visits:', error);
-    throw error;
-  }
-};
-
 export const useFacilityPreauths = (locationUuid: string, billingDate: string) => {
   const { etlBaseUrl } = useConfig({
     externalModuleName: '@ampath/esm-dha-workflow-app',
@@ -736,8 +767,7 @@ export async function fetchPatientDiagnosesForBilling(
     fetchPatientEncounterDiagnosis(visitDto),
   ]);
 
-  const visitRows: AmrsVisitDiagnosis[] =
-    visitResult.status === 'fulfilled' ? visitResult.value ?? [] : [];
+  const visitRows: AmrsVisitDiagnosis[] = visitResult.status === 'fulfilled' ? (visitResult.value ?? []) : [];
 
   const maternityRows: AmrsVisitDiagnosis[] =
     maternityResult.status === 'fulfilled'
@@ -768,7 +798,7 @@ export async function fetchPatientDiagnosesForBilling(
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
-    encounterResult.status === 'fulfilled' ? encounterResult.value ?? [] : [];
+    encounterResult.status === 'fulfilled' ? (encounterResult.value ?? []) : [];
 
   const merged = [...visitRows, ...maternityRows, ...encounterRows];
   const seen = new Set<string>();
@@ -786,7 +816,7 @@ export async function fetchPatientDiagnosesForBilling(
   return deduped;
 }
 
-export async function fetchFacilityBedOccupancy(locationUuid: string):  Promise<BedOccupancy>{
+export async function fetchFacilityBedOccupancy(locationUuid: string): Promise<BedOccupancy> {
   const { hieBaseUrl } = await getHieBaseUrl();
   const response = await openmrsFetch(`${hieBaseUrl}/bed-occupancy?locationUuid=${locationUuid}`);
   const data = (await response.json()) as BedOccupancy;

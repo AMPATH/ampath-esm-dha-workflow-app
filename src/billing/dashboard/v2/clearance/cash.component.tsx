@@ -69,6 +69,8 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     patientUuid: string,
     visitTypeUuid: string,
     visitUuid: string,
+    billUuid: string,
+    cashModeUuid: string,
   ) => {
     if ('line_item_date' in visit) {
       closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
@@ -76,6 +78,8 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
       setTimeout(() => {
         launchWorkspace('pay-cash-workspace', {
           lineItems: (visit as PendingBillLineItems).pending_line_items,
+          billUuid: billUuid,
+          cashModeUuid: cashModeUuid,
         });
       }, 50);
       return;
@@ -115,7 +119,14 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
                       size="sm"
                       kind="primary"
                       onClick={() =>
-                        handleGenerateBill(visit, visit.patient_uuid, visit.visit_type_uuid, visit.visit_uuid)
+                        handleGenerateBill(
+                          visit,
+                          visit.patient_uuid,
+                          visit.visit_type_uuid,
+                          visit.visit_uuid,
+                          visit.bill_uuid,
+                          visit.cash_mode_uuid,
+                        )
                       }
                     >
                       Open Billing
