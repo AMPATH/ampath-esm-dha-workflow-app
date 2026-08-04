@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Button } from '@carbon/react';
 import { Printer } from '@carbon/react/icons';
-import { usePatient } from '@openmrs/esm-framework';
+import { usePatient, useSession } from '@openmrs/esm-framework';
 import { useReactToPrint } from 'react-to-print';
 import CaseSummaryPrintable from './components/case-summary-printable.component';
 import { useVisitCaseSummary } from './case-summary.resource';
@@ -11,11 +11,12 @@ interface CaseSummaryExtensionProps {}
 
 const CaseSummaryExtension: React.FC<CaseSummaryExtensionProps> = () => {
   const { isLoading: isLoadingPatient, error: patientError, patient } = usePatient();
-  const { summary, isLoading, error } = useVisitCaseSummary(patient?.id);
+  const session = useSession();
+  const { summary, isLoading, error } = useVisitCaseSummary(patient?.id, session?.sessionLocation?.uuid);
   const printRef = useRef<HTMLDivElement>(null);
   const printCaseSummary = useReactToPrint({
     contentRef: printRef,
-    documentTitle: `CaseSummary-${summary?.demographics.name || summary?.patientUuid || 'patient'}`,
+    documentTitle: `CaseSummary-${summary?.demographics.name || patient?.id || 'patient'}`,
     pageStyle: '@page { size: A4; margin: 16mm; }',
   });
 

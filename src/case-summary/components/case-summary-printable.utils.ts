@@ -1,44 +1,20 @@
-import { formatDate, formatDatetime, parseDate } from '@openmrs/esm-framework';
-import { type CaseSummaryLabInterpretation, type FhirEntry } from '../types/case-summary.types';
+import { formatDate, parseDate } from '@openmrs/esm-framework';
+import { type CaseSummaryLabInterpretation } from '../types/case-summary.types';
 
 export const EMPTY_VALUE = '—';
-
-type CodeableConcept = { text?: string; coding?: Array<{ system?: string; code?: string; display?: string }> };
-
-function codeableConceptText(cc: CodeableConcept | undefined): string | undefined {
-  return cc?.text || cc?.coding?.[0]?.display || cc?.coding?.[0]?.code;
-}
 
 export function formatDateSafe(value?: string): string {
   return value ? formatDate(parseDate(value), { time: false }) : EMPTY_VALUE;
 }
 
-/** Date *with* time — used where several encounters share a day and need telling apart. */
-export function formatDateTimeSafe(value?: string): string {
-  return value ? formatDatetime(parseDate(value)) : EMPTY_VALUE;
-}
-
-export type AllergyRow = { substance: string; criticality: string; reaction: string };
-
-export function mapAllergyRow(entry: FhirEntry): AllergyRow {
-  const r = entry.resource as Record<string, any>;
-  return {
-    substance: codeableConceptText(r.code) ?? EMPTY_VALUE,
-    criticality: r.criticality ?? EMPTY_VALUE,
-    reaction: codeableConceptText(r.reaction?.[0]?.manifestation?.[0]) ?? EMPTY_VALUE,
-  };
-}
-
 /**
- * Human label for a lab interpretation. Exists so the raw union value is never
- * rendered: its unassessable member is `'--'` (two ASCII hyphens), which is NOT
- * `EMPTY_VALUE` ('—', an em dash), and shipping both to the page one character apart
- * would be a bug waiting to happen.
+ * Human label for a lab interpretation. `interpretation` is only ever present
+ * on the wire when the result is abnormal — `NORMAL` and unassessable results
+ * omit the field entirely (see `CaseSummaryLabInterpretation`) — so every
+ * value this can be called with is a real flag to render.
  */
 export function interpretationLabel(interpretation: CaseSummaryLabInterpretation): string {
   switch (interpretation) {
-    case 'NORMAL':
-      return 'Normal';
     case 'LOW':
       return 'Low';
     case 'HIGH':
@@ -51,8 +27,6 @@ export function interpretationLabel(interpretation: CaseSummaryLabInterpretation
       return 'Off-scale low';
     case 'OFF_SCALE_HIGH':
       return 'Off-scale high';
-    default:
-      return EMPTY_VALUE;
   }
 }
 
@@ -61,3 +35,17 @@ export function interpretationTagType(interpretation: CaseSummaryLabInterpretati
   return interpretation === 'LOW' || interpretation === 'HIGH' ? 'magenta' : 'red';
 }
 
+/**
+ * Splits a SOAP note section's prose into its component sentences for
+ * display as a scannable list rather than one dense paragraph. The
+ * server-generated text is sentence-terminated prose (`"Chief Complaint:
+ * HEADACHE. Onset: MODERATE."`), so splitting after `". "` recovers the
+ * original field-level lines without needing the raw fields.
+ */
+export function splitSoapSentences(text?: string): Array<string> {
+  if (!text) return [];
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}

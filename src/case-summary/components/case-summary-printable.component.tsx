@@ -1,41 +1,47 @@
 import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag, Tile } from '@carbon/react';
+import { Chat, ListChecked, Report, Stethoscope, type CarbonIconType } from '@carbon/react/icons';
 import { useSession } from '@openmrs/esm-framework';
-import { type VisitCaseSummary } from '../types/case-summary.types';
-import {
-  EMPTY_VALUE,
-  formatDateSafe,
-  formatDateTimeSafe,
-  interpretationLabel,
-  interpretationTagType,
-  mapAllergyRow,
-} from './case-summary-printable.utils';
+import { type CaseSummaryResponse, type CaseSummarySoapNote, type CaseSummaryVitals } from '../types/case-summary.types';
+import { EMPTY_VALUE, formatDateSafe, interpretationLabel, interpretationTagType, splitSoapSentences } from './case-summary-printable.utils';
 import styles from './case-summary-printable.component.scss';
 
 interface CaseSummaryPrintableProps {
-  summary: VisitCaseSummary;
+  summary: CaseSummaryResponse;
 }
+
+/** Display labels live here, not on the server — `vitals` is a keyed object addressed by field name. */
+const VITAL_ROWS: Array<[keyof CaseSummaryVitals, string]> = [
+  ['temperature', 'Temperature'],
+  ['bloodPressure', 'Blood Pressure'],
+  ['pulse', 'Pulse'],
+  ['respiratoryRate', 'Respiratory Rate'],
+  ['spo2', 'SpO₂'],
+  ['height', 'Height'],
+  ['weight', 'Weight'],
+  ['bmi', 'BMI'],
+  ['tewScore', 'TEW Score'],
+];
+
+const SOAP_SECTIONS: Array<{
+  key: keyof CaseSummarySoapNote;
+  letter: string;
+  title: string;
+  Icon: CarbonIconType;
+}> = [
+  { key: 'subjective', letter: 'S', title: 'Subjective', Icon: Chat },
+  { key: 'objective', letter: 'O', title: 'Objective', Icon: Stethoscope },
+  { key: 'assessment', letter: 'A', title: 'Assessment', Icon: Report },
+  { key: 'plan', letter: 'P', title: 'Plan', Icon: ListChecked },
+];
 
 const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintableProps>(({ summary }, ref) => {
   const session = useSession();
-  const {
-    demographics,
-    groups,
-    inpatientDetails,
-    visit,
-    visitUuids,
-    vitals,
-    clinicalNotes,
-    conditions,
-    medications,
-    labOrders,
-    labResultsUnavailable,
-  } = summary;
+  const { demographics, allergies, inpatientDetails, visit, visitUuids, vitals, conditions, medications, labOrders, labResultsUnavailable, soapNote } =
+    summary;
 
-  const allergyRows = (groups.allergies ?? []).map(mapAllergyRow);
-  // The section is "Active Medications" — the resource layer returns every drug
-  // order on the visit (with an `active` flag) so this is a presentation choice.
-  const activeMedications = medications.filter((m) => m.active);
+  const soapSections = SOAP_SECTIONS.map((section) => ({ ...section, sentences: splitSoapSentences(soapNote[section.key]) }));
+  const hasSoapNote = soapSections.some((section) => section.sentences.length > 0);
 
   return (
     <div className={styles.document} ref={ref}>
@@ -63,7 +69,7 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
 
       <section className={styles.section}>
         <h5 className={styles.sectionTitle}>Allergies</h5>
-        {allergyRows.length ? (
+        {allergies.length ? (
           <Table size="sm" aria-label="allergies" useZebraStyles>
             <TableHead>
               <TableRow>
@@ -73,11 +79,11 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
               </TableRow>
             </TableHead>
             <TableBody>
-              {allergyRows.map((row, i) => (
+              {allergies.map((row, i) => (
                 <TableRow key={i}>
                   <TableCell>{row.substance}</TableCell>
-                  <TableCell>{row.criticality}</TableCell>
-                  <TableCell>{row.reaction}</TableCell>
+                  <TableCell>{row.criticality ?? EMPTY_VALUE}</TableCell>
+                  <TableCell>{row.reaction ?? EMPTY_VALUE}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -118,15 +124,15 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
       <section className={styles.section}>
         <h5 className={styles.sectionTitle}>Latest Vitals</h5>
         <div className={styles.keyValueGrid}>
-          {vitals.map((row) => (
-            <KeyValue key={row.label} label={row.label} value={row.value ?? EMPTY_VALUE} />
+          {VITAL_ROWS.map(([key, label]) => (
+            <KeyValue key={key} label={label} value={vitals[key] ?? EMPTY_VALUE} />
           ))}
         </div>
       </section>
 
       <section className={styles.section}>
         <h5 className={styles.sectionTitle}>Active Medications</h5>
-        {activeMedications.length ? (
+        {medications.length ? (
           <Table size="sm" aria-label="active medications" useZebraStyles>
             <TableHead>
               <TableRow>
@@ -139,7 +145,7 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
               </TableRow>
             </TableHead>
             <TableBody>
-              {activeMedications.map((row, i) => (
+              {medications.map((row, i) => (
                 <TableRow key={i}>
                   <TableCell>{formatDateSafe(row.date)}</TableCell>
                   <TableCell>{row.drug}</TableCell>
@@ -193,11 +199,11 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
                     </TableHead>
                     <TableBody>
                       {order.results.map((row, i) => (
-                        <TableRow key={row.conceptUuid ?? i}>
+                        <TableRow key={i}>
                           <TableCell>{row.panel && row.panel !== row.test ? `${row.panel} · ${row.test}` : row.test}</TableCell>
                           <TableCell>
-                            <span className={row.abnormal ? styles.abnormalValue : undefined}>{row.value}</span>
-                            {row.abnormal ? (
+                            <span className={row.interpretation ? styles.abnormalValue : undefined}>{row.value}</span>
+                            {row.interpretation ? (
                               <Tag size="sm" type={interpretationTagType(row.interpretation)}>
                                 {interpretationLabel(row.interpretation)}
                               </Tag>
@@ -219,39 +225,35 @@ const CaseSummaryPrintable = React.forwardRef<HTMLDivElement, CaseSummaryPrintab
         )}
       </section>
 
+      {/* Replaces the old Clinical Notes section (raw per-encounter obs dump) — the
+          SOAP note below is server-generated from the same underlying data, already
+          organised into the categories a reader actually wants: what the patient said,
+          what was observed, what was concluded, what happens next. */}
       <section className={styles.section}>
-        <h5 className={styles.sectionTitle}>Clinical Notes</h5>
-        {clinicalNotes.length ? (
-          <div className={styles.notes}>
-            {clinicalNotes.map((note) => (
-              <div key={note.encounterUuid} className={styles.noteEntry}>
-                <div className={styles.noteHead}>
-                  <span className={styles.noteName}>{note.encounterType ?? note.display ?? 'Encounter'}</span>
-                  {note.datetime ? <span className={styles.noteTime}>{formatDateTimeSafe(note.datetime)}</span> : null}
-                </div>
-                {/* A label/value grid rather than run-on "LABEL: value" lines — with a
-                    dozen fields per encounter, aligned columns are the difference
-                    between scannable and a wall of text. */}
-                <dl className={styles.noteFields}>
-                  {note.obs.map((o, i) => (
-                    <React.Fragment key={i}>
-                      {o.label ? (
-                        <>
-                          <dt className={styles.noteLabel}>{o.label}</dt>
-                          <dd className={styles.noteValue}>{o.value}</dd>
-                        </>
-                      ) : (
-                        // No "LABEL: value" split was possible — let it run full width.
-                        <dd className={styles.noteValueFull}>{o.value}</dd>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </dl>
-              </div>
-            ))}
+        <h5 className={styles.sectionTitle}>Clinical SOAP Note</h5>
+        {hasSoapNote ? (
+          <div className={styles.soapGrid}>
+            {soapSections.map(({ key, letter, title, Icon, sentences }) =>
+              sentences.length ? (
+                <Tile key={key} className={styles.soapCard}>
+                  <div className={styles.soapCardHeader}>
+                    <Icon size={16} />
+                    <span className={styles.soapCardTitle}>{title}</span>
+                    <Tag size="sm" type="gray">
+                      {letter}
+                    </Tag>
+                  </div>
+                  <ul className={styles.soapList}>
+                    {sentences.map((sentence, i) => (
+                      <li key={i}>{sentence}</li>
+                    ))}
+                  </ul>
+                </Tile>
+              ) : null,
+            )}
           </div>
         ) : (
-          <p className={styles.empty}>No clinical notes recorded.</p>
+          <p className={styles.empty}>No SOAP note could be generated for this visit.</p>
         )}
       </section>
 
