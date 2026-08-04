@@ -59,7 +59,6 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     const patientBillPayload = generatePatientBillPayload();
     try {
       const data = await fetchPatientFacilityBillDetails(patientBillPayload);
-      debugger;
       if (data) {
         const consentTokenRecord = data.find((d)=>{
             return !!d.consent_token
