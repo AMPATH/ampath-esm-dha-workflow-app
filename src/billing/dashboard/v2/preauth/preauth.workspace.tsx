@@ -27,7 +27,7 @@ import {
   type PreauthFormPayload,
 } from '../../../../claims/claims.resource';
 import { cancelAllPendingAuthorizations, sendClaimsOTP, authorizeClaimsWithOtp } from '../../../../registry/hie.resource';
-import { addClaimDiagnosis, fetchPatientEncounterDiagnosis } from '../../../billing-claims.resource';
+import { addClaimDiagnosis, fetchPatientDiagnosesForBilling } from '../../../billing-claims.resource';
 import { ensureInterventionOnVisit } from '../../../../claims/interventions.resource';
 import { type AmrsVisitDiagnosis } from '../../../types';
 import { type PatientFacilityBillDetails } from '../types';
@@ -410,7 +410,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     }
   };
 
-  // Prefill from encounter diagnoses (ETL /patient/encounter-diagnosis).
+  // Prefill from visit + maternity + encounter diagnoses (same three ETL sources as bill details).
   useEffect(() => {
     const uuid = patientUuid || billItem.patient_uuid;
     if (!uuid || !locationUuid) return;
@@ -419,8 +419,10 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       setLoadingDx(true);
       try {
         const visitDate = billingDateToVisitDate(billItem.bill_date);
-        const results = await fetchPatientEncounterDiagnosis({
+        const billingDate = visitDate;
+        const results = await fetchPatientDiagnosesForBilling({
           visitDate,
+          billingDate,
           patientUuid: uuid,
           locationUuid,
         });
@@ -1232,7 +1234,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
               Diagnosis (ICD-11)
             </p>
             {loadingDx ? (
-              <InlineLoading description="Loading encounter diagnoses…" />
+              <InlineLoading description="Loading patient diagnoses…" />
             ) : (
               <ComboBox
                 id="preauth-diagnosis"
