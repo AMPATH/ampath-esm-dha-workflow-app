@@ -14,9 +14,9 @@ import {
 } from '../../../billing-claims.resource';
 import { showSnackbar } from '@openmrs/esm-styleguide';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
-import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis, type AmrsMaternityDiagnosisDto } from '../../../types';
-import BillDetails from '../../v2/patient-bill-details/bill-details/bill-details';
-import PatientClaimDetails from '../../v2/patient-bill-details/claim-details/patient-claim-details.component';
+import BillDetails from './bill-details/bill-details';
+import PatientClaimDetails from './claim-details/patient-claim-details.component';
+import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis, AmrsMaternityDiagnosisDto } from '../../../types';
 interface patientBillDetailsProps {
   patientUuid: string;
   locationUuid: string;

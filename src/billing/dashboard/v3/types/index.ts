@@ -6,32 +6,12 @@ export type FacilityBillsDto = {
 export type FacilityBillsResponse = {
   results: FacilityBill[];
 };
-/** A row from /facility/bills. Every field bar the identifiers can come back null. */
 export type FacilityBill = {
-  bill_uuid: string;
-  receipt_number: string | null;
   patient_name: string;
-  cash_point: string | null;
-  bill_date: string | null;
-  /** Comma-separated per-line-item statuses, e.g. "PENDING,PENDING". */
+  cash_point: string;
+  bill_date: string;
   paid_status: string;
   patient_uuid: string;
-  /** Present once the visit has an SHA/HIE authorisation. */
-  consent_token: string | null;
-  national_id: string | null;
-  cr_id: string | null;
-  visit_type: string | null;
-  identifiers: string;
-  patient_id: string;
-  bill_id: string;
-  bill_status: string;
-  location_id: string;
-  bill_items: BillLineItem[];
-  /** SHA claim lifecycle status for this bill, when the eClaims status feed provides
-      it. Absent until the backend supplies it — used by the SHA-bills claim-status
-      filter. */
-  claim_status?: string | null;
-  payments?: PatientPayment[];
 };
 
 export type PatientFacilityBillsDto = {
@@ -49,7 +29,7 @@ export type PatientFacilityBillDetails = {
   paid_status: string;
   patient_uuid: string;
   bill_line_item_id: number;
-  billable_service: string | null;
+  billable_service: string;
   item_price: number;
   payment_scheme: string;
   payment_status: string;
@@ -64,21 +44,6 @@ export type PatientFacilityBillDetails = {
   order_no: string;
   service_type: string;
   has_claim_line: number;
-  /** From bill_orders when ETL returns them */
-  requires_preauth?: boolean | number | string;
-  normal_preauth?: boolean | number | string;
-  elective_preauth?: boolean | number | string;
-  preauth_approved?: boolean | number | string;
-  required_preauth_document_types?: string;
-  applicable_document_types?: string;
-  required_documents?: string | null;
-  /** ETL pre-auth-bills may use `status` instead of paid_status */
-  status?: string;
-  requires_surgical_preauth?: boolean | number | string;
-  requires_renal_preauth?: boolean | number | string;
-  requires_oncology_preauth?: boolean | number | string;
-  requires_radiology_preauth?: boolean | number | string;
-  requires_optical_preauth?: boolean | number | string;
 };
 
 export type PatientFacilityBillDetailsResponse = {
@@ -88,8 +53,6 @@ export type PatientFacilityBillDetailsResponse = {
 export enum BillingView {
   Bills = 'BILLS',
   BillDetails = 'Details',
-  /** A claim opened on its own, without a bill behind it. */
-  ClaimDetails = 'ClaimDetails',
 }
 
 export type ClaimVisitsDto = {
@@ -248,10 +211,6 @@ export type ClaimVisitReponse = {
   authorizationCode: string;
   authorizationGuid: string;
   visitResponse: ClaimsVisit;
-  createdBy?: string | null;
-  /** When this snapshot of the claim was recorded locally. The same claim is returned
-      once per local visit, so this is what tells the snapshots apart. */
-  dateCreated?: string | null;
 };
 
 export type ProviderClaimPreviewDto = {
@@ -310,8 +269,6 @@ export type AddClaimLineDto = {
   unitPrice: string;
   quantity: string;
   locationUuid: string;
-  /** Best-effort; hie-saf may not forward yet */
-  preauthCode?: string;
 };
 
 export type RemoveClaimLineDto = {
@@ -403,102 +360,4 @@ export type SwitchInterventionDto = {
   billTo: string;
   locationUuid: string;
   billedAmount: string;
-};
-
-export interface ActiveVisit {
-  identifiers: string;
-  patient_name: string;
-  payment_method: string;
-  payment_method_uuid: string;
-  payment_status: 'CLEARED' | 'PENDING' | string;
-  person_id: string;
-  person_uuid: string;
-  visit_date: string;
-  visit_id: string;
-  visit_type: string;
-  visit_uuid: string;
-  visit_type_uuid: string;
-}
-
-export type ActiveCashVisit = {
-  patient_name: string;
-  patient_uuid: string;
-  identifiers: string;
-  payment_method: string;
-  visit_id: string;
-  visit_uuid: string;
-  date_started: string;
-  date_stopped: string | null;
-  location_id: string;
-  value_reference: string | null;
-  visit_type: string;
-  visit_type_uuid: string;
-  line_item_date: string | null;
-  pending_line_items: PendingLineItem[];
-  cash_mode_uuid: string;
-  bill_uuid: string;
-};
-
-export interface BillLineItem {
-  line_item_id: number;
-  line_item_order: number;
-  price_name: string;
-  quantity: number;
-  price: number;
-  status: string;
-  date_created: string;
-}
-
-export interface PatientBill {
-  patient_id: number;
-  patient_uuid: string;
-  patient_name: string;
-  receipt_number: string;
-  cash_point: string;
-  identifier: string;
-  bill_id: number;
-  bill_date: string;
-  bill_status: string;
-  bill_uuid: string;
-  bill_items: BillLineItem[];
-  location_id: string;
-  consent_token: string;
-  visit_type: string;
-  payments: BillPayment[];
-  visit_uuid: string;
-  visit_type_uuid: string;
-}
-
-export interface PendingLineItem {
-  bill_item_id: number;
-  bill_item_uuid: string;
-  price: number;
-  price_name: string;
-  status: string;
-  billable_service: string;
-  quantity: number;
-}
-
-export interface PendingBillLineItems {
-  patient_uuid: string;
-  patient_name: string;
-  identifiers: string;
-  visit_uuid: string;
-  visit_type_uuid: string;
-  visit_type: string;
-  payment_method: string;
-  cash_point: string;
-  line_item_date: string;
-  pending_line_items: PendingLineItem[];
-  bill_uuid: string;
-  cash_mode_uuid: string;
-}
-
-export type BillPayment = {
-  bill_payment_uuid: string;
-  payment_date: string;
-  payment_mode: string;
-  amount: number;
-  amount_tendered: number;
-  bill_id: string;
 };

@@ -23,7 +23,7 @@ import {
 import FacilityAndWorkerSlot from '../../../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import PreauthorizationsTab from './preauth/preauthorizations-tab.component';
 import AdmissionRequestsTab from './admissions/admission-requests-tab.component';
-import FacilityBillsV3 from '../v3/facility-bills-v3/facility-bills-v3.component';
+import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');

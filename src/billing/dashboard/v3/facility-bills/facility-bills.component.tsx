@@ -1,21 +1,21 @@
 import React, { useEffect } from 'react';
 import { useState } from 'react';
-import { type FacilityBillsDto, BillingView, type PatientBill } from '../types';
+import { type FacilityBillsDto, type FacilityBill, BillingView } from '../types';
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { fetchFacilityBills } from '../../../billing-claims.resource';
-import styles from './facility-bills-v3.component.scss';
-import PatientBillDetails from '../../v2/patient-bill-details/patient-bill-details';
-import EmptyState from '../../v2/shared/empty-state.component';
-import TableToolbar from '../../v2/shared/table-toolbar.component';
+import styles from './facility-bills.component.scss';
+import PatientBillDetails from '../patient-bill-details/patient-bill-details';
+import TableToolbar from '../shared/table-toolbar.component';
+import EmptyState from '../shared/empty-state.component';
+import { type PatientBill } from '../../v2/types';
 
-
-interface FacilityBillsV3Props {
+interface facilityBillsProps {
   billingDate: string;
   locationUuid: string;
   onDateChange?: (value: string) => void;
 }
-const FacilityBillsV3: React.FC<FacilityBillsV3Props> = ({ billingDate, locationUuid, onDateChange }) => {
+const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUuid, onDateChange }) => {
   const [facilityBills, setFacilityBills] = useState<PatientBill[]>([]);
   const [currentView, setCurrentView] = useState<BillingView>(BillingView.Bills);
   const [selectedPatientUuid, setSelectedPatientUuid] = useState<string>('');
