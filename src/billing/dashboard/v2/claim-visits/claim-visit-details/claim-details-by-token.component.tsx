@@ -32,7 +32,7 @@ const ClaimDetailsByToken: React.FC<claimDetailsByTokenProps> = ({ consentToken,
       : undefined;
 
   if (claim) {
-    return <ClaimVisitDetails claimsVisit={claim} locationUuid={locationUuid} claimRefreshing={isValidating} />;
+    return <ClaimVisitDetails claimsVisit={claim} locationUuid={locationUuid} />;
   }
   if (isLoading || isValidating) {
     return <ClaimDetailsSkeleton />;

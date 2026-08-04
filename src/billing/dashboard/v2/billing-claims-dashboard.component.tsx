@@ -218,10 +218,6 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                   <FacilityBills
                     locationUuid={locationUuid}
                     billingDate={billingDate}
-                    onDetailsOpenChange={setBillsDetailsOpen}
-                    navPayerTab={billsNav.payerTab}
-                    navStatusKey={billsNav.statusKey}
-                    navNonce={billsNav.nonce}
                   />
                 </TabPanel>
                 <TabPanel>
