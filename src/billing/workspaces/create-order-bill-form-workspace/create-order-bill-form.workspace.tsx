@@ -603,7 +603,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                                 title="No active claim visit. Continue to start a Claim visit."
                                             />
                                         ) :
-                                            <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: crIdentifierId, patientUuid, isNewVisit: false, triggerAddIntervention, onSelectChange: () => { }, onAddIntervention, hasPreExistingInterventions: () => {} }} />
+                                            <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: crIdentifierId, patientUuid, isNewVisit: false, triggerAddIntervention, order, onSelectChange: () => { }, onAddIntervention, hasPreExistingInterventions: () => {} }} />
                                     }
                                 </Column>
                                 :
