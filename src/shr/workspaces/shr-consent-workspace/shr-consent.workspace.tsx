@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -16,7 +16,8 @@ import {
   TextInput,
 } from '@carbon/react';
 import { ArrowLeft, Renew } from '@carbon/react/icons';
-import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, useSession, Workspace2 } from '@openmrs/esm-framework';
+import type { Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import OTPInput from '../../../shared/ui/otp-input/otp-input.component';
 import { createConsentRequest, extractShrErrorDetail, verifyConsentOtp } from '../../shr.resource';
@@ -32,15 +33,20 @@ const OTP_LENGTH = 5;
 
 type Step = 'request' | 'otp';
 
-interface ShrConsentWorkspaceProps extends Partial<DefaultWorkspaceProps> {
+interface ShrConsentWorkspaceProps {
   /** The patient's Client Registry number, resolved by the caller from their identifiers. */
-  crId: string;
-  locationUuid: string;
+  crId?: string;
+  locationUuid?: string;
   /**
    * Fired after a successful verify, with the token and visit id the caller needs
    * to fetch records and later close the visit.
    */
-  onConsentGranted: (grant: ShrConsentGrant) => void;
+  onConsentGranted?: (grant: ShrConsentGrant) => void;
+}
+
+/** Props shared by every workspace in the chart's `patient-chart` group. */
+interface PatientChartGroupProps {
+  patientUuid?: string;
 }
 
 /**
@@ -53,16 +59,11 @@ interface ShrConsentWorkspaceProps extends Partial<DefaultWorkspaceProps> {
  *     → closeWorkspace() + onConsentGranted({ consentToken, visitId })
  *
  * The workspace's whole job is getting from "no consent" to a granted token —
- * fetching and rendering the records belongs to the parent, matching how
- * `launchWorkspace(..., { onXComplete })` is used elsewhere in this codebase.
+ * fetching and rendering the records belongs to the parent.
  */
-const ShrConsentWorkspace: React.FC<ShrConsentWorkspaceProps> = ({
-  crId,
-  locationUuid,
-  closeWorkspace,
-  promptBeforeClosing,
-  onConsentGranted,
-}) => {
+const ShrConsentWorkspace: React.FC<
+  Workspace2DefinitionProps<ShrConsentWorkspaceProps, object, PatientChartGroupProps>
+> = ({ closeWorkspace, workspaceProps }) => {
   const { t } = useTranslation();
   const session = useSession();
   const [step, setStep] = useState<Step>('request');
@@ -72,6 +73,10 @@ const ShrConsentWorkspace: React.FC<ShrConsentWorkspaceProps> = ({
   const [otpError, setOtpError] = useState('');
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+
+  const crId = workspaceProps?.crId ?? '';
+  const locationUuid = workspaceProps?.locationUuid ?? '';
+  const onConsentGranted = workspaceProps?.onConsentGranted;
 
   const requestedBy =
     session?.user?.person?.display?.trim() || session?.user?.display?.trim() || t('clinician', 'Clinician');
@@ -88,11 +93,6 @@ const ShrConsentWorkspace: React.FC<ShrConsentWorkspaceProps> = ({
   });
 
   const isEmergency = watch('emergency');
-
-  // Once an OTP is out with the patient, closing loses that in-flight request.
-  useEffect(() => {
-    promptBeforeClosing?.(() => step === 'otp');
-  }, [step, promptBeforeClosing]);
 
   /** POST /shr/consents. Shared by the initial submit and "Resend OTP". */
   const sendConsentRequest = useCallback(
@@ -171,9 +171,9 @@ const ShrConsentWorkspace: React.FC<ShrConsentWorkspaceProps> = ({
         subtitle: t('shrConsentApprovedDetail', "Fetching the patient's shared health record."),
       });
 
-      promptBeforeClosing?.(() => false);
-      closeWorkspace?.();
-      onConsentGranted({ consentToken: response.consent_token, visitId: response.visit_id });
+      // The consent is granted, so the in-flight OTP is no longer unsaved work.
+      await closeWorkspace({ discardUnsavedChanges: true });
+      onConsentGranted?.({ consentToken: response.consent_token, visitId: response.visit_id });
     } catch (err: any) {
       setOtpError(extractShrErrorDetail(err?.message ?? ''));
     } finally {
@@ -182,161 +182,188 @@ const ShrConsentWorkspace: React.FC<ShrConsentWorkspaceProps> = ({
   };
 
   const busy = sending || verifying || isSubmitting;
+  const canRequest = Boolean(crId && locationUuid);
 
   return (
-    <Form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-      <div className={styles.formContainer}>
-        <p className={styles.crId}>{crId}</p>
-
-        {step === 'request' && (
-          <Stack gap={5}>
-            {requestError && (
-              <InlineNotification
-                kind="error"
-                lowContrast
-                hideCloseButton
-                title={t('shrConsentRequestFailed', "Couldn't create the consent request.")}
-                subtitle={requestError}
-              />
-            )}
-
-            <Controller
-              name="visitType"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  id="shr-visit-type"
-                  labelText={t('visitType', 'Visit type')}
-                  invalid={!!errors.visitType}
-                  invalidText={errors.visitType?.message}
-                >
-                  <SelectItem value="IP" text={t('shrVisitTypeInpatient', 'IP – inpatient')} />
-                  <SelectItem value="OP" text={t('shrVisitTypeOutpatient', 'OP – outpatient')} />
-                </Select>
+    <Workspace2
+      title={t('shrVisitConsent', 'SHR visit consent')}
+      // Once an OTP is out with the patient, closing loses that in-flight request.
+      hasUnsavedChanges={step === 'otp'}
+    >
+      <Form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
+        <div className={styles.formContainer}>
+          {!canRequest ? (
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={t('shrConsentMissingContext', 'Missing patient or facility')}
+              subtitle={t(
+                'shrConsentMissingContextDetail',
+                'Open this workspace from the patient chart SHR page, with a login location selected.',
               )}
             />
+          ) : (
+            <>
+              <p className={styles.crId}>{crId}</p>
 
-            <TextInput
-              id="shr-requested-by"
-              labelText={t('requestedBy', 'Requested by')}
-              value={requestedBy}
-              readOnly
-              disabled
-            />
+              {step === 'request' && (
+                <Stack gap={5}>
+                  {requestError && (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={t('shrConsentRequestFailed', "Couldn't create the consent request.")}
+                      subtitle={requestError}
+                    />
+                  )}
 
-            <Controller
-              name="emergency"
-              control={control}
-              render={({ field: { value, onChange, ...rest } }) => (
-                <Checkbox
-                  {...rest}
-                  id="shr-emergency"
-                  labelText={t('emergencyVisit', 'Emergency visit')}
-                  checked={!!value}
-                  onChange={(_event, { checked }) => onChange(checked)}
-                />
-              )}
-            />
-
-            {isEmergency && (
-              <Controller
-                name="incapacityReason"
-                control={control}
-                render={({ field }) => (
-                  <TextInput
-                    {...field}
-                    id="shr-incapacity-reason"
-                    labelText={t('incapacityReason', 'Incapacity reason')}
-                    placeholder={t('incapacityReasonPlaceholder', 'Reason patient cannot consent directly')}
-                    invalid={!!errors.incapacityReason}
-                    invalidText={errors.incapacityReason?.message}
+                  <Controller
+                    name="visitType"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        id="shr-visit-type"
+                        labelText={t('visitType', 'Visit type')}
+                        invalid={!!errors.visitType}
+                        invalidText={errors.visitType?.message}
+                      >
+                        <SelectItem value="IP" text={t('shrVisitTypeInpatient', 'IP – inpatient')} />
+                        <SelectItem value="OP" text={t('shrVisitTypeOutpatient', 'OP – outpatient')} />
+                      </Select>
+                    )}
                   />
-                )}
-              />
-            )}
-          </Stack>
-        )}
 
-        {step === 'otp' && (
-          <Stack gap={5}>
-            <Button
-              kind="ghost"
-              size="sm"
-              className={styles.ghostLink}
-              renderIcon={ArrowLeft}
-              onClick={() => setStep('request')}
-              disabled={busy}
-            >
-              {t('editRequest', 'Edit request')}
-            </Button>
+                  <TextInput
+                    id="shr-requested-by"
+                    labelText={t('requestedBy', 'Requested by')}
+                    value={requestedBy}
+                    readOnly
+                    disabled
+                  />
 
-            <div className={styles.statusRow}>
-              <Tag size="sm" type="teal">
-                {consent?.consent_status || t('pending', 'Pending')}
-              </Tag>
-              <span className={styles.consentId}>{consent?.consent_id}</span>
-            </div>
+                  <Controller
+                    name="emergency"
+                    control={control}
+                    render={({ field: { value, onChange, ...rest } }) => (
+                      <Checkbox
+                        {...rest}
+                        id="shr-emergency"
+                        labelText={t('emergencyVisit', 'Emergency visit')}
+                        checked={!!value}
+                        onChange={(_event, { checked }) => onChange(checked)}
+                      />
+                    )}
+                  />
 
-            <p className={styles.helperText}>
-              {t(
-                'shrOtpInstructions',
-                "An OTP has been sent to the patient's registered contact. Enter the code below to verify consent.",
+                  {isEmergency && (
+                    <Controller
+                      name="incapacityReason"
+                      control={control}
+                      render={({ field }) => (
+                        <TextInput
+                          {...field}
+                          id="shr-incapacity-reason"
+                          labelText={t('incapacityReason', 'Incapacity reason')}
+                          placeholder={t('incapacityReasonPlaceholder', 'Reason patient cannot consent directly')}
+                          invalid={!!errors.incapacityReason}
+                          invalidText={errors.incapacityReason?.message}
+                        />
+                      )}
+                    />
+                  )}
+                </Stack>
               )}
-            </p>
 
-            {otpError && (
-              <InlineNotification
-                kind="error"
-                lowContrast
-                hideCloseButton
-                title={t('shrOtpFailed', "That code didn't verify.")}
-                subtitle={otpError}
-              />
-            )}
+              {step === 'otp' && (
+                <Stack gap={5}>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    className={styles.ghostLink}
+                    renderIcon={ArrowLeft}
+                    onClick={() => setStep('request')}
+                    disabled={busy}
+                  >
+                    {t('editRequest', 'Edit request')}
+                  </Button>
 
-            <div className={styles.otpField}>
-              <FormLabel>{t('otpCode', 'OTP code')}</FormLabel>
-              <OTPInput otpLength={OTP_LENGTH} onChange={setOtp} disabled={busy} />
-            </div>
+                  <div className={styles.statusRow}>
+                    <Tag size="sm" type="teal">
+                      {consent?.consent_status || t('pending', 'Pending')}
+                    </Tag>
+                    <span className={styles.consentId}>{consent?.consent_id}</span>
+                  </div>
 
-            <Button
-              kind="ghost"
-              size="sm"
-              className={styles.ghostLink}
-              renderIcon={Renew}
-              onClick={handleResend}
-              disabled={busy}
-            >
-              {t('resendOtp', 'Resend OTP')}
+                  <p className={styles.helperText}>
+                    {t(
+                      'shrOtpInstructions',
+                      "An OTP has been sent to the patient's registered contact. Enter the code below to verify consent.",
+                    )}
+                  </p>
+
+                  {otpError && (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={t('shrOtpFailed', "That code didn't verify.")}
+                      subtitle={otpError}
+                    />
+                  )}
+
+                  <div className={styles.otpField}>
+                    <FormLabel>{t('otpCode', 'OTP code')}</FormLabel>
+                    <OTPInput otpLength={OTP_LENGTH} onChange={setOtp} disabled={busy} />
+                  </div>
+
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    className={styles.ghostLink}
+                    renderIcon={Renew}
+                    onClick={handleResend}
+                    disabled={busy}
+                  >
+                    {t('resendOtp', 'Resend OTP')}
+                  </Button>
+                </Stack>
+              )}
+            </>
+          )}
+        </div>
+
+        <ButtonSet className={styles.buttonSet}>
+          <Button kind="secondary" onClick={() => void closeWorkspace()} disabled={busy}>
+            {t('cancel', 'Cancel')}
+          </Button>
+          {step === 'request' ? (
+            <Button kind="primary" type="submit" disabled={busy || !canRequest}>
+              {sending ? (
+                <InlineLoading description={t('sendingOtpRequest', 'Sending OTP request…')} />
+              ) : (
+                t('sendOtpRequest', 'Send OTP request')
+              )}
             </Button>
-          </Stack>
-        )}
-      </div>
-
-      <ButtonSet className={styles.buttonSet}>
-        <Button kind="secondary" onClick={() => closeWorkspace?.()} disabled={busy}>
-          {t('cancel', 'Cancel')}
-        </Button>
-        {step === 'request' ? (
-          <Button kind="primary" type="submit" disabled={busy}>
-            {sending ? (
-              <InlineLoading description={t('sendingOtpRequest', 'Sending OTP request…')} />
-            ) : (
-              t('sendOtpRequest', 'Send OTP request')
-            )}
-          </Button>
-        ) : (
-          <Button kind="primary" type="button" onClick={handleVerify} disabled={busy || otp.trim().length < OTP_LENGTH}>
-            {verifying ? (
-              <InlineLoading description={t('verifying', 'Verifying…')} />
-            ) : (
-              t('verifyConsent', 'Verify consent')
-            )}
-          </Button>
-        )}
-      </ButtonSet>
-    </Form>
+          ) : (
+            <Button
+              kind="primary"
+              type="button"
+              onClick={handleVerify}
+              disabled={busy || otp.trim().length < OTP_LENGTH}
+            >
+              {verifying ? (
+                <InlineLoading description={t('verifying', 'Verifying…')} />
+              ) : (
+                t('verifyConsent', 'Verify consent')
+              )}
+            </Button>
+          )}
+        </ButtonSet>
+      </Form>
+    </Workspace2>
   );
 };
 

@@ -12,7 +12,7 @@
  * entries.
  */
 export const shrDashboardMeta = {
-  path: 'SHR',
+  path: 'shr-v2',
   slot: 'patient-chart-shared-health-record-dashboard-slot',
   title: 'SHR',
   icon: 'omrs-icon-event-schedule',

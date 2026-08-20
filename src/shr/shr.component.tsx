@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, InlineLoading, InlineNotification } from '@carbon/react';
 import { CheckmarkFilled, DocumentBlank, ErrorFilled, Security } from '@carbon/react/icons';
-import { launchWorkspace, showSnackbar, useConfig, usePatient, useSession } from '@openmrs/esm-framework';
+import { launchWorkspace2, showSnackbar, useConfig, usePatient, useSession } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import type { ConfigObject } from '../config-schema';
 import { closeShrVisit, extractShrErrorDetail, fetchPatientRecords, getPatientCrIdentifier } from './shr.resource';
@@ -138,7 +138,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
     [loadRecords],
   );
 
-  const launchConsentWorkspace = useCallback(() => {
+  const launchConsentWorkspace = useCallback(async () => {
     if (!crId) {
       return;
     }
@@ -150,12 +150,20 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
       });
       return;
     }
-    launchWorkspace(SHR_CONSENT_WORKSPACE, {
-      workspaceTitle: t('shrVisitConsent', 'SHR visit consent'),
-      crId,
-      locationUuid,
-      onConsentGranted: handleConsentGranted,
-    });
+    try {
+      await launchWorkspace2(SHR_CONSENT_WORKSPACE, {
+        crId,
+        locationUuid,
+        onConsentGranted: handleConsentGranted,
+      });
+    } catch (err: any) {
+      console.error(err);
+      showSnackbar({
+        kind: 'error',
+        title: t('shrConsentWorkspaceFailed', "Couldn't open the SHR consent form"),
+        subtitle: err?.message ?? '',
+      });
+    }
   }, [crId, locationUuid, handleConsentGranted, t]);
 
   const handleCloseVisit = useCallback(async () => {
@@ -191,7 +199,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
     setSyncError('');
     setCloseError('');
     setClosedOn('');
-    launchConsentWorkspace();
+    void launchConsentWorkspace();
   }, [launchConsentWorkspace]);
 
   if (isPatientLoading && !patientUuid) {
@@ -281,7 +289,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
             "Start a shared health record request to fetch this patient's national records for the current visit.",
           )}
           actions={
-            <Button kind="primary" size="md" renderIcon={Security} onClick={launchConsentWorkspace}>
+            <Button kind="primary" size="md" renderIcon={Security} onClick={() => void launchConsentWorkspace()}>
               {t('initiateShrRequest', 'Initiate SHR request')}
             </Button>
           }
