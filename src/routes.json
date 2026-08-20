@@ -309,6 +309,30 @@
       "offline": true
     },
     {
+      "name": "shr-dashboard",
+      "slot": "patient-chart-dashboard-slot",
+      "component": "shrDashboardLink",
+      "meta": {
+        "slot": "patient-chart-shared-health-record-dashboard-slot",
+        "path": "SHR",
+        "layoutMode": "anchored"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "name": "shr-details",
+      "slot": "patient-chart-shared-health-record-dashboard-slot",
+      "component": "sharedHealthRecord",
+      "order": 1,
+      "meta": {
+        "title": "SHR",
+        "view": "SHR"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
       "name": "emt-dashboard-link",
       "component": "emtDashboardLink",
       "slot": "homepage-dashboard-slot",
@@ -466,6 +490,15 @@
       "title": "EMT Handover",
       "type": "emt-handover",
       "canHide": true,
+      "width": "narrow"
+    },
+    {
+      "name": "shr-consent-workspace",
+      "component": "shrConsentWorkspace",
+      "title": "SHR visit consent",
+      "type": "shr-consent",
+      "canHide": true,
+      "canMaximize": false,
       "width": "narrow"
     }
   ],
