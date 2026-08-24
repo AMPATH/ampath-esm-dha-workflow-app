@@ -85,6 +85,13 @@ const CHART_HINT = 'Charts showing daily, weekly and monthly claims summary';
 const CLAIM_COUNT_HINT =
   'Counted from the state recorded with each claim, so claims submitted or closed since are still included — this can read high. Open the tile for the live status of each claim.';
 
+/* Said on the two claim tiles, because their number is not the live one. See the comment on
+   claimCounts: the state stored against a claim is the state it was in when its visit was
+   recorded, so anything submitted or closed since still counts here. Open the tile to see
+   where the claims actually stand. */
+const CLAIM_COUNT_HINT =
+  'Counted from the state recorded with each claim, so claims submitted or closed since are still included — this can read high. Open the tile for the live status of each claim.';
+
 /**
  * An explanation hung off a label — a tab's, or a summary tile's.
  *

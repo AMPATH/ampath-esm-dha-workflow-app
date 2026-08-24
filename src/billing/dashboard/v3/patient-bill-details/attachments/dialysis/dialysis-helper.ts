@@ -35,7 +35,6 @@ export interface ExtractedDialysisData {
     heparin: string;
     remarks: string;
   }>;
-
   postAssessment: {
     totalUfAchieved: string;
     accessSite: string;

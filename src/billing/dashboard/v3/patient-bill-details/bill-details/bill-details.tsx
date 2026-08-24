@@ -53,6 +53,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
     return <>No Data</>;
   }
   function handleBillItemPayment(patientBillDetail: PatientFacilityBillDetails) {
+    console.log('ACTION PAY BILL: ', patientBillDetail);
     setSelectedBillItem(patientBillDetail);
     setShowPaymentModal(true);
   }
