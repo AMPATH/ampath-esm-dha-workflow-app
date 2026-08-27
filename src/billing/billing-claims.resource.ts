@@ -816,30 +816,30 @@ export async function fetchPatientDiagnosesForBilling(
   const maternityRows: AmrsVisitDiagnosis[] =
     maternityResult.status === 'fulfilled'
       ? (maternityResult.value ?? [])
-          .filter((r) => r?.uuid != null)
-          .map(
-            (v): AmrsVisitDiagnosis => ({
-              patient_id: Number(v.patient_id) || 0,
-              encounter_id: v.encounter_id,
-              encounter_datetime: v.encounter_datetime,
-              facility: v.facility ?? '',
-              encounter_type: v.encounter_type,
-              concept_id: v.concept_id != null ? Number(v.concept_id) : null,
-              value_coded: v.value_coded != null ? Number(v.value_coded) : null,
-              dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
-              concept_source_name: v.concept_source_name,
-              hl7_code: v.hl7_code,
-              icd11_code: v.icd11_code,
-              provider_id: '',
-              national_id: v.practioner_nat_id ?? '',
-              speciality: v.practitioner_speciality ?? null,
-              uuid: v.uuid,
-              practioner_nat_id: v.practioner_nat_id,
-              practitioner_speciality: v.practitioner_speciality,
-              practitioner_identifier_type: 'National ID',
-              practitioner_body: v.practitioner_body,
-            }),
-          )
+        .filter((r) => r?.uuid != null)
+        .map(
+          (v): AmrsVisitDiagnosis => ({
+            patient_id: Number(v.patient_id) || 0,
+            encounter_id: v.encounter_id,
+            encounter_datetime: v.encounter_datetime,
+            facility: v.facility ?? '',
+            encounter_type: v.encounter_type,
+            concept_id: v.concept_id != null ? Number(v.concept_id) : null,
+            value_coded: v.value_coded != null ? Number(v.value_coded) : null,
+            dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
+            concept_source_name: v.concept_source_name,
+            hl7_code: v.hl7_code,
+            icd11_code: v.icd11_code,
+            provider_id: '',
+            national_id: v.practioner_nat_id ?? '',
+            speciality: v.practitioner_speciality ?? null,
+            uuid: v.uuid,
+            practioner_nat_id: v.practioner_nat_id,
+            practitioner_speciality: v.practitioner_speciality,
+            practitioner_identifier_type: 'National ID',
+            practitioner_body: v.practitioner_body,
+          }),
+        )
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
@@ -948,6 +948,43 @@ export async function fetchPatientBillDetails(visitUuid: string) {
 
     throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
   }
+}
+
+export function usePatientBillDetails(visitUuid: string) {
+  const { etlBaseUrl } = useConfig({
+    externalModuleName: '@ampath/esm-dha-workflow-app',
+  });
+
+  const url = visitUuid ? `${etlBaseUrl}/facility/patient/bill?visitUuid=${visitUuid}` : null;
+
+  console.log("url", url);
+
+  const { data, error, isLoading, isValidating } = useSWR<{
+    data: {
+      results: Array<PatientFacilityBillDetails>
+    }
+  }>(url, openmrsFetch);
+
+  const results = data?.data?.results || [];
+
+  console.log("results", results)
+
+  return {
+    results,
+    error,
+    isLoading,
+    isValidating,
+  };
+}
+
+export function useInvalidatePatientBillDetails() {
+  const { etlBaseUrl } = useConfig({
+    externalModuleName: '@ampath/esm-dha-workflow-app',
+  });
+  return useCallback(() => {
+    const url = `${etlBaseUrl}/facility/patient/bill`;
+    mutate((key) => typeof key === 'string' && key.startsWith(`${url}`), undefined, { revalidate: true });
+  }, [etlBaseUrl]);
 }
 
 export async function fetchClaimsDashboard(
