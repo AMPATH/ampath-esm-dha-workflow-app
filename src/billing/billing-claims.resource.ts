@@ -957,8 +957,6 @@ export function usePatientBillDetails(visitUuid: string) {
 
   const url = visitUuid ? `${etlBaseUrl}/facility/patient/bill?visitUuid=${visitUuid}` : null;
 
-  console.log("url", url);
-
   const { data, error, isLoading, isValidating } = useSWR<{
     data: {
       results: Array<PatientFacilityBillDetails>
@@ -966,8 +964,6 @@ export function usePatientBillDetails(visitUuid: string) {
   }>(url, openmrsFetch);
 
   const results = data?.data?.results || [];
-
-  console.log("results", results)
 
   return {
     results,
@@ -1044,3 +1040,36 @@ export async function fethClaimVisits(fetchClaimVisitDto: FetchClaimVisitDto): P
   const data = (await response.json()) as ClaimVisit[];
   return data;
 }
+
+export const useBill = (billUuid: string) => {
+  const url = billUuid ? `${restBaseUrl}/billing/bill/${billUuid}?v=custom:(uuid,patient:(uuid),lineItems,status)` : null;
+
+  const {
+    data,
+    error,
+    isLoading,
+    isValidating,
+    mutate: mutated,
+  } = useSWR<{
+    data: {
+      uuid: string,
+      patient: {
+        uuid: string
+      },
+      lineItems: Array<any>,
+      status: string
+    }
+  }>(url, openmrsFetch, {
+    errorRetryCount: 2,
+  });
+
+  const result = data?.data;
+
+  return {
+    bill: result,
+    error,
+    isLoading,
+    isValidating,
+    mutated,
+  };
+};

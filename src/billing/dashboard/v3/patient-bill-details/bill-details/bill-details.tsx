@@ -61,6 +61,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
     setShowPaymentModal(false);
   }
   function handleSuccessfullPayment() {
+    invalidatePatientBillDetails();
     handleClosePayModal();
   }
   function handleClaimLineAddition(patientBillDetail: PatientFacilityBillDetails) {
@@ -138,7 +139,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
                     <TableCell>{b.item_quantity}</TableCell>
                     <TableCell>Ksh {b.item_total_price}</TableCell>
                     <TableCell>
-                      {b.paid_status !== 'PAID' && !b.intervention_code && (
+                      {!(b.status == "PAID" || b.paid_status == "PAID") && !b.intervention_code && (
                         <Button size="sm" kind="tertiary" onClick={() => handleBillItemPayment(b)}>
                           Pay
                         </Button>
