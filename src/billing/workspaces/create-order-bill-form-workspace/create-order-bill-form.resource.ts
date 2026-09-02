@@ -1,12 +1,26 @@
 import { openmrsFetch, OpenmrsResource, restBaseUrl, useSession } from "@openmrs/esm-framework";
 import { useState } from "react";
 import useSWR from 'swr';
+import {
+    BILLABLE_SERVICE_PICKER_REPRESENTATION,
+    buildBillableServiceUrl,
+    useBillableServiceLocationUuid,
+} from "../../../shared/services/billable-service.resource";
 import { getHieBaseUrl } from "../../../shared/utils/get-base-url";
 import { postJson } from "../../../registry/registry.resource";
 import dayjs from "dayjs";
 
-export const useBillableItems = (serviceTypeUuid: string = "") => {
-    const url = `${restBaseUrl}/billing/billableService?v=custom:(uuid,name,shortName,serviceStatus,serviceType:(uuid,display),servicePrices:(uuid,name,price,paymentMode),concept:(uuid))`;
+/**
+ * Billable items for the session facility. Pass `locationUuid: null` in
+ * `options` only when the server-wide catalog is genuinely wanted.
+ */
+export const useBillableItems = (
+    serviceTypeUuid: string = "",
+    options: { locationUuid?: string | null } = {},
+) => {
+    const sessionLocationUuid = useBillableServiceLocationUuid();
+    const locationUuid = options.locationUuid === undefined ? sessionLocationUuid : options.locationUuid;
+    const url = buildBillableServiceUrl({ v: BILLABLE_SERVICE_PICKER_REPRESENTATION, locationUuid });
     const { data, isLoading, error } = useSWR<{ data: { results: Array<OpenmrsResource> } }>(url, openmrsFetch);
     const [searchTerm, setSearchTerm] = useState('');
     let filteredItems =
