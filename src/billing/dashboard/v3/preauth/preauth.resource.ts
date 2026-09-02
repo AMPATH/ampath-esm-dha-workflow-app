@@ -8,6 +8,11 @@ import { type Intervention } from '../../../../claims';
 import { IdentifierTypesUuids } from '../../../../resources/identifier-types';
 import { type PatientFacilityBillDetails } from '../types';
 import { getConsentToken } from '../../../../shared/services/claims.resource';
+import {
+  BILLABLE_SERVICE_PICKER_REPRESENTATION,
+  fetchBillableServicePage,
+  useBillableServiceLocationUuid,
+} from '../../../../shared/services/billable-service.resource';
 
 const PREAUTH_CODE_KEY = 'ampath.preauthCode';
 
@@ -1473,23 +1478,22 @@ export type PreauthBillableService = {
 };
 
 const PREAUTH_BILLABLE_PAGE_SIZE = 500; // OpenMRS REST absolute max on this server
-const PREAUTH_BILLABLE_REPRESENTATION =
-  'custom:(uuid,name,shortName,serviceStatus,serviceType:(uuid,display),servicePrices:(uuid,name,price,paymentMode),concept:(uuid))';
 
 /**
- * Fetches the full billable-service catalog in pages of ≤500
+ * Fetches the facility's billable-service catalog in pages of ≤500
  * (server rejects higher limits with "absolute limit at 500").
  */
-async function fetchAllPreauthBillableServices(): Promise<PreauthBillableService[]> {
+async function fetchAllPreauthBillableServices(locationUuid?: string | null): Promise<PreauthBillableService[]> {
   const all: PreauthBillableService[] = [];
   let startIndex = 0;
 
   for (;;) {
-    const url =
-      `${restBaseUrl}/billing/billableService?v=${PREAUTH_BILLABLE_REPRESENTATION}` +
-      `&limit=${PREAUTH_BILLABLE_PAGE_SIZE}&startIndex=${startIndex}`;
-    const { data } = await openmrsFetch<{ results: PreauthBillableService[] }>(url);
-    const page = data?.results ?? [];
+    const page = await fetchBillableServicePage<PreauthBillableService>({
+      v: BILLABLE_SERVICE_PICKER_REPRESENTATION,
+      locationUuid,
+      limit: PREAUTH_BILLABLE_PAGE_SIZE,
+      startIndex,
+    });
     all.push(...page);
     if (page.length < PREAUTH_BILLABLE_PAGE_SIZE) {
       break;
@@ -1506,7 +1510,10 @@ async function fetchAllPreauthBillableServices(): Promise<PreauthBillableService
  * changes here do not affect billing or switch-intervention workspaces.
  */
 export function usePreauthBillableServices() {
-  const { data, isLoading, error } = useSWR('preauth-billable-services', fetchAllPreauthBillableServices);
+  const locationUuid = useBillableServiceLocationUuid();
+  const { data, isLoading, error } = useSWR(['preauth-billable-services', locationUuid], () =>
+    fetchAllPreauthBillableServices(locationUuid),
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const q = searchTerm.trim().toLowerCase();
   const lineItems = (data ?? []).filter((item) =>
