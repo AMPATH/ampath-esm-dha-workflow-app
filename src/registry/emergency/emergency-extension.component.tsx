@@ -1,13 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from './emergency.scss';
-import { Dropdown, TextArea } from '@carbon/react';
+import { ComboBox, Dropdown, TextArea } from '@carbon/react';
 import EmergencyOtpComponent from './otp-component';
 import { type HieClient } from '../types';
 import { fetchEmergencyInterventions, fetchProviders, sendEmergencyClaimIdentified } from './emergency.resource';
 import { type Intervention } from 'src/claims';
-import { useSession } from '@openmrs/esm-framework';
+import { showSnackbar, useSession } from '@openmrs/esm-framework';
 import { generateReferenceNumber, getAbbreviation, type EmergencyFormData, type Provider } from './type';
+import { type ServicePrice, type CashPoint, type BillableService, type PayableBillableService } from 'src/shared/types';
+import { type Bill } from 'src/billing/types';
+
+import { fetchCashPoints } from '../../shared/services/billing.resource';
+import { fetchBillableServicePage } from '../../shared/services/billable-service.resource';
 
 interface EmergencySlotComponentProps {
   client?: HieClient;
@@ -39,6 +44,14 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     provider: false,
     notes: false,
   });
+  const [selectedCashPoint, setSelectedCashPoint] = useState<CashPoint | null>(null);
+  const [selectedBillableService, setSelectedBillableService] = useState<BillableService | null>(null);
+  const [filteredBillableServices, setFilteredBillableServices] = useState<BillableService[]>([]);
+  const [cashPoints, setCashPoints] = useState<CashPoint[]>([]);
+  const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
+  const [selectedServicePrice, setSelectedServicePrice] = useState<ServicePrice | null>(null);
+  const userPickedService = useRef(false);
+  const [patientBills, setPatientBills] = useState<Bill[]>([]);
 
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
@@ -51,6 +64,8 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
 
   useEffect(() => {
     const isValid = Boolean(
+      selectedCashPoint?.uuid &&
+      selectedServicePrice?.uuid &&
       modeOfArrival &&
       broughtBy &&
       selectedIntervention?.code &&
@@ -63,6 +78,8 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     onValidationChange(isValid);
 
     onFormChange({
+      cashpointUuid: selectedCashPoint?.uuid,
+      servicePriceUuid: selectedServicePrice?.uuid,
       modeOfArrival,
       broughtBy,
       interventionCode: selectedIntervention?.code,
@@ -73,6 +90,8 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       otp,
     });
   }, [
+    selectedCashPoint,
+    selectedServicePrice,
     modeOfArrival,
     broughtBy,
     selectedIntervention,
@@ -93,6 +112,8 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
   useEffect(() => {
     getInterventions();
     getProviders();
+    getCashPoints();
+    getBillableServices();
   }, []);
 
   const handleBroughtByChange = (item: any) => {
@@ -160,8 +181,225 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     }
   };
 
+  async function getCashPoints() {
+    const cp = await fetchCashPoints();
+    setCashPoints(cp);
+    const firstFacilityCashPoint = cp.find((cashPoint) => cashPoint?.location?.uuid === locationUuid);
+    setSelectedCashPoint(firstFacilityCashPoint ?? null);
+  }
+
+  async function getBillableServices() {
+    const billableServices = await fetchBillableServicePage<BillableService>();
+    const outpatientServices = billableServices.filter((bs) => {
+      return bs?.shortName?.toLowerCase().includes('emergency');
+    });
+    const firstBillableService = outpatientServices[0] ?? null;
+    const outpatientServicePrices = outpatientServices.flatMap((bs) => bs.servicePrices ?? []);
+    const shaServicePrice = firstBillableService?.servicePrices?.find((servicePrice) => /sha/i.test(servicePrice.name));
+    setSelectedBillableService(firstBillableService);
+    setSelectedServicePrice(shaServicePrice ?? null);
+    setFilteredBillableServices(outpatientServices);
+    setServicePrices(outpatientServicePrices);
+  }
+
+  function generateServiceTypesList(billableServices: BillableService[]) {
+    const sp: ServicePrice[] = [];
+    for (let bs of billableServices) {
+      if (bs.servicePrices) {
+        const servicePrices = bs.servicePrices;
+        for (let servicePrice of servicePrices) {
+          sp.push(servicePrice);
+        }
+      }
+    }
+    setServicePrices(sp);
+  }
+
+  const selectInputText = (e: React.FocusEvent<HTMLElement>) => {
+    const input = e.target as HTMLInputElement;
+    if (input?.tagName === 'INPUT') {
+      input.select();
+    }
+  };
+
+  function getfacilityCashpoints() {
+    return cashPoints.filter((cp) => {
+      return cp && cp.location?.uuid === locationUuid;
+    });
+  }
+  const showAlert = (alertType: 'error' | 'success', title: string, subtitle: string) => {
+    showSnackbar({
+      kind: alertType,
+      title: title,
+      subtitle: subtitle,
+    });
+  };
+
+  const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+
+  useEffect(() => {
+    if (!selectedCashPoint && facilityCashPoints.length > 0) {
+      setSelectedCashPoint(facilityCashPoints[0]);
+    }
+  }, [facilityCashPoints, selectedCashPoint]);
+
+  const billableServicesHandler = (selectedBillableServiceUuid: string) => {
+    const billableService = filteredBillableServices.find((service) => {
+      return service.uuid === selectedBillableServiceUuid;
+    });
+    if (!billableService) {
+      setSelectedBillableService(null);
+      return;
+    }
+
+    setSelectedBillableService(billableService);
+    const shaServicePrice = (billableService.servicePrices ?? []).find((servicePrice) =>
+      /sha/i.test(servicePrice.name),
+    );
+    setSelectedServicePrice(shaServicePrice ?? billableService.servicePrices?.[0] ?? null);
+    userPickedService.current = true;
+  };
+  const servicePricesHandler = (selectedServicePriceUuid: string) => {
+    const sB = servicePrices.find((sp) => {
+      return sp.uuid === selectedServicePriceUuid;
+    });
+    if (!sB) {
+      setSelectedServicePrice(null);
+      return;
+    }
+
+    setSelectedServicePrice(sB);
+
+    if (userPickedService.current && !isValidBillableService(sB)) {
+      showAlert('error', 'Existing bill', 'Patient has a similar bill');
+    }
+    userPickedService.current = true;
+  };
+
+  const isValidBillableService = (selectedService: ServicePrice) => {
+    // check if patient has been billed for similar service
+    let isValid = true;
+    patientBills.forEach((b) => {
+      const lineItems = b.lineItems;
+      lineItems.forEach((l) => {
+        if (l.billableService === selectedService.billableService.name) {
+          isValid = false;
+        }
+      });
+    });
+    return isValid;
+  };
+
   return (
     <>
+      <div className={styles.formRow}>
+        <div
+          className={styles.formControl}
+          onFocusCapture={selectInputText}
+          onKeyDownCapture={(e) => {
+            if (!selectedCashPoint || e.ctrlKey || e.metaKey || e.altKey) {
+              return;
+            }
+            const showingLabel = (e.target as HTMLInputElement)?.value === (selectedCashPoint.name ?? '');
+            if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedCashPoint(null);
+            }
+          }}
+        >
+          <ComboBox
+            id="cash-point"
+            titleText="Cash point"
+            placeholder="Search cash point"
+            items={facilityCashPoints ?? []}
+            itemToString={(item) => item?.name ?? ''}
+            shouldFilterItem={({ item, inputValue }) => {
+              const selectedLabel = selectedCashPoint?.name ?? '';
+              if (!inputValue || inputValue === selectedLabel) {
+                return true;
+              }
+              return (item?.name ?? '').toLowerCase().includes(inputValue.toLowerCase());
+            }}
+            selectedItem={selectedCashPoint ?? null}
+            onChange={({ selectedItem }) => setSelectedCashPoint(selectedItem ?? null)}
+          />
+        </div>
+        <div
+          className={styles.formControl}
+          onFocusCapture={selectInputText}
+          onKeyDownCapture={(e) => {
+            if (!selectedBillableService || e.ctrlKey || e.metaKey || e.altKey) {
+              return;
+            }
+            const label = `${selectedBillableService?.name} `;
+            const showingLabel = (e.target as HTMLInputElement)?.value === label;
+            if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedBillableService(null);
+            }
+          }}
+        >
+          <ComboBox
+            id="billable-service"
+            titleText="Billable service"
+            placeholder="Search billable service"
+            items={filteredBillableServices ?? []}
+            itemToString={(item) => (item ? `${item?.name} ` : '')}
+            shouldFilterItem={({ item, inputValue }) => {
+              const selectedLabel = selectedBillableService ? `${selectedBillableService?.name}` : '';
+              if (!inputValue || inputValue === selectedLabel) {
+                return true;
+              }
+              const text = item ? `${item?.name} ` : '';
+              return text.includes(inputValue.toLowerCase());
+            }}
+            selectedItem={selectedBillableService ?? null}
+            onChange={({ selectedItem }) =>
+              selectedItem ? billableServicesHandler(selectedItem.uuid) : setSelectedBillableService(null)
+            }
+          />
+        </div>
+        <div
+          className={styles.formControl}
+          onFocusCapture={selectInputText}
+          onKeyDownCapture={(e) => {
+            if (!selectedServicePrice || e.ctrlKey || e.metaKey || e.altKey) {
+              return;
+            }
+            const label = `${selectedServicePrice?.name} `;
+            const showingLabel = (e.target as HTMLInputElement)?.value === label;
+            if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+              e.preventDefault();
+              e.stopPropagation();
+              setSelectedServicePrice(null);
+            }
+          }}
+        >
+          <ComboBox
+            id="service-price"
+            titleText="Service price"
+            placeholder="Search service price"
+            items={servicePrices ?? []}
+            itemToString={(item) => (item ? `(${item.name}: ${item?.price})` : '')}
+            shouldFilterItem={({ item, inputValue }) => {
+              const selectedLabel = selectedServicePrice
+                ? `${selectedServicePrice?.name} (${selectedServicePrice.name}: ${selectedServicePrice?.price})`
+                : '';
+              if (!inputValue || inputValue === selectedLabel) {
+                return true;
+              }
+              const text = item ? `${item?.name} ${item?.price}`.toLowerCase() : '';
+              return text.includes(inputValue.toLowerCase());
+            }}
+            selectedItem={selectedServicePrice ?? null}
+            onChange={({ selectedItem }) =>
+              selectedItem ? servicePricesHandler(selectedItem.uuid) : setSelectedServicePrice(null)
+            }
+          />
+        </div>
+      </div>
       <div className={styles.dropDownContainer}>
         <div className={styles.dropDown} />
         <Dropdown

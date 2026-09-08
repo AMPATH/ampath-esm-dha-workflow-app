@@ -34,6 +34,8 @@ import {
 } from './types';
 import { createVisit } from '../resources/visit.resource';
 import { createQueueEntry } from '../resources/queue.resource';
+import { createBill, fetchBillableServices } from '../shared/services/billing.resource';
+import { type CreateBillDto, type BillableService } from '../shared/types';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../shared/constants/concepts';
 import { VisitTypeUuids } from '../shared/constants/visit-types';
 import {
@@ -407,6 +409,8 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     method?: 'cash' | 'insurance';
     insurance?: string;
     emergencyResponse?: ClaimResult;
+    emergencyCashPointUuid?: string;
+    emergencyServicePriceUuid?: string;
   }) => {
     // Ensure the client exists in AMRS before starting a visit.
     let amrsPatient = amrsPatients[0];
@@ -462,6 +466,36 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         },
       };
       await createQueueEntry(queueEntryDto);
+
+      if (details.emergencyResponse && details.emergencyCashPointUuid && details.emergencyServicePriceUuid) {
+        const billableServices = await fetchBillableServices();
+        const servicePrice = billableServices
+          .flatMap((billableService: BillableService) => billableService.servicePrices ?? [])
+          .find((price) => price.uuid === details.emergencyServicePriceUuid);
+
+        if (!servicePrice) {
+          throw new Error('Selected emergency service price could not be found');
+        }
+
+        const billDto: CreateBillDto = {
+          lineItems: [
+            {
+              quantity: 1,
+              priceUuid: details.emergencyServicePriceUuid,
+            },
+          ],
+          cashPoint: details.emergencyCashPointUuid,
+          patient: amrsPatient.uuid,
+          visit: visit.uuid,
+          status: 'PENDING',
+          payments: [],
+        };
+        const bill = await createBill(billDto);
+        if (!bill) {
+          throw new Error('Error creating emergency bill');
+        }
+        showAlert('success', 'Bill successfully created', '');
+      }
 
       // Raise the consultation clearance for CASH patients only — they sit
       // "Awaiting payment" in the Accounting dashboard until the fee is settled.
