@@ -379,7 +379,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         value: paymentMethod === 'cash' ? cashPaymentModeUuid : shaPaymentModeUuid, // /sha|shif/i.test(insurance) ? shaPaymentModeUuid : "",
       });
     }
-    if (emergencyResponse) {
+    if (emergencyResponse && Object.keys(emergencyResponse).length !== 0) {
       attributes.push({
         attributeType: '4962a633-c4f8-474c-857c-5c68c72fbbe3',
         value: emergencyResponse.authorization_code,
@@ -422,7 +422,11 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       return;
     }
     const visitType =
-      details.visitType === 'Inpatient' ? VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID : VisitTypeUuids.OPD_VISIT_TYPE_UUID;
+      details.visitType === 'Inpatient'
+        ? VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID
+        : details.visitType === 'Emergency'
+          ? VisitTypeUuids.EMERGENCY_VISIT_TYPE_UUID
+          : VisitTypeUuids.OPD_VISIT_TYPE_UUID;
     const visitDto: CreateVisitDto = {
       visitType,
       location: locationUuid ?? '',
@@ -430,7 +434,11 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       stopDatetime: null,
       patient: amrsPatient.uuid,
     };
-    const visitAttributes = getVisitAttributes(details.method, details.insurance, details.emergencyResponse);
+    const visitAttributes = getVisitAttributes(
+      details.method,
+      details.insurance,
+      details.emergencyResponse ? details.emergencyResponse : undefined,
+    );
     if (visitAttributes.length > 0) {
       visitDto['attributes'] = visitAttributes;
     }
