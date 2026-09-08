@@ -70,6 +70,27 @@ export const usePatientBills = (patientUuid: string, billStatus: string = 'PENDI
     };
 };
 
+export const useActiveVisitBills = (visitUuid: string | null | undefined) => {
+    const representation =
+        'custom:(uuid,status,patient:(uuid),lineItems)';
+    const url = visitUuid ? `${restBaseUrl}/billing/bill?visitUuid=${visitUuid}&v=${representation}` : null;
+
+    const { data, error, isLoading, isValidating } = useSWR<{
+        data: {
+            results: Array<OpenmrsResource>;
+        };
+    }>(url, openmrsFetch, {
+        keepPreviousData: true,
+    });
+
+    return {
+        currentDayBills: data?.data?.results,
+        error,
+        isLoading,
+        isValidating
+    };
+};
+
 export const useCashPoint = () => {
     const sessionLocation = useSession();
     const customRepresentation = "custom:(uuid,name,description,location:(uuid,display))";
@@ -87,6 +108,11 @@ export const useCashPoint = () => {
 
 export const createPatientBill = (payload) => {
     const postUrl = `${restBaseUrl}/billing/bill`;
+    return openmrsFetch<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+};
+
+export const createBillLineItem = (billUuid: string, payload: { quantity: Number, priceUuid: string }) => {
+    const postUrl = `${restBaseUrl}/billing/bill/${billUuid}/lineItem`;
     return openmrsFetch<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
 };
 
