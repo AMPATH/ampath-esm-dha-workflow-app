@@ -9,7 +9,7 @@ import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Sta
 import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
-import { createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useBillableItems, useCashPoint, useLocationAttributes, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
+import { createBillLineItem, createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useActiveVisitBills, useBillableItems, useCashPoint, useLocationAttributes, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
 import { generateUpdateBillLineItems } from "../../utils";
 import { IdentifierTypesUuids } from "../../../resources/identifier-types";
 import { type ConfigObject } from "../../../config-schema";
@@ -36,7 +36,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const isTablet = useLayoutType() === 'tablet';
     const { activeVisit } = useVisit(order?.patient?.uuid);
     const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(); //useBillableItems(serviceTypeUuid);
-    const { currentDayBills } = usePatientBills(order?.patient?.uuid);
+    // const { currentDayBills } = usePatientBills(order?.patient?.uuid);
+    const { currentDayBills } = useActiveVisitBills(activeVisit?.uuid);
     const { identifiers } = usePatientIdentifiers(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const sessionLocation = useSession();
@@ -128,6 +129,22 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         return [];
     }, [selectedBillableItem, initialPriceName]);
 
+    const defaultBillableItemUuid = useMemo(() => {
+        if (conceptUuid && lineItems && lineItems.length) {
+            return lineItems.find(item => item?.concept?.uuid === conceptUuid)?.uuid;
+        }
+        return undefined;
+    }, [conceptUuid, lineItems]);
+
+    const hasAppliedDefaultBillableItem = useRef(false);
+
+    useEffect(() => {
+        if (defaultBillableItemUuid && !hasAppliedDefaultBillableItem.current) {
+            hasAppliedDefaultBillableItem.current = true;
+            setValue("billableItem", defaultBillableItemUuid, { shouldDirty: true });
+        }
+    }, [defaultBillableItemUuid, setValue]);
+
     const isSHAEligible = useMemo(() => {
         if (identifiers) {
             return identifiers?.some(v => v.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID);
@@ -216,6 +233,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
     }, [activeVisit]);
 
+    const isPharmacy = servicePointName && servicePointName === "PHARMACY";
+
     const onAddIntervention = (result: ClaimIntervention, subBenefit?: ClientSubBenefit) => {
         if (result) {
             setInterventionResult(result);
@@ -229,41 +248,35 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         const unitPriceTxt = data?.unitPrice;
         const serviceUuid = unitPriceTxt?.split("#")[0];
         const servicePriceUuid = unitPriceTxt?.split("#")[1];
-        const lineItemOrder = order?.orderNumber?.split("-")[1] ?? null;
         const cashPointUuid = data?.cashPoint;
+        const price = servicePrices?.find(service => service.uuid === servicePriceUuid)?.price || 0;
+        let billUuid = "";
+        let lineItemUuid = "";
 
-        const billableItems = lineItems
-            .filter((item) => item.uuid === serviceUuid)
-            .map((item, index) => {
-                const price = item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.price || 0;
-                const paymentStatus = price == 0 ? "PAID" : "PENDING";
-                return {
-                    billableService: item.uuid,
-                    quantity: data.quantity,
-                    item: conceptUuid,
-                    price: price,
-                    priceName: item.servicePrices?.find(service => service.uuid === servicePriceUuid)?.name || 'Default',
-                    priceUuid: servicePriceUuid || '',
-                    lineItemOrder: Number(lineItemOrder) ?? index,
-                    status: paymentStatus,
-                }
-            });
+        let billLineItem = {
+            quantity: data.quantity,
+            priceUuid: servicePriceUuid,
+            status: price == 0 ? "PAID" : "PENDING"
+        }
+
+        if (isPharmacy) {
+            // Only for Drugs
+            // billLineItem["batchNumber"] = data.batchNumber;
+        }
         let billPayload = {};
 
         let response: FetchResponse<{ uuid: string, lineItems: Array<{ lineItemOrder: number; uuid: string }> }> | undefined;
 
         if (currentDayBills && currentDayBills.length) {
             const bill = currentDayBills[0];
-            const billUuid = bill?.uuid;
-            const initialLineItems = generateUpdateBillLineItems(bill, lineItems);
-            const lineItemsPayload = [...initialLineItems, ...billableItems];
-            billPayload = {
-                lineItems: lineItemsPayload
-            }
-            response = await updatePatientBill(billUuid, billPayload);
+            billUuid = bill?.uuid;
+
+            // Add line Item
+            response = await createBillLineItem(billUuid, billLineItem);
+            lineItemUuid = response?.data?.uuid;
         } else {
             billPayload = {
-                lineItems: billableItems,
+                lineItems: [billLineItem],
                 cashPoint: cashPointUuid,
                 patient: order?.patient?.uuid,
                 status: 'PENDING',
@@ -271,16 +284,16 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                 visit: activeVisit?.uuid ?? '',
             };
             response = await createPatientBill(billPayload);
+            billUuid = response?.data?.uuid;
+            lineItemUuid = response?.data?.lineItems?.[0]?.uuid;
         }
 
-        const billUuidResp = response?.data?.uuid;
-        const lineItemUuid = response?.data?.lineItems?.find(v => v?.lineItemOrder === Number(lineItemOrder))?.uuid;
-
-        if (billUuidResp) {
+        if (billUuid) {
             let hiePayload = {
-                bill_uuid: billUuidResp,
+                bill_uuid: billUuid,
                 order_no: order?.orderNumber,
-                line_item_uuid: lineItemUuid
+                line_item_uuid: lineItemUuid,
+                patient_uuid: patientUuid
             };
 
             if (interventionResult) {
@@ -335,11 +348,11 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                 await createOrderBillInHie(hiePayload);
             } catch (error) {
                 if (currentDayBills && currentDayBills.length) {
-                    await updatePatientBill(billUuidResp, {
-                        lineItems: currentDayBills[0]?.lineItems ?? [],
-                    });
+
+                    // Remove line item
+
                 } else {
-                    await removePatientBill(billUuidResp);
+                    await removePatientBill(billUuid);
                 }
                 throw error;
             }
@@ -479,7 +492,12 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                             <Search
                                                 id="billableItemSearch"
                                                 labelText={t('billableItem', 'Billable item')}
-                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                    setSearchTerm(e.target.value);
+                                                    if (selectedBillableItem) {
+                                                        field.onChange('');
+                                                    }
+                                                }}
                                                 onClear={() => {
                                                     setSearchTerm('');
                                                     field.onChange('');
