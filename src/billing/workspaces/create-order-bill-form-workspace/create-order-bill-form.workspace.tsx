@@ -251,6 +251,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         const cashPointUuid = data?.cashPoint;
         const price = servicePrices?.find(service => service.uuid === servicePriceUuid)?.price || 0;
         let billUuid = "";
+        let lineItemUuid = "";
 
         let billLineItem = {
             quantity: data.quantity,
@@ -272,6 +273,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
             // Add line Item
             response = await createBillLineItem(billUuid, billLineItem);
+            lineItemUuid = response?.data?.uuid;
         } else {
             billPayload = {
                 lineItems: [billLineItem],
@@ -283,9 +285,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             };
             response = await createPatientBill(billPayload);
             billUuid = response?.data?.uuid;
+            lineItemUuid = response?.data?.lineItems?.[0]?.uuid;
         }
-
-        const lineItemUuid = response?.data?.uuid;
 
         if (billUuid) {
             let hiePayload = {
