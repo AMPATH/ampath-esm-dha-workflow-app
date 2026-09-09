@@ -52,7 +52,7 @@ export function generateAmrsCreatePatientIdentifiersPayload(hieClient: HieClient
 export async function generateAmrsUniversalIdentifier() {
   const subDomainUrl = await getSubDomainUrl();
   const abortController = new AbortController();
-  const resp = await openmrsFetch(`${subDomainUrl}/amrs-id-generator/generateidentifier`, {
+  const resp = await openmrsFetch(`/amrs-id-generator/generateidentifier`, {
     headers: {
       'Content-Type': 'application/json',
     },

@@ -75,7 +75,7 @@ export const configSchema = {
     weightUuid: {
       _type: Type.ConceptUuid,
       _default: '5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-    }
+    },
   },
   subDomainUrl: {
     _type: Type.String,
@@ -145,49 +145,53 @@ export const configSchema = {
   nonSHAPaymentModes: {
     _type: Type.Array,
     _description: 'NON SHA payment modes',
-    _default: []
+    _default: [],
   },
   registrationServicequeues: {
     _type: Type.Array,
     _description: 'Service Queues to display at send to triage',
-    _default: []
+    _default: [],
   },
   consultationBillableServiceNames: {
     _type: Type.Array,
     _description: 'Consultation billable service names',
-    _default: ["CONSULTATION", "KESSES CONSULTATION"]
+    _default: ['CONSULTATION', 'KESSES CONSULTATION'],
   },
   maternityDischargeFormUuid: {
     _type: Type.ConceptUuid,
-    _default: 'a6f7d96d-7d6e-3c51-9786-7b817515ff5b'
+    _default: 'a6f7d96d-7d6e-3c51-9786-7b817515ff5b',
   },
   maternityDischargeEncounterTypeUuid: {
     _type: Type.ConceptUuid,
-    _default: 'e3c2a17f-4d58-4725-b702-a5d75a2231d0'
+    _default: 'e3c2a17f-4d58-4725-b702-a5d75a2231d0',
   },
   shaPaymentModeUuid: {
     _type: Type.ConceptUuid,
-    _default: "1be55f87-2931-41e0-89c8-8f5652c7c303"
+    _default: '1be55f87-2931-41e0-89c8-8f5652c7c303',
   },
   shaVariantPaymentModeUuids: {
     _type: Type.Array,
-    _default: ["1be55f87-2931-41e0-89c8-8f5652c7c303", "18763f02-16f7-4dfc-aff9-15b53eea20b2", "783ddd3c-52bb-489a-9b39-937eccc6c55c"]
+    _default: [
+      '1be55f87-2931-41e0-89c8-8f5652c7c303',
+      '18763f02-16f7-4dfc-aff9-15b53eea20b2',
+      '783ddd3c-52bb-489a-9b39-937eccc6c55c',
+    ],
   },
   cashPaymentModeUuid: {
     _type: Type.ConceptUuid,
-    _default: "63eff7a4-6f82-43c4-a333-dbcc58fe9f74"
+    _default: '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
   },
   subBenefitCodesWithHiddenClaimWidget: {
     _type: Type.Array,
-    _default: ["SHA-08-SC-02"]
+    _default: ['SHA-08-SC-02'],
   },
   startClaimVisitLocationAttributeUuid: {
     _type: Type.String,
-    _default: "49df844d-79c0-40fc-8ca9-c27d6391f647"
+    _default: '49df844d-79c0-40fc-8ca9-c27d6391f647',
   },
   pmfSchemeNames: {
     _type: Type.Array,
-    _default: ["POMSF", "USALAMA", "TSC"]
+    _default: ['POMSF', 'USALAMA', 'TSC'],
   },
   shrResourceTypes: {
     _type: Type.Array,
@@ -347,6 +351,7 @@ export interface ConfigObject {
     encounterRoleUuid: string;
     plannedServiceObsConceptUuid: string;
   };
+  emergencyConceptUuid: string;
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
