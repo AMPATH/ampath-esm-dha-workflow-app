@@ -34,8 +34,6 @@ import {
 } from './types';
 import { createVisit } from '../resources/visit.resource';
 import { createQueueEntry } from '../resources/queue.resource';
-import { createBill, fetchBillableServices } from '../shared/services/billing.resource';
-import { type CreateBillDto, type BillableService } from '../shared/types';
 import { createBill, createOrderBillInHie, fetchBillableServices } from '../shared/services/billing.resource';
 import { type CreateBillDto, type BillableService } from '../shared/types';
 import { createOrderEncounter, getOrder } from '../shared/services/encounters.resource';
