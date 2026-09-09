@@ -291,12 +291,21 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     mergeSpecialtyFlags(readSpecialtyFlags(intervention), readSpecialtyFlags(billItem)),
   );
   const specialtyLabel = preauthFormLabel(specialty);
+  const [requiredDocs, setRequiredDocs] = useState<string[]>(() => [
+    ...new Set(intervention.requiredPreauthDocumentTypes ?? []),
+  ]);
+  const [optionalDocs, setOptionalDocs] = useState<string[]>(() => {
+    const required = new Set(intervention.requiredPreauthDocumentTypes ?? []);
+    return [...new Set(intervention.applicableDocumentTypes ?? [])].filter((d) => !required.has(d));
+  });
   const interventionForSubmit = useMemo(
     () => ({
       ...intervention,
       ...specialty,
+      requiredPreauthDocumentTypes: requiredDocs,
+      applicableDocumentTypes: optionalDocs,
     }),
-    [intervention, specialty],
+    [intervention, specialty, requiredDocs, optionalDocs],
   );
 
   /** Non-specialty “normal” preauth — needs clinical_indications in UI + HIE payload. */
@@ -387,14 +396,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   const patientName = billItem.patient_name ?? '';
   const crNo = billItem.cr_no ?? '';
   const billableService = billItem.billable_service ?? intervention.name ?? intervention.code;
-  const requiredDocs = useMemo(
-    () => [...new Set(intervention.requiredPreauthDocumentTypes ?? [])],
-    [intervention.requiredPreauthDocumentTypes],
-  );
-  const optionalDocs = useMemo(() => {
-    const required = new Set(requiredDocs);
-    return [...new Set(intervention.applicableDocumentTypes ?? [])].filter((d) => !required.has(d));
-  }, [intervention.applicableDocumentTypes, requiredDocs]);
 
   const [attachments, setAttachments] = useState<PreauthAttachmentRow[]>(() => {
     const required = requiredDocs.map((document_type) => ({
@@ -509,7 +510,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     patientUuid,
   ]);
 
-  // Enrich specialty flags from SHA interventions coverage when launch props lack them.
+  // Enrich specialty flags + preauth document types from SHA interventions coverage.
   useEffect(() => {
     const patientId = (billItem.cr_no ?? '').trim();
     const code = (intervention.code || billItem.intervention_code || '').trim();
@@ -534,15 +535,39 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           }
           return next;
         });
-        // Do not seed specialty field defaults — obs / bill loaders fill real values.
+
+        const shaRequired = [...new Set((sha.requiredPreauthDocumentTypes ?? []).filter(Boolean))];
+        const shaApplicable = [...new Set((sha.applicableDocumentTypes ?? []).filter(Boolean))];
+        if (shaRequired.length || shaApplicable.length) {
+          const nextRequired = shaRequired.length ? shaRequired : requiredDocs;
+          const requiredSet = new Set(nextRequired);
+          const nextOptional = (shaApplicable.length ? shaApplicable : optionalDocs).filter(
+            (d) => !requiredSet.has(d),
+          );
+          setRequiredDocs(nextRequired);
+          setOptionalDocs(nextOptional);
+          // Reseed required rows only when the user has not attached files yet.
+          setAttachments((prev) => {
+            const hasUserFiles = prev.some((a) => Boolean(a.file));
+            if (hasUserFiles) return prev;
+            if (!nextRequired.length) return prev;
+            return nextRequired.map((document_type) => ({
+              id: crypto.randomUUID(),
+              document_type,
+              document_title: document_type.replace(/_/g, ' '),
+              required: true,
+            }));
+          });
+        }
       } catch {
-        // Keep launch-prop flags if coverage lookup fails
+        // Keep launch-prop flags / docs if coverage lookup fails
       }
     })();
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once from SHA; avoid re-loop on doc state
   }, [billItem.cr_no, billItem.intervention_code, intervention.code, locationUuid]);
 
   useEffect(() => {
