@@ -16,6 +16,7 @@ import { launchWorkspace, showSnackbar, useSession } from '@openmrs/esm-framewor
 import { invalidatePreauthPreview, parseDocTypes, readSpecialtyFlags } from '../../../v2/preauth/preauth.resource';
 import { resolvePatientUuidFromCr } from '../../preauth/preauth.resource';
 import {
+  fetchShaInterventionByCode,
   interventionHasBlockingPreauth,
   interventionHasFailedPreauth,
   usePreauthPreview,
@@ -130,14 +131,34 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       patientUuid = await resolvePatientUuidFromCr(crNo);
     }
 
-    const requiredDocs = parseDocTypes(
+    // Prefer SHA required/applicable preauth docs (same as elective). Do not use claim
+    // applicable_document_types — those are claim-attachment types, not preauth requirements.
+    let requiredDocs = parseDocTypes(
       Array.isArray(intervention.required_preauth_document_types)
         ? (intervention.required_preauth_document_types as string[]).join(',')
         : (intervention.required_preauth_document_types as string | null | undefined),
     );
-    const applicableDocs = Array.isArray(intervention.applicable_document_types)
-      ? intervention.applicable_document_types.map(String)
-      : parseDocTypes(intervention.applicable_document_types as string | null | undefined);
+    let applicableDocs = parseDocTypes(
+      Array.isArray(intervention.optional_preauth_document_types)
+        ? (intervention.optional_preauth_document_types as string[]).join(',')
+        : (intervention.optional_preauth_document_types as string | null | undefined),
+    );
+
+    if (crNo && locationUuid) {
+      try {
+        const coverage = await fetchShaInterventionByCode(crNo, locationUuid, intervention.intervention_code);
+        if (coverage) {
+          if (coverage.requiredPreauthDocumentTypes?.length) {
+            requiredDocs = [...coverage.requiredPreauthDocumentTypes];
+          }
+          if (coverage.applicableDocumentTypes?.length) {
+            applicableDocs = [...coverage.applicableDocumentTypes];
+          }
+        }
+      } catch {
+        // keep visit-intervention preauth doc fields
+      }
+    }
 
     // Fresh raise and failure-state resubmit both reopen the same preauth form.
     launchWorkspace('preauth-form-workspace', {
