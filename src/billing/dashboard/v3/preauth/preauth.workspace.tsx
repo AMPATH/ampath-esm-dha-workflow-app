@@ -1844,7 +1844,10 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
             }
             type="number"
             value={unitPrice}
-            readOnly
+            onChange={(e) => {
+              markDirty();
+              setUnitPrice(e.target.value);
+            }}
           />
 
           <div className={styles.searchBlock}>
