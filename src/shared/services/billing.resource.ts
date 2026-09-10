@@ -1,5 +1,5 @@
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
-import { type CreateBillDto, type BillableService, type PaymentMode, type CashPoint } from '../types';
+import { type CreateBillDto, type BillableService, type PaymentMode, type CashPoint, type LineItem } from '../types';
 import { buildBillableServiceUrl, getSessionLocationUuid } from './billable-service.resource';
 import { getHieBaseUrl } from '../utils/get-base-url';
 import { postJson } from '../../registry/registry.resource';
@@ -40,6 +40,18 @@ export async function createBill(createBillDto: CreateBillDto) {
       'content-type': 'application/json',
     },
     body: JSON.stringify(createBillDto),
+  });
+  return response.data;
+}
+
+export async function createBillLineItem(billUuid: string, lineItem: LineItem) {
+  const createLineItemUrl = `${restBaseUrl}/billing/bill/${billUuid}/lineItem`;
+  const response = await openmrsFetch(createLineItemUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(lineItem),
   });
   return response.data;
 }

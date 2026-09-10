@@ -238,6 +238,16 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     return PaymentDetail.Paying;
   }, [activeVisit]);
 
+  const selectedServicePrice = useMemo(
+    () =>
+      servicePrices.find(
+        (servicePrice) =>
+          servicePrice.billableService.uuid === selectedBillableService?.billableService.uuid &&
+          servicePrice.paymentMode?.uuid === selectedPaymentMode,
+      ),
+    [servicePrices, selectedBillableService, selectedPaymentMode],
+  );
+
   useEffect(() => {
     getBillableServices();
     getCashPoints();
@@ -570,13 +580,9 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     const payload: CreateBillDto = {
       lineItems: [
         {
-          billableService: selectedBillableService.billableService.uuid,
           quantity: quantity ?? 1,
-          price: selectedBillableService.price,
-          priceName: selectedBillableService.name,
-          priceUuid: selectedBillableService.uuid,
-          lineItemOrder: 0,
-          status: isCash ? 'PAID' : 'PENDING',
+          priceUuid: selectedServicePrice.uuid,
+          status: (selectedServicePrice.price === 0 || isCash) ? 'PAID' : 'PENDING',
         },
       ],
       cashPoint: selectedCashPoint.uuid,
