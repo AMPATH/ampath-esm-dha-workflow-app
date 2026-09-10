@@ -1,3 +1,5 @@
+import type { Intervention } from '../../../claims';
+
 export type Provider = {
   display: string;
   licensing_body: string;
@@ -16,6 +18,7 @@ export interface EmergencyFormData {
   licensingBody?: string;
   notes?: string;
   otp: string;
+  intervention?: Intervention;
 }
 
 export function generateReferenceNumber(): string {
