@@ -3,11 +3,9 @@ import { InlineLoading, Modal, ModalBody, Select, SelectItem, TextInput } from '
 import styles from './bill-item-payment.modal.scss';
 import { type PatientFacilityBillDetails } from '../../../types';
 import { type PaymentMode } from '../../../../../../shared/types';
-import { fetchPaymentModes, updateBill } from '../../../../../../shared/services/billing.resource';
-import { payBillItem, useBill } from '../../../../../billing-claims.resource';
+import { fetchPaymentModes, updateBillLineItem } from '../../../../../../shared/services/billing.resource';
+import { useBill } from '../../../../../billing-claims.resource';
 import { showSnackbar } from '@openmrs/esm-framework';
-import { generateUpdateBillLineItems } from '../../../../../../billing/utils';
-import { useBillableItems } from '../../../../../../billing/workspaces/create-order-bill-form-workspace/create-order-bill-form.resource';
 interface billItemPaymentModalProps {
   open: boolean;
   billItem: PatientFacilityBillDetails;
@@ -15,12 +13,10 @@ interface billItemPaymentModalProps {
   onPay: () => void;
 }
 const BillItemPaymentModal: React.FC<billItemPaymentModalProps> = ({ open, onClose, onPay, billItem }) => {
-  const [amountToPay, setAmountToPay] = useState<number>(0);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const billItemPaymentMode = useMemo(() => getBillItemPaymentMode(), [paymentModes, billItem]);
   const [selectedPaymentModeUuid, setSelectedPaymentModeUuid] = useState<string>('');
   const { bill, isLoading } = useBill(billItem?.bill_uuid);
-  const { lineItems: billableLineItems, isLoading: isLoadingLineItems } = useBillableItems();
 
   useEffect(() => {
     if (billItem) {
@@ -32,16 +28,12 @@ const BillItemPaymentModal: React.FC<billItemPaymentModalProps> = ({ open, onClo
     const methods = await fetchPaymentModes();
     setPaymentModes(methods);
   }
-  function handlePayAmountChange(amount: number) {
-    setAmountToPay(amount);
-  }
   async function payForBillItem() {
-    const billItemPaymentPayload = generateBillItemPaymentPayload();
     try {
-      if (!billItemPaymentPayload) {
-        return;
-      }
-      const resp = await updateBill(billItem.bill_uuid, billItemPaymentPayload);
+      const payload = {
+        "status": "PAID"
+      };
+      const resp = await updateBillLineItem(billItem.cashier_bill_line_item_uuid, payload);
       if (resp) {
         showSnackbar({
           kind: 'success',
@@ -58,35 +50,13 @@ const BillItemPaymentModal: React.FC<billItemPaymentModalProps> = ({ open, onClo
       });
     }
   }
-  function generateBillItemPaymentPayload() {
-    if (bill && billItem) {
-      const updatedBillLineItems = generateUpdateBillLineItems(bill, billableLineItems);
-
-      const updatedLineItems = updatedBillLineItems?.map((lineItem) =>
-        lineItem?.uuid === billItem.cashier_bill_line_item_uuid
-          ? {
-            ...lineItem,
-            status: 'PAID',
-            // price: amountToPay, // Also no partial payments for now. Full payment is ok
-            priceUuid: selectedPaymentModeUuid,
-          }
-          : lineItem,
-      );
-
-      return {
-        // ...bill, // Not necessary as we are updating only the line item
-        lineItems: updatedLineItems,
-      };
-    }
-    return null;
+  function handlePaymentModeChange(paymentModeUuid: string) {
+    setSelectedPaymentModeUuid(paymentModeUuid);
   }
   function getBillItemPaymentMode() {
     return paymentModes.find((pm) => {
       return pm.name === billItem.payment_scheme;
     });
-  }
-  function handlePaymentModeChange(paymentModeUuid: string) {
-    setSelectedPaymentModeUuid(paymentModeUuid);
   }
   return (
     <>
@@ -98,7 +68,7 @@ const BillItemPaymentModal: React.FC<billItemPaymentModalProps> = ({ open, onClo
         onRequestClose={onClose}
         onRequestSubmit={payForBillItem}
         primaryButtonText="Pay"
-        primaryButtonDisabled={isLoadingLineItems || isLoading}
+        primaryButtonDisabled={isLoading}
         secondaryButtonText="Close"
       >
         <ModalBody>
@@ -123,7 +93,7 @@ const BillItemPaymentModal: React.FC<billItemPaymentModalProps> = ({ open, onClo
                 readOnly={true}
               />
             </div>
-            <div className={styles.biRow}>
+            {/* <div className={styles.biRow}>
               {billItemPaymentMode ? (
                 <>
                   <TextInput
@@ -148,7 +118,7 @@ const BillItemPaymentModal: React.FC<billItemPaymentModalProps> = ({ open, onClo
                   </Select>
                 </>
               )}
-            </div>
+            </div> */}
             {/* Commented for now. DO NOT REMOVE!! */}
             {/* <div className={styles.biRow}>
               <TextInput

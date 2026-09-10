@@ -56,6 +56,18 @@ export async function createBillLineItem(billUuid: string, lineItem: LineItem) {
   return response.data;
 }
 
+export async function updateBillLineItem(lineItemUuid: string, payload: any) {
+  const url = `${restBaseUrl}/billing/billLineItem/${lineItemUuid}`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  return response.data;
+}
+
 type PendingPatientBill = {
   uuid: string;
   dateCreated: string;
