@@ -9,7 +9,7 @@ import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Sta
 import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
-import { createBillLineItem, createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useActiveVisitBills, useBillableItems, useCashPoint, useLocationAttributes, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
+import { createBillLineItem, createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useActiveVisitBills, useBillableItems, useCashPoint, useInventoryBatches, useLocationAttributes, useOrderBillableItems, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
 import { generateUpdateBillLineItems } from "../../utils";
 import { IdentifierTypesUuids } from "../../../resources/identifier-types";
 import { type ConfigObject } from "../../../config-schema";
@@ -35,12 +35,14 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { t } = useTranslation();
     const isTablet = useLayoutType() === 'tablet';
     const { activeVisit } = useVisit(order?.patient?.uuid);
-    const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(); //useBillableItems(serviceTypeUuid);
     // const { currentDayBills } = usePatientBills(order?.patient?.uuid);
     const { currentDayBills } = useActiveVisitBills(activeVisit?.uuid);
     const { identifiers } = usePatientIdentifiers(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const sessionLocation = useSession();
+    const drugUuid = order?.drug?.uuid;
+    const { lineItems, isLoading: isLoadingOrderBillItems } = useOrderBillableItems(sessionLocation?.sessionLocation?.uuid, drugUuid);
+    const { drugBatches, isLoadingBatches } = useInventoryBatches(drugUuid, sessionLocation?.sessionLocation?.uuid);
     const { claimVisit, isLoading: isLoadingClaimVisits } = useProviderClaimPreview(getConsentToken(activeVisit), sessionLocation?.sessionLocation?.uuid);
     const patientUuid = order?.patient?.uuid;
     const conceptUuid = order?.concept?.uuid;
@@ -129,12 +131,22 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         return [];
     }, [selectedBillableItem, initialPriceName]);
 
+    const isDrug = useMemo(() => {
+        if (servicePointName && drugUuid) {
+            return servicePointName && servicePointName === "PHARMACY";
+        }
+        return false;
+    }, [servicePointName, drugUuid]);
+
     const defaultBillableItemUuid = useMemo(() => {
+        if (isDrug && drugUuid) {
+            return lineItems.find(item => item?.drug?.uuid === drugUuid)?.uuid;
+        }
         if (conceptUuid && lineItems && lineItems.length) {
             return lineItems.find(item => item?.concept?.uuid === conceptUuid)?.uuid;
         }
         return undefined;
-    }, [conceptUuid, lineItems]);
+    }, [conceptUuid, lineItems, drugUuid, isDrug]);
 
     const hasAppliedDefaultBillableItem = useRef(false);
 
@@ -158,13 +170,13 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
     const servicePrices = useMemo(() => {
         if (billableItem && billableItem.length && identifiers) {
-            let sPs = billableItem[0]?.servicePrices ?? [];
+            let sPs = isDrug ? billableItem[0]?.drugPrices ?? [] : billableItem[0]?.servicePrices ?? [];
             // add the non-sha payments
             sPs = sPs && sPs.length && !isSHAEligible ? sPs.filter(v => nonSHAPaymentModes.includes(v?.paymentMode?.uuid)) : sPs;
             return sPs;
         }
         return [];
-    }, [billableItem, identifiers, isSHAEligible]);
+    }, [billableItem, identifiers, isSHAEligible, isDrug]);
 
     const isSHAPaymentMode = useMemo(() => {
         if (servicePrices && selectedServicePriceUuid && shaVariantPaymentModeUuids) {
@@ -233,8 +245,6 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
     }, [activeVisit]);
 
-    const isPharmacy = servicePointName && servicePointName === "PHARMACY";
-
     const onAddIntervention = (result: ClaimIntervention, subBenefit?: ClientSubBenefit) => {
         if (result) {
             setInterventionResult(result);
@@ -259,9 +269,9 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             status: price == 0 ? "PAID" : "PENDING"
         }
 
-        if (isPharmacy) {
+        if (isDrug) {
             // Only for Drugs
-            // billLineItem["batchNumber"] = data.batchNumber;
+            billLineItem["batchNumber"] = data.batchNumber;
         }
         let billPayload = {};
 
@@ -481,6 +491,42 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                     </Column>
                                 </FormGroup>
                             </ResponsiveWrapper>
+
+                            {
+                                isDrug && (
+                                    <Column>
+                                        <Controller
+                                            control={control}
+                                            name="batchNumber"
+                                            render={({ field }) => {
+                                                return (
+                                                    <>
+                                                        {drugBatches ?
+                                                            <Select id="batchNumber" labelText={t('selectBatch', 'Select batch *')} invalid={!!errors.batchNumber}
+                                                                invalidText={errors.batchNumber?.message}
+                                                                onChange={(e) => {
+                                                                    field.onChange(e.target.value);
+                                                                }}
+                                                            >
+                                                                <SelectItem value="" text="Select batch" />
+                                                                {
+                                                                    drugBatches?.lots?.map((lot) => {
+                                                                        const text = `Qty: ${lot?.quantity} | Expires: ${lot?.expiration_date}`;
+                                                                        return (
+                                                                            <SelectItem value={lot?.name} text={text} />
+                                                                        )
+                                                                    })
+                                                                }
+                                                            </Select>
+                                                            : <></>
+                                                        }
+                                                    </>
+                                                );
+                                            }}
+                                        />
+                                    </Column>
+                                )
+                            }
 
                             <ResponsiveWrapper>
                                 <Controller
