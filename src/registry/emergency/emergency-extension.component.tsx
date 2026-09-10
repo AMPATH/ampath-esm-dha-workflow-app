@@ -88,6 +88,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       licensingBody: getAbbreviation(selectedProvider?.licensing_body),
       notes,
       otp,
+      intervention: selectedIntervention,
     });
   }, [
     selectedCashPoint,

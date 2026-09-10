@@ -1,12 +1,6 @@
 import React, { forwardRef } from 'react';
 import styles from './proforma-invoice.scss';
 
-// ---------------------------------------------------------------------------
-// Generic Proforma Invoice Template
-// Pass an `invoice` object matching the shape of `DEMO_INVOICE` below to reuse
-// this component for any record. All data on this page is placeholder data.
-// ---------------------------------------------------------------------------
-
 const DEMO_INVOICE = {
   facility: {
     name: 'Sample Hospital',

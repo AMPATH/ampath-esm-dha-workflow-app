@@ -58,7 +58,7 @@ import { usePatient } from '../context/patient-context';
 import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import RegistrationList from './registration-list/registration-list.component';
 import { type ConfigObject } from '../config-schema';
-import { type ClaimResult } from 'src/claims';
+import { type ClaimResult, type Intervention } from 'src/claims';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -418,6 +418,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     emergencyResponse?: ClaimResult;
     emergencyServicePriceUuid?: string;
     emergencyCashPointUuid?: string;
+    emergencyIntervention?: Intervention;
   }) => {
     // Ensure the client exists in AMRS before starting a visit.
     let amrsPatient = amrsPatients[0];
@@ -514,10 +515,34 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
 
         const orderUuid = orderEncounter?.orders?.[0]?.uuid;
         const order = orderUuid ? await getOrder(orderUuid) : undefined;
+        const emergencyResponse = details.emergencyResponse;
+        const interventionResult = details.emergencyIntervention;
+        const electivePreauth =
+          interventionResult?.requiresOncologyPreauth ||
+          interventionResult?.requiresOpticalPreauth ||
+          interventionResult?.requiresRadiologyPreauth ||
+          interventionResult?.requiresRenalPreauth ||
+          interventionResult?.requiresSurgicalPreauth;
+        const requiresPreauth = interventionResult?.needsPreauth;
+        const requiredPreauthDocumentTypes = interventionResult?.requiredPreauthDocumentTypes ?? [];
+        const applicableDocumentTypes = interventionResult?.applicableDocumentTypes ?? [];
         const billOrderDto = {
           bill_uuid: bill.uuid,
           order_no: order?.orderNumber ?? '',
           line_item_uuid: bill.lineItems?.[0]?.uuid ?? '',
+          intervention_code: interventionResult?.code ?? emergencyResponse.initial_intervention ?? '',
+          consent_token: emergencyResponse.authorization_code ?? '',
+          service_type: emergencyResponse.service_type ?? 'EMERGENCY',
+          requires_preauth: requiresPreauth,
+          normal_preauth: requiresPreauth && !electivePreauth,
+          elective_preauth: Boolean(interventionResult?.needsManualPreauthApproval && electivePreauth),
+          patient_uuid: amrsPatient?.uuid,
+          ...(applicableDocumentTypes.length > 0 && {
+            applicable_document_types: applicableDocumentTypes.join(','),
+          }),
+          ...(requiredPreauthDocumentTypes.length > 0 && {
+            required_preauth_document_types: requiredPreauthDocumentTypes.join(','),
+          }),
         };
         await createOrderBillInHie(billOrderDto);
         showAlert('success', 'Bill successfully created', '');
