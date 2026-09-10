@@ -511,7 +511,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                                                 <SelectItem value="" text="Select batch" />
                                                                 {
                                                                     drugBatches?.lots?.map((lot) => {
-                                                                        const text = `Qty: ${lot?.quantity} | Expires: ${lot?.expiration_date}`;
+                                                                        const expirationDate = lot?.expiration_date ?? t("notSet", "Not set");
+                                                                        const text = `Qty: ${lot?.quantity} | Expires: ${expirationDate}`;
                                                                         return (
                                                                             <SelectItem value={lot?.name} text={text} />
                                                                         )
