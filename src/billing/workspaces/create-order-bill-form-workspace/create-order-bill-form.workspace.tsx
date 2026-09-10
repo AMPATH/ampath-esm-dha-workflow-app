@@ -2,7 +2,7 @@ import { Order } from "@openmrs/esm-patient-common-lib";
 import { act, useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { validationSchema, type CreateOrderBillFormSchema } from "./schema";
+import { createValidationSchema, type CreateOrderBillFormSchema } from "./schema";
 import { ExtensionSlot, FetchResponse, OpenmrsResource, ResponsiveWrapper, showSnackbar, useConfig, useDebounce, useLayoutType, useSession, useVisit } from "@openmrs/esm-framework";
 import { useTranslation } from "react-i18next";
 import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Stack, TextInput, InlineNotification, ButtonSet, Button, InlineLoading, Search, Layer, Tile, FormLabel } from "@carbon/react";
@@ -41,6 +41,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { cashPoints } = useCashPoint();
     const sessionLocation = useSession();
     const drugUuid = order?.drug?.uuid;
+    const isDrug = servicePointName === "PHARMACY" && Boolean(drugUuid);
     const { lineItems, isLoading: isLoadingOrderBillItems } = useOrderBillableItems(sessionLocation?.sessionLocation?.uuid, drugUuid);
     const { drugBatches, isLoadingBatches } = useInventoryBatches(drugUuid, sessionLocation?.sessionLocation?.uuid);
     const { claimVisit, isLoading: isLoadingClaimVisits } = useProviderClaimPreview(getConsentToken(activeVisit), sessionLocation?.sessionLocation?.uuid);
@@ -81,15 +82,17 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         watch,
         handleSubmit,
         setValue,
-        formState: { errors, isDirty, isSubmitting },
+        formState: { errors, isDirty, isSubmitting, isValid },
     } = useForm<CreateOrderBillFormSchema>({
-        resolver: zodResolver(validationSchema),
+        resolver: zodResolver(createValidationSchema(isDrug)),
+        mode: 'onChange',
         defaultValues: {
             quantity: quantity ?? 1
         }
     });
 
     const selectedServicePrice = watch('unitPrice');
+    const selectedBatchNumber = watch('batchNumber');
 
     const selectedServicePriceUuid = useMemo(() => {
         if (selectedServicePrice) {
@@ -112,11 +115,11 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             const bill = currentDayBills[0];
             const currentCashpoint = bill?.cashPoint;
             cashPoint = currentCashpoint?.uuid;
-            setValue("cashPoint", cashPoint);
+            setValue("cashPoint", cashPoint, { shouldValidate: true });
         } else {
             if (cashPoints && cashPoints.length) {
                 cashPoint = cashPoints[0]?.uuid;
-                setValue("cashPoint", cashPoint);
+                setValue("cashPoint", cashPoint, { shouldValidate: true });
             }
         }
         return cashPoint;
@@ -130,13 +133,6 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
         return [];
     }, [selectedBillableItem, initialPriceName]);
-
-    const isDrug = useMemo(() => {
-        if (servicePointName && drugUuid) {
-            return servicePointName && servicePointName === "PHARMACY";
-        }
-        return false;
-    }, [servicePointName, drugUuid]);
 
     const defaultBillableItemUuid = useMemo(() => {
         if (isDrug && drugUuid) {
@@ -210,7 +206,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
     useEffect(() => {
         if (initialUnitPriceUuid && !selectedServicePrice) {
-            setValue("unitPrice", initialUnitPriceUuid);
+            setValue("unitPrice", initialUnitPriceUuid, { shouldValidate: true });
         }
     }, [initialUnitPriceUuid, selectedServicePrice, setValue]);
 
@@ -692,7 +688,10 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                         <Button kind="secondary" onClick={closeWorkspace}>
                             {t('cancel', 'Cancel')}
                         </Button>
-                        <Button kind="primary" type="submit" disabled={isSubmitting || isSubmitPending || !isDirty}>
+                        <Button
+                            kind="primary"
+                            type="submit"
+                            disabled={isSubmitting || isSubmitPending || !isDirty || !isValid}>
                             {isSubmitting || isSubmitPending ? (
                                 <InlineLoading description={t('submitting', 'Submitting...')} />
                             ) : (isSHAPaymentMode && canStartClaimVisit && !consentToken) ? t('startClaimVisit', 'Start claim visit') : (
