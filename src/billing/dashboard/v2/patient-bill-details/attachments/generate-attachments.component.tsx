@@ -18,6 +18,8 @@ import CaseSummary from '../../../v3/patient-bill-details/attachments/case-summa
 import DialysisChart from '../../../v3/patient-bill-details/attachments/dialysis/dialysis-chart';
 import GeneralDischargeSummary from '../../../v3/patient-bill-details/attachments/general-discharge-summary/general-discharge-summary';
 import LabOrdersComponent from '../../../v3/patient-bill-details/attachments/lab-results/lab-orders.component';
+import ProformaInvoiceComponent from '../../../v3/patient-bill-details/attachments/proforma-invoice/proforma-invoice.component';
+import UltrasoundReport from '../../../v3/patient-bill-details/attachments/ultrasound-report/utlrasound-report.component';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
@@ -36,8 +38,6 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   patientUuid,
   billingDate,
 }) => {
-  console.log('BILL GENERATE: ', bill);
-
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -63,6 +63,8 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const caseSummaryRef = useRef<HTMLDivElement>(null);
   const generalDischargeSummary = useRef<HTMLDivElement>(null);
   const labResultsRef = useRef<HTMLDivElement>(null);
+  const proformaInvoiceRef = useRef<HTMLDivElement>(null);
+  const ultrasoundReportRef = useRef<HTMLDivElement>(null);
 
   if (!claimInterventions) return null;
 
@@ -202,6 +204,12 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         break;
       case 'LAB_RESULTS':
         element = labResultsRef.current;
+        break;
+      case 'PROFORMA_INVOICE':
+        element = proformaInvoiceRef.current;
+        break;
+      case 'ULTRASOUND_REPORT':
+        element = ultrasoundReportRef.current;
         break;
 
       default:
@@ -369,6 +377,8 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
         <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
         <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
+        <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
+        <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
       </div>
     </>
   );

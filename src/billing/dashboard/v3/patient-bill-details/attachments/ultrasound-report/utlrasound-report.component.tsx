@@ -147,6 +147,7 @@ function SubTitle({ children }) {
 
 interface UltrasoundReportProps {
   report?: typeof DEMO_REPORT;
+  patientUuid: string;
 }
 
 const UltrasoundReport = forwardRef<HTMLDivElement, UltrasoundReportProps>(({ report = DEMO_REPORT }, ref) => {
