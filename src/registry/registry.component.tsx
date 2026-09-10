@@ -34,6 +34,9 @@ import {
 } from './types';
 import { createVisit } from '../resources/visit.resource';
 import { createQueueEntry } from '../resources/queue.resource';
+import { createBill, createOrderBillInHie, fetchBillableServices } from '../shared/services/billing.resource';
+import { type CreateBillDto, type BillableService } from '../shared/types';
+import { createOrderEncounter, getOrder } from '../shared/services/encounters.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../shared/constants/concepts';
 import { VisitTypeUuids } from '../shared/constants/visit-types';
 import {
@@ -55,7 +58,7 @@ import { usePatient } from '../context/patient-context';
 import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import RegistrationList from './registration-list/registration-list.component';
 import { type ConfigObject } from '../config-schema';
-import { ClaimResult } from 'src/claims';
+import { type ClaimResult } from 'src/claims';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -78,7 +81,13 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
   const { setPatient } = usePatient();
-  const { cashPaymentModeUuid, shaPaymentModeUuid } = useConfig<ConfigObject>();
+  const {
+    cashPaymentModeUuid,
+    shaPaymentModeUuid,
+    outPatientCareSettingUuid,
+    orderEncounterTypeUuid,
+    emergencyConceptUuid,
+  } = useConfig<ConfigObject>();
   const emtHandoffConsumed = useRef(false);
 
   // Arriving from an EMT handover (`?emtCrId=...`): skip straight to the
@@ -407,6 +416,8 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     method?: 'cash' | 'insurance';
     insurance?: string;
     emergencyResponse?: ClaimResult;
+    emergencyServicePriceUuid?: string;
+    emergencyCashPointUuid?: string;
   }) => {
     // Ensure the client exists in AMRS before starting a visit.
     let amrsPatient = amrsPatients[0];
@@ -462,6 +473,55 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         },
       };
       await createQueueEntry(queueEntryDto);
+
+      if (details.emergencyResponse && details.emergencyCashPointUuid && details.emergencyServicePriceUuid) {
+        const billDto: CreateBillDto = {
+          lineItems: [
+            {
+              quantity: 1,
+              priceUuid: details.emergencyServicePriceUuid,
+            },
+          ],
+          cashPoint: details.emergencyCashPointUuid,
+          patient: amrsPatient.uuid,
+          visit: visit.uuid,
+          status: 'PENDING',
+          payments: [],
+        };
+        const bill = await createBill(billDto);
+        if (!bill) {
+          throw new Error('Error creating emergency bill');
+        }
+
+        const orderEncounter = await createOrderEncounter({
+          patient: amrsPatient.uuid,
+          location: locationUuid ?? '',
+          encounterType: orderEncounterTypeUuid,
+          visit: visit.uuid,
+          obs: [],
+          orders: [
+            {
+              action: 'NEW',
+              type: 'order',
+              patient: amrsPatient.uuid,
+              careSetting: outPatientCareSettingUuid,
+              orderer: session.currentProvider?.uuid ?? 'pd25871c-1359-11df-a1f1-0026b9348838',
+              concept: emergencyConceptUuid,
+              urgency: 'ROUTINE',
+            },
+          ],
+        });
+
+        const orderUuid = orderEncounter?.orders?.[0]?.uuid;
+        const order = orderUuid ? await getOrder(orderUuid) : undefined;
+        const billOrderDto = {
+          bill_uuid: bill.uuid,
+          order_no: order?.orderNumber ?? '',
+          line_item_uuid: bill.lineItems?.[0]?.uuid ?? '',
+        };
+        await createOrderBillInHie(billOrderDto);
+        showAlert('success', 'Bill successfully created', '');
+      }
 
       // Raise the consultation clearance for CASH patients only — they sit
       // "Awaiting payment" in the Accounting dashboard until the fee is settled.

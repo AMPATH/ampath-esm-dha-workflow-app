@@ -50,7 +50,7 @@ import { fetchServiceQueuesByLocationUuid } from '../../resources/queue.resource
 import { fetchCashPoints, fetchPaymentModes } from '../../shared/services/billing.resource';
 import { getReadableErrorMessage } from '../utils/error-handler';
 import { fetchPomsfBalance } from '../../claims/claims.resource';
-import { ClaimResult, type PomsfBalance } from '../../claims';
+import { type ClaimResult, type PomsfBalance } from '../../claims';
 import { formatKes, getAllPomsfBenefitBalances, getPomsfDisplayBalance, isPomsfActive } from './pomsf-balance.util';
 import EmergencySlotComponent from '../emergency/emergency-extension.component';
 import { generateReferenceNumber, type EmergencyFormData } from '../emergency/type';
@@ -202,6 +202,8 @@ interface WorkflowDrawerProps {
     method?: Method;
     insurance?: string;
     emergencyResponse?: ClaimResult;
+    emergencyCashPointUuid?: string;
+    emergencyServicePriceUuid?: string;
   }) => void;
 }
 
@@ -747,6 +749,8 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       method,
       insurance: usingInsurance ? insurance : undefined,
       emergencyResponse,
+      emergencyCashPointUuid: visitType === 'Emergency' ? emergencyForm?.cashpointUuid : undefined,
+      emergencyServicePriceUuid: visitType === 'Emergency' ? emergencyForm?.servicePriceUuid : undefined,
     });
   };
 

@@ -6,13 +6,15 @@ export type Provider = {
 };
 
 export interface EmergencyFormData {
+  cashpointUuid?: string;
+  servicePriceUuid?: string;
   modeOfArrival?: string;
   broughtBy?: string;
   interventionCode?: string;
   providerNationalId?: string;
   identificationType?: string;
   licensingBody?: string;
-  notes: string;
+  notes?: string;
   otp: string;
 }
 

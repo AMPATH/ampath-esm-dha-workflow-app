@@ -108,3 +108,16 @@
 .identifierValue {
     min-width: 18rem;
 }
+
+.formRow{
+   display: flex;
+   flex-direction: row;
+   width: 100%;
+   column-gap: layout.$spacing-05;
+}
+.formControl{
+   display: flex;
+   flex-direction: column;
+   width: 100%;
+   row-gap: 5px;
+}
