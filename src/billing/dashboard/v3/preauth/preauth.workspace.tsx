@@ -1232,7 +1232,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       };
     });
 
-    const billUnitPrice = String(billItem.item_price ?? billItem.item_total_price ?? unitPrice ?? '').trim();
+    // Prefer the text-box value so edits are submitted, not the launch bill line.
+    const billUnitPrice = String(unitPrice ?? billItem.item_price ?? billItem.item_total_price ?? '').trim();
     const resolvedUnitPrice = billUnitPrice;
 
     const payload: PreauthFormPayload = {
@@ -1390,7 +1391,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       });
       return;
     }
-    const billUnitPrice = String(billItem.item_price ?? billItem.item_total_price ?? unitPrice ?? '').trim();
+    // Prefer the text-box value so edits are validated/submitted, not the launch bill line.
+    const billUnitPrice = String(unitPrice ?? billItem.item_price ?? billItem.item_total_price ?? '').trim();
     const resolvedUnitPrice = billUnitPrice;
     const needsClinicalIndications =
       isPlainNormalPreauth ||
