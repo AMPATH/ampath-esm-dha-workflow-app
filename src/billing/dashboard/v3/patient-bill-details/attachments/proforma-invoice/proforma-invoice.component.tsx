@@ -121,6 +121,7 @@ function formatMoney(value: number, currency: string) {
 
 interface ProformaInvoiceProps {
   invoice?: typeof DEMO_INVOICE;
+  patientUuid: string;
 }
 
 const ProformaInvoice = forwardRef<HTMLDivElement, ProformaInvoiceProps>(({ invoice = DEMO_INVOICE }, ref) => {
