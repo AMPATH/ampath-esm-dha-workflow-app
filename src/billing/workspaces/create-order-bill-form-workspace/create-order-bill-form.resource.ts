@@ -1,4 +1,4 @@
-import { openmrsFetch, OpenmrsResource, restBaseUrl, useSession } from "@openmrs/esm-framework";
+import { openmrsFetch, OpenmrsResource, restBaseUrl, useConfig, useSession } from "@openmrs/esm-framework";
 import { useState } from "react";
 import useSWR from 'swr';
 import {
@@ -9,6 +9,7 @@ import {
 import { getHieBaseUrl } from "../../../shared/utils/get-base-url";
 import { postJson } from "../../../registry/registry.resource";
 import dayjs from "dayjs";
+import { DrugBatch } from "./types";
 
 /**
  * Billable items for the session facility. Pass `locationUuid: null` in
@@ -16,11 +17,11 @@ import dayjs from "dayjs";
  */
 export const useBillableItems = (
     serviceTypeUuid: string = "",
-    options: { locationUuid?: string | null } = {},
+    options: { enabled?: boolean; locationUuid?: string | null } = { enabled: true },
 ) => {
     const sessionLocationUuid = useBillableServiceLocationUuid();
     const locationUuid = options.locationUuid === undefined ? sessionLocationUuid : options.locationUuid;
-    const url = buildBillableServiceUrl({ v: BILLABLE_SERVICE_PICKER_REPRESENTATION, locationUuid });
+    const url = options.enabled === false ? null : buildBillableServiceUrl({ v: BILLABLE_SERVICE_PICKER_REPRESENTATION, locationUuid });
     const { data, isLoading, error } = useSWR<{ data: { results: Array<OpenmrsResource> } }>(url, openmrsFetch);
     const [searchTerm, setSearchTerm] = useState('');
     let filteredItems =
@@ -38,6 +39,29 @@ export const useBillableItems = (
         setSearchTerm,
     };
 };
+
+export const useDrugBillableItems = (locationUuid: string, drugUuid?: string) => {
+    const url = drugUuid ? `${restBaseUrl}/billing/billableDrug?v=full&locationUuid=${locationUuid}` : null;
+
+    const { data, isLoading, error } = useSWR<{ data: { results: Array<OpenmrsResource> } }>(url, openmrsFetch);
+
+    return {
+        drugBillableItems: data?.data?.results,
+        isLoading,
+        error
+    };
+}
+
+export const useOrderBillableItems = (locationUuid: string, drugUuid?: string) => {
+    const { lineItems: l1, isLoading: i1, error: e1 } = useBillableItems('', { enabled: !drugUuid });
+    const { drugBillableItems: l2, isLoading: i2, error: e2 } = useDrugBillableItems(locationUuid, drugUuid);
+
+    return {
+        lineItems: drugUuid ? l2 ?? [] : l1,
+        isLoading: i1 || i2,
+        error: e1 || e2
+    }
+}
 
 export const usePatientBills = (patientUuid: string, billStatus: string = 'PENDING') => {
     const url = `${restBaseUrl}/billing/bill?patientUuid=${patientUuid}&status=${billStatus}&v=custom:(uuid,lineItems,cashPoint,dateCreated)`;
@@ -167,4 +191,18 @@ export const useLocationAttributes = () => {
     }>(url, openmrsFetch);
 
     return { isLoadingLocationAttributes: isLoading, error, locationAttributes: data?.data?.attributes };
+};
+
+export const useInventoryBatches = (drugUuid: string, locationUuid: string) => {
+    const { etlBaseUrl } = useConfig({
+        externalModuleName: '@ampath/esm-dha-workflow-app',
+    });
+
+    const url = drugUuid ? `${etlBaseUrl}/odoo/inventory/batches?openmrs_drug_uuid=${drugUuid}&company_external_id=${locationUuid}` : null;
+
+    const { data, isLoading, error } = useSWR<{
+        data: DrugBatch
+    }>(url, openmrsFetch);
+
+    return { isLoadingBatches: isLoading, error, drugBatches: data?.data };
 };

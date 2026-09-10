@@ -49,6 +49,15 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
   const { registrationBillableServices, nonSHAPaymentModes } = useConfig();
   const hasCrNo = useMemo(()=>patientHasCrNo(),[patient])
+  const selectedServicePrice = useMemo(
+    () =>
+      servicePrices.find(
+        (servicePrice) =>
+          servicePrice.billableService.uuid === selectedBillableService?.billableService.uuid &&
+          servicePrice.paymentMode?.uuid === selectedPaymentMode?.uuid,
+      ),
+    [servicePrices, selectedBillableService, selectedPaymentMode],
+  );
   const patientTypeOptions = useMemo(
       () => [
         {
@@ -321,13 +330,9 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
     const payload: CreateBillDto = {
       lineItems: [
         {
-          billableService: selectedBillableService.billableService.uuid,
           quantity: 1,
-          price: selectedBillableService.price,
-          priceName: selectedBillableService.name,
-          priceUuid: selectedBillableService.uuid,
-          lineItemOrder: 0,
-          status: 'PENDING',
+          priceUuid: selectedServicePrice.uuid,
+          status: selectedServicePrice.price === 0 ? 'PAID' : 'PENDING',
         },
       ],
       cashPoint: selectedCashPoint.uuid,

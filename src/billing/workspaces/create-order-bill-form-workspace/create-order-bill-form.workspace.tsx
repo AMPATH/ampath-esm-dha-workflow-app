@@ -2,14 +2,14 @@ import { Order } from "@openmrs/esm-patient-common-lib";
 import { act, useEffect, useMemo, useRef, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import { validationSchema, type CreateOrderBillFormSchema } from "./schema";
+import { createValidationSchema, type CreateOrderBillFormSchema } from "./schema";
 import { ExtensionSlot, FetchResponse, OpenmrsResource, ResponsiveWrapper, showSnackbar, useConfig, useDebounce, useLayoutType, useSession, useVisit } from "@openmrs/esm-framework";
 import { useTranslation } from "react-i18next";
 import { Column, FilterableMultiSelect, Select, SelectItem, Form, FormGroup, Stack, TextInput, InlineNotification, ButtonSet, Button, InlineLoading, Search, Layer, Tile, FormLabel } from "@carbon/react";
 import styles from './create-order-bill-form.scss';
 import React from "react";
 import classNames from 'classnames';
-import { createBillLineItem, createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useActiveVisitBills, useBillableItems, useCashPoint, useLocationAttributes, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
+import { createBillLineItem, createOrderBillInHie, createPatientBill, removePatientBill, updatePatientBill, useActiveVisitBills, useBillableItems, useCashPoint, useInventoryBatches, useLocationAttributes, useOrderBillableItems, usePatientBills, usePatientIdentifiers } from "./create-order-bill-form.resource";
 import { generateUpdateBillLineItems } from "../../utils";
 import { IdentifierTypesUuids } from "../../../resources/identifier-types";
 import { type ConfigObject } from "../../../config-schema";
@@ -35,12 +35,15 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { t } = useTranslation();
     const isTablet = useLayoutType() === 'tablet';
     const { activeVisit } = useVisit(order?.patient?.uuid);
-    const { lineItems, isLoading: isLoadingLineItems } = useBillableItems(); //useBillableItems(serviceTypeUuid);
     // const { currentDayBills } = usePatientBills(order?.patient?.uuid);
     const { currentDayBills } = useActiveVisitBills(activeVisit?.uuid);
     const { identifiers } = usePatientIdentifiers(order?.patient?.uuid);
     const { cashPoints } = useCashPoint();
     const sessionLocation = useSession();
+    const drugUuid = order?.drug?.uuid;
+    const isDrug = servicePointName === "PHARMACY" && Boolean(drugUuid);
+    const { lineItems, isLoading: isLoadingOrderBillItems } = useOrderBillableItems(sessionLocation?.sessionLocation?.uuid, drugUuid);
+    const { drugBatches, isLoadingBatches } = useInventoryBatches(drugUuid, sessionLocation?.sessionLocation?.uuid);
     const { claimVisit, isLoading: isLoadingClaimVisits } = useProviderClaimPreview(getConsentToken(activeVisit), sessionLocation?.sessionLocation?.uuid);
     const patientUuid = order?.patient?.uuid;
     const conceptUuid = order?.concept?.uuid;
@@ -79,15 +82,17 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         watch,
         handleSubmit,
         setValue,
-        formState: { errors, isDirty, isSubmitting },
+        formState: { errors, isDirty, isSubmitting, isValid },
     } = useForm<CreateOrderBillFormSchema>({
-        resolver: zodResolver(validationSchema),
+        resolver: zodResolver(createValidationSchema(isDrug)),
+        mode: 'onChange',
         defaultValues: {
             quantity: quantity ?? 1
         }
     });
 
     const selectedServicePrice = watch('unitPrice');
+    const selectedBatchNumber = watch('batchNumber');
 
     const selectedServicePriceUuid = useMemo(() => {
         if (selectedServicePrice) {
@@ -110,11 +115,11 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             const bill = currentDayBills[0];
             const currentCashpoint = bill?.cashPoint;
             cashPoint = currentCashpoint?.uuid;
-            setValue("cashPoint", cashPoint);
+            setValue("cashPoint", cashPoint, { shouldValidate: true });
         } else {
             if (cashPoints && cashPoints.length) {
                 cashPoint = cashPoints[0]?.uuid;
-                setValue("cashPoint", cashPoint);
+                setValue("cashPoint", cashPoint, { shouldValidate: true });
             }
         }
         return cashPoint;
@@ -130,11 +135,14 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     }, [selectedBillableItem, initialPriceName]);
 
     const defaultBillableItemUuid = useMemo(() => {
+        if (isDrug && drugUuid) {
+            return lineItems.find(item => item?.drug?.uuid === drugUuid)?.uuid;
+        }
         if (conceptUuid && lineItems && lineItems.length) {
             return lineItems.find(item => item?.concept?.uuid === conceptUuid)?.uuid;
         }
         return undefined;
-    }, [conceptUuid, lineItems]);
+    }, [conceptUuid, lineItems, drugUuid, isDrug]);
 
     const hasAppliedDefaultBillableItem = useRef(false);
 
@@ -158,13 +166,13 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
     const servicePrices = useMemo(() => {
         if (billableItem && billableItem.length && identifiers) {
-            let sPs = billableItem[0]?.servicePrices ?? [];
+            let sPs = isDrug ? billableItem[0]?.drugPrices ?? [] : billableItem[0]?.servicePrices ?? [];
             // add the non-sha payments
             sPs = sPs && sPs.length && !isSHAEligible ? sPs.filter(v => nonSHAPaymentModes.includes(v?.paymentMode?.uuid)) : sPs;
             return sPs;
         }
         return [];
-    }, [billableItem, identifiers, isSHAEligible]);
+    }, [billableItem, identifiers, isSHAEligible, isDrug]);
 
     const isSHAPaymentMode = useMemo(() => {
         if (servicePrices && selectedServicePriceUuid && shaVariantPaymentModeUuids) {
@@ -198,7 +206,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
     useEffect(() => {
         if (initialUnitPriceUuid && !selectedServicePrice) {
-            setValue("unitPrice", initialUnitPriceUuid);
+            setValue("unitPrice", initialUnitPriceUuid, { shouldValidate: true });
         }
     }, [initialUnitPriceUuid, selectedServicePrice, setValue]);
 
@@ -233,8 +241,6 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
     }, [activeVisit]);
 
-    const isPharmacy = servicePointName && servicePointName === "PHARMACY";
-
     const onAddIntervention = (result: ClaimIntervention, subBenefit?: ClientSubBenefit) => {
         if (result) {
             setInterventionResult(result);
@@ -259,9 +265,9 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             status: price == 0 ? "PAID" : "PENDING"
         }
 
-        if (isPharmacy) {
+        if (isDrug) {
             // Only for Drugs
-            // billLineItem["batchNumber"] = data.batchNumber;
+            billLineItem["batchNumber"] = data.batchNumber;
         }
         let billPayload = {};
 
@@ -482,6 +488,43 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                 </FormGroup>
                             </ResponsiveWrapper>
 
+                            {
+                                isDrug && (
+                                    <Column>
+                                        <Controller
+                                            control={control}
+                                            name="batchNumber"
+                                            render={({ field }) => {
+                                                return (
+                                                    <>
+                                                        {drugBatches ?
+                                                            <Select id="batchNumber" labelText={t('selectBatch', 'Select batch *')} invalid={!!errors.batchNumber}
+                                                                invalidText={errors.batchNumber?.message}
+                                                                onChange={(e) => {
+                                                                    field.onChange(e.target.value);
+                                                                }}
+                                                            >
+                                                                <SelectItem value="" text="Select batch" />
+                                                                {
+                                                                    drugBatches?.lots?.map((lot) => {
+                                                                        const expirationDate = lot?.expiration_date ?? t("notSet", "Not set");
+                                                                        const text = `Qty: ${lot?.quantity} | Expires: ${expirationDate}`;
+                                                                        return (
+                                                                            <SelectItem value={lot?.name} text={text} />
+                                                                        )
+                                                                    })
+                                                                }
+                                                            </Select>
+                                                            : <></>
+                                                        }
+                                                    </>
+                                                );
+                                            }}
+                                        />
+                                    </Column>
+                                )
+                            }
+
                             <ResponsiveWrapper>
                                 <Controller
                                     name="billableItem"
@@ -645,7 +688,10 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                         <Button kind="secondary" onClick={closeWorkspace}>
                             {t('cancel', 'Cancel')}
                         </Button>
-                        <Button kind="primary" type="submit" disabled={isSubmitting || isSubmitPending || !isDirty}>
+                        <Button
+                            kind="primary"
+                            type="submit"
+                            disabled={isSubmitting || isSubmitPending || !isDirty || !isValid}>
                             {isSubmitting || isSubmitPending ? (
                                 <InlineLoading description={t('submitting', 'Submitting...')} />
                             ) : (isSHAPaymentMode && canStartClaimVisit && !consentToken) ? t('startClaimVisit', 'Start claim visit') : (
