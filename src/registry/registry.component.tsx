@@ -59,6 +59,7 @@ import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-wo
 import RegistrationList from './registration-list/registration-list.component';
 import { type ConfigObject } from '../config-schema';
 import { type ClaimResult, type Intervention } from 'src/claims';
+import UnidentifiedRegistrationComponent from './emergency/unidentified/unidentified-registration.component';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -89,6 +90,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     emergencyConceptUuid,
   } = useConfig<ConfigObject>();
   const emtHandoffConsumed = useRef(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Arriving from an EMT handover (`?emtCrId=...`): skip straight to the
   // found-patient view instead of making staff re-search by an identifier
@@ -292,7 +294,11 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     setDisplayDrawer(true);
   };
   const handleEmergencyRegistration = () => {
-    window.location.href = `${window.spaBase}/patient-registration`;
+    // window.location.href = `${window.spaBase}/patient-registration`;
+    setModalOpen(true);
+  };
+  const handleCloseModal = () => {
+    setModalOpen(false);
   };
   const handleManualRegistration = () => {
     setdisplaytStartVisitModal(false);
@@ -712,6 +718,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                 <Button size="sm" kind="secondary" renderIcon={WarningAlt} onClick={handleEmergencyRegistration}>
                   Emergency Registration
                 </Button>
+                <UnidentifiedRegistrationComponent open={modalOpen} onClose={handleCloseModal} />
               </div>
             </Layer>
             {notFound ? (
