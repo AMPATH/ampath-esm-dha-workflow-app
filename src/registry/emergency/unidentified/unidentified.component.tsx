@@ -1,6 +1,6 @@
 import { ComboBox, InlineLoading, Modal, RadioButton, RadioButtonGroup } from '@carbon/react';
 import React, { useEffect, useState } from 'react';
-import { showSnackbar, useSession } from '@openmrs/esm-framework';
+import { showSnackbar, useConfig, useSession } from '@openmrs/esm-framework';
 import { fetchCashPoints, fetchPaymentModes } from '../../../shared/services/billing.resource';
 import EmergencySlotComponent from '../emergency-extension.component';
 import { generateReferenceNumber, getAbbreviation, type EmergencyFormData } from '../type';
@@ -9,6 +9,10 @@ import { createAmrsVisit } from '../emergency-helper';
 import { createQueueEntry, fetchServiceQueuesByLocationUuid } from '../../../resources/queue.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
 import { type QueueEntryDto } from '../../types';
+import { createOrderEncounter, getOrder } from '../../../shared/services/encounters.resource';
+import { createBill, createOrderBillInHie } from '../../../shared/services/billing.resource';
+import { type ConfigObject } from '../../../config-schema';
+import { type CreateBillDto, type CreateOrderEncounterDto } from '../../../shared/types';
 
 const NON_INSURANCE_PAYMENT_MODES = /cash|mpesa|m-pesa|waiver/i;
 
@@ -49,6 +53,7 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
 
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
+  const { outPatientCareSettingUuid, orderEncounterTypeUuid, emergencyConceptUuid } = useConfig<ConfigObject>();
 
   useEffect(() => {
     if (!open || !locationUuid) {
@@ -213,6 +218,71 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
         };
 
         await createQueueEntry(queueEntry);
+
+        if (!emergencyForm.cashpointUuid || !emergencyForm.servicePriceUuid) {
+          throw new Error('Missing cash point or emergency service price');
+        }
+
+        const billDto: CreateBillDto = {
+          lineItems: [{ quantity: 1, priceUuid: emergencyForm.servicePriceUuid }],
+          cashPoint: emergencyForm.cashpointUuid,
+          patient: patientUuid,
+          visit: visit.uuid,
+          status: 'PENDING',
+          payments: [],
+        };
+        const bill = await createBill(billDto);
+        if (!bill?.uuid) {
+          throw new Error('Emergency bill could not be created');
+        }
+
+        const orderPayload: CreateOrderEncounterDto = {
+          patient: patientUuid,
+          location: locationUuid,
+          encounterType: orderEncounterTypeUuid,
+          visit: visit.uuid,
+          obs: [],
+          orders: [
+            {
+              action: 'NEW',
+              type: 'order',
+              patient: patientUuid,
+              careSetting: outPatientCareSettingUuid,
+              orderer: session.currentProvider?.uuid ?? 'pd25871c-1359-11df-a1f1-0026b9348838',
+              concept: emergencyConceptUuid,
+              urgency: 'ROUTINE',
+            },
+          ],
+        };
+        const orderEncounter = await createOrderEncounter(orderPayload);
+        const orderUuid = orderEncounter?.orders?.[0]?.uuid;
+        const order = orderUuid ? await getOrder(orderUuid) : undefined;
+        const requiredPreauthDocumentTypes = data.required_preauth_document_types ?? [];
+        const applicableDocumentTypes = data.applicable_document_types ?? [];
+        const requiresPreauth = data.needs_preauth ?? data.requires_preauth;
+
+        await createOrderBillInHie({
+          bill_uuid: bill.uuid,
+          order_no: order?.orderNumber ?? '',
+          line_item_uuid: bill.lineItems?.[0]?.uuid ?? '',
+          intervention_code: data.initial_intervention ?? emergencyForm.interventionCode ?? '',
+          consent_token: data.authorization_code ?? '',
+          service_type: data.service_type ?? 'EMERGENCY',
+          requires_preauth: requiresPreauth,
+          normal_preauth: Boolean(requiresPreauth),
+          elective_preauth: false,
+          patient_uuid: patientUuid,
+          ...(applicableDocumentTypes.length > 0 && {
+            applicable_document_types: Array.isArray(applicableDocumentTypes)
+              ? applicableDocumentTypes.join(',')
+              : applicableDocumentTypes,
+          }),
+          ...(requiredPreauthDocumentTypes.length > 0 && {
+            required_preauth_document_types: Array.isArray(requiredPreauthDocumentTypes)
+              ? requiredPreauthDocumentTypes.join(',')
+              : requiredPreauthDocumentTypes,
+          }),
+        });
 
         showSnackbar({
           kind: 'success',
