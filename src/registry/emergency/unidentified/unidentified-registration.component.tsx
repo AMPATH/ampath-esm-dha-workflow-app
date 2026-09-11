@@ -1,24 +1,10 @@
-import {
-  Checkbox,
-  CheckboxGroup,
-  ComboBox,
-  Dropdown,
-  InlineLoading,
-  Modal,
-  MultiSelect,
-  RadioButton,
-  RadioButtonGroup,
-  Select,
-  SelectItem,
-  Tag,
-  TextInput,
-} from '@carbon/react';
+import { InlineLoading, Modal, RadioButton, RadioButtonGroup, Tag, TextInput } from '@carbon/react';
 import React, { useState } from 'react';
 import { createPatient, generateAmrsUniversalIdentifier } from '../../../resources/patient-resource';
 import { IdentifierTypesUuids } from '../../../resources/identifier-types';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
 import { type CreatePatientDto } from 'src/registry/types';
-import type { OnChangeData } from '@carbon/react/lib/components/ComboBox/ComboBox';
+import UnIdentifiedEmergencyComponent from './unidentified.component';
 
 interface UnidentifiedRegistrationComponentProps {
   open: boolean;
@@ -154,120 +140,7 @@ const UnidentifiedRegistrationComponent: React.FC<UnidentifiedRegistrationCompon
           <RadioButton id="female" labelText="Female" value="female" />
         </RadioButtonGroup>
       </Modal>
-      <div>
-        <Modal
-          aria-label="Modal content"
-          modalHeading="Add a custom domain"
-          onRequestClose={() => setIsSecondModalOpen(false)}
-          onRequestSubmit={() => setIsSecondModalOpen(false)}
-          onSecondarySubmit={() => setIsSecondModalOpen(false)}
-          open={isSecondModalOpen}
-          primaryButtonText="Add"
-          secondaryButtonText="Cancel"
-        >
-          <p
-            style={{
-              marginBottom: '2rem',
-            }}
-          >
-            Custom domains direct requests for your apps in this Cloud Foundry organization to a URL that you own. A
-            custom domain can be a shared domain, a shared subdomain, or a shared domain and host.
-          </p>
-          <TextInput
-            data-modal-primary-focus
-            id="text-input-1"
-            labelText="Domain name"
-            placeholder="For example, GitHub.com"
-            style={{
-              marginBottom: '24px',
-            }}
-          />
-          <div
-            style={{
-              marginBottom: '24px',
-            }}
-          >
-            <Select defaultValue="us-south" id="select-1" labelText="Region">
-              <SelectItem text="US South" value="us-south" />
-              <SelectItem text="US East" value="us-east" />
-            </Select>
-          </div>
-          <div
-            style={{
-              marginBottom: '24px',
-            }}
-          >
-            <ComboBox
-              allowCustomValue
-              autoAlign
-              id="carbon-combobox"
-              items={['Viewer', 'Editor', 'Manager']}
-              titleText="Permissions (Example of Floating UI)"
-              onChange={function (data: OnChangeData<string>): void {
-                throw new Error('Function not implemented.');
-              }}
-            />
-          </div>
-          <div
-            style={{
-              marginBottom: '24px',
-            }}
-          >
-            <Dropdown
-              autoAlign
-              id="default"
-              items={[
-                {
-                  id: 'option-0',
-                  text: '1.0',
-                },
-                {
-                  id: 'option-1',
-                  text: '1.1',
-                },
-                {
-                  id: 'option-2',
-                  text: '1.2',
-                },
-              ]}
-              label="Option 1"
-              titleText="TLS (Example of Floating UI)"
-            />
-          </div>
-          <div
-            style={{
-              marginBottom: '24px',
-            }}
-          >
-            <MultiSelect
-              autoAlign
-              id="test"
-              items={[
-                {
-                  id: 'downshift-1-item-0',
-                  text: 'Cloud Foundry',
-                },
-                {
-                  id: 'downshift-1-item-1',
-                  text: 'Kubernetes Ingress',
-                },
-                {
-                  id: 'downshift-1-item-2',
-                  text: 'VPC Load Balancer',
-                },
-              ]}
-              label="Choose options"
-              titleText="Mapping domain"
-            />
-          </div>
-          <CheckboxGroup legendText="Terms of Agreement">
-            <Checkbox
-              id="checkbox-label-1"
-              labelText="I confirm domain ownership and accept IBM service terms and applicable charges."
-            />
-          </CheckboxGroup>
-        </Modal>
-      </div>
+      <UnIdentifiedEmergencyComponent open={isSecondModalOpen} onClose={() => setIsSecondModalOpen(false)} />
     </>
   );
 };

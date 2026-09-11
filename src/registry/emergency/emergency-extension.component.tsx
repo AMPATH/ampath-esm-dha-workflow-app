@@ -19,12 +19,14 @@ interface EmergencySlotComponentProps {
   onFormChange: (data: EmergencyFormData) => void;
   onValidationChange: (isValid: boolean) => void;
   showValidationErrors?: boolean;
+  showOtp?: boolean;
 }
 
 const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
   client,
   onFormChange,
   onValidationChange,
+  showOtp = true,
 }) => {
   const [modeOfArrival, setModeOfArrival] = useState<string>();
   const [broughtBy, setBroughtBy] = useState<string>();
@@ -71,8 +73,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       selectedIntervention?.code &&
       selectedProvider?.provider_national_id &&
       notes.trim() &&
-      otpVerified &&
-      otp.length === 6,
+      (!showOtp || (otpVerified && otp.length === 6)),
     );
 
     onValidationChange(isValid);
@@ -102,6 +103,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     onValidationChange,
     otpVerified,
     otp,
+    showOtp,
   ]);
 
   const getInterventions = async () => {
@@ -523,12 +525,14 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
         value={notes}
         onChange={handleNotes}
       />
-      <EmergencyOtpComponent
-        client={client}
-        onOtpChange={setOtp}
-        interventionCode={selectedIntervention?.code}
-        onOtpVerificationStatusChange={setOtpVerified}
-      />
+      {showOtp ? (
+        <EmergencyOtpComponent
+          client={client}
+          onOtpChange={setOtp}
+          interventionCode={selectedIntervention?.code}
+          onOtpVerificationStatusChange={setOtpVerified}
+        />
+      ) : null}
     </>
   );
 };
