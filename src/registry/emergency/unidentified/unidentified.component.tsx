@@ -1,11 +1,14 @@
 import { ComboBox, InlineLoading, Modal, RadioButton, RadioButtonGroup } from '@carbon/react';
 import React, { useEffect, useState } from 'react';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { fetchServiceQueuesByLocationUuid } from '../../../resources/queue.resource';
 import { fetchCashPoints, fetchPaymentModes } from '../../../shared/services/billing.resource';
 import EmergencySlotComponent from '../emergency-extension.component';
 import { generateReferenceNumber, getAbbreviation, type EmergencyFormData } from '../type';
 import { sendEmergencyClaimUnIdentified } from '../emergency.resource';
+import { createAmrsVisit } from '../emergency-helper';
+import { createQueueEntry, fetchServiceQueuesByLocationUuid } from '../../../resources/queue.resource';
+import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
+import { type QueueEntryDto } from '../../types';
 
 const NON_INSURANCE_PAYMENT_MODES = /cash|mpesa|m-pesa|waiver/i;
 
@@ -22,10 +25,16 @@ function decodeHtmlEntities(value: string): string {
 interface UnidentifiedEmergencyComponentProps {
   open: boolean;
   onClose: () => void;
+  patientUuid: string;
 }
 
-const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentProps> = ({ open, onClose }) => {
+const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentProps> = ({
+  open,
+  onClose,
+  patientUuid,
+}) => {
   const [triageRooms, setTriageRooms] = useState<string[]>([]);
+  const [triageQueueByRoom, setTriageQueueByRoom] = useState<Record<string, string>>({});
   const [selectedRoom, setSelectedRoom] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'insurance' | 'cash'>('insurance');
@@ -55,13 +64,23 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
           return;
         }
 
-        const rooms = (response?.results ?? [])
+        const queues = (response?.results ?? [])
           .filter((queue) => queue.location?.uuid === locationUuid)
           .filter((queue) => /triage/i.test(queue.name ?? queue.display ?? ''))
-          .map((queue) => decodeHtmlEntities(queue.display || queue.name))
-          .filter(Boolean);
+          .map((queue) => ({
+            label: decodeHtmlEntities(queue.display || queue.name),
+            uuid: queue.uuid,
+          }))
+          .filter((queue) => queue.label && queue.uuid);
+        const queueByRoom: Record<string, string> = {};
+        queues.forEach((queue) => {
+          if (!queueByRoom[queue.label]) {
+            queueByRoom[queue.label] = queue.uuid;
+          }
+        });
 
-        setTriageRooms(Array.from(new Set(rooms)));
+        setTriageQueueByRoom(queueByRoom);
+        setTriageRooms(Array.from(new Set(queues.map((queue) => queue.label))));
       })
       .catch(() => {
         if (active) {
@@ -167,10 +186,38 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
       }
 
       if (data) {
+        const visit = await createAmrsVisit(locationUuid, patientUuid);
+
         showSnackbar({
           kind: 'success',
-          title: 'Emergency claim created',
-          subtitle: 'The unidentified emergency claim was created successfully.',
+          title: 'Emergency claim visit created',
+          subtitle: 'The emergency claim and AMRS visit were created successfully.',
+        });
+
+        const queueUuid = triageQueueByRoom[selectedRoom];
+
+        if (!queueUuid) {
+          throw new Error('Selected triage room could not be resolved to a queue');
+        }
+
+        const queueEntry: QueueEntryDto = {
+          visit: { uuid: visit.uuid },
+          queueEntry: {
+            status: { uuid: QUEUE_STATUS_UUIDS.WAITING_UUID },
+            priority: { uuid: QUEUE_PRIORITIES_UUIDS.EMERGENCY_PRIORITY_UUID },
+            queue: { uuid: queueUuid },
+            patient: { uuid: patientUuid },
+            startedAt: visit.startDatetime ?? new Date().toISOString(),
+            sortWeight: 0,
+          },
+        };
+
+        await createQueueEntry(queueEntry);
+
+        showSnackbar({
+          kind: 'success',
+          title: 'Patient sent to triage',
+          subtitle: 'The patient was successfully added to the selected triage queue.',
         });
         onClose();
       }

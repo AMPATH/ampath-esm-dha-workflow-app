@@ -18,6 +18,7 @@ const UnidentifiedRegistrationComponent: React.FC<UnidentifiedRegistrationCompon
   const [gender, setGender] = useState('');
   const [isCreatingPatient, setIsCreatingPatient] = useState(false);
   const [isSecondModalOpen, setIsSecondModalOpen] = useState(false);
+  const [patientUuid, setPatientUuid] = useState('');
 
   const session = useSession();
 
@@ -40,6 +41,7 @@ const UnidentifiedRegistrationComponent: React.FC<UnidentifiedRegistrationCompon
           subtitle: `Patient ${data?.person?.display} was created successfully.`,
         });
 
+        setPatientUuid(data.uuid);
         onClose();
         setIsSecondModalOpen(true);
       }
@@ -140,7 +142,11 @@ const UnidentifiedRegistrationComponent: React.FC<UnidentifiedRegistrationCompon
           <RadioButton id="female" labelText="Female" value="female" />
         </RadioButtonGroup>
       </Modal>
-      <UnIdentifiedEmergencyComponent open={isSecondModalOpen} onClose={() => setIsSecondModalOpen(false)} />
+      <UnIdentifiedEmergencyComponent
+        open={isSecondModalOpen}
+        onClose={() => setIsSecondModalOpen(false)}
+        patientUuid={patientUuid}
+      />
     </>
   );
 };
