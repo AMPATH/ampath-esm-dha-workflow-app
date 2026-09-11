@@ -64,12 +64,11 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
       setSelectedVisitUuid(visit?.visit_uuid ?? '');
       setConsentToken(visit.consent_token ?? '');
     }
-
   };
 
   const handVisitTypeChange = (value: any) => {
     const selectedVisit = patientVisits.find((v) => {
-      return (v.visit_uuid === value);
+      return v.visit_uuid === value;
     });
     setSelectedVisitUuid(selectedVisit?.visit_uuid ?? '');
     setConsentToken(selectedVisit?.consent_token ?? '');
@@ -160,7 +159,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     const amrsMaternityDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
     try {
       const resp: any = await fetchPatientEncounterDiagnosis(amrsMaternityDiagnosisPayload);
-      const results = (resp ?? []).filter((r) => r?.uuid != null && r?.dx_rank === 1).map((v) => ({ ...v }));
+      const results = (resp ?? []).filter((r) => r?.uuid != null && r?.dx_rank === 2).map((v) => ({ ...v }));
       setEncounterDiagnosis(results);
     } catch (error) {
       showSnackbar({
@@ -187,29 +186,21 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   }
 
   if (isLoading && !patientBillDetails) {
-    return <InlineLoading description='Loading bill details ...' />
+    return <InlineLoading description="Loading bill details ..." />;
   }
 
   if (isValidating && !patientBillDetails) {
-    return <InlineLoading description='Refreshing bill details ...' />
+    return <InlineLoading description="Refreshing bill details ..." />;
   }
 
   return (
     <>
       <div className={styles.visitDetailsLayout}>
-        <RadioButtonGroup
-          name="patient-visits"
-          onChange={handVisitTypeChange}
-          defaultSelected={selectedVisitUuid}
-        >
+        <RadioButtonGroup name="patient-visits" onChange={handVisitTypeChange} defaultSelected={selectedVisitUuid}>
           {patientVisits &&
             patientVisits?.map((v) => {
               return (
-                <RadioButton
-                  id={v.visit_uuid}
-                  labelText={`${v.visit_type}: ${v.date_started}`}
-                  value={v.visit_uuid}
-                />
+                <RadioButton id={v.visit_uuid} labelText={`${v.visit_type}: ${v.date_started}`} value={v.visit_uuid} />
               );
             })}
         </RadioButtonGroup>
