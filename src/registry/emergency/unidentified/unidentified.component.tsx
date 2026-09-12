@@ -191,7 +191,7 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
       }
 
       if (data) {
-        const visit = await createAmrsVisit(locationUuid, patientUuid);
+        const visit = await createAmrsVisit(locationUuid, patientUuid, data);
 
         showSnackbar({
           kind: 'success',
@@ -282,6 +282,12 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
               ? requiredPreauthDocumentTypes.join(',')
               : requiredPreauthDocumentTypes,
           }),
+        });
+
+        showSnackbar({
+          kind: 'success',
+          title: 'Bill order created',
+          subtitle: 'The emergency bill order was created successfully.',
         });
 
         showSnackbar({
