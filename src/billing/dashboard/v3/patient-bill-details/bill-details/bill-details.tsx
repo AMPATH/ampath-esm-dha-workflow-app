@@ -76,7 +76,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
       return '';
     }
     const consultationBill = patientBillDetails.find((b) => {
-      return b.billable_service.toLocaleLowerCase().trim().includes('consultation');
+      return b.billable_service?.toLocaleLowerCase()?.trim()?.includes('consultation');
     });
     if (consultationBill) {
       return consultationBill.intervention_code;
