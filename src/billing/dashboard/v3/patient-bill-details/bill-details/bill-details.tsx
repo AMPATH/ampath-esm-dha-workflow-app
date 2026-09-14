@@ -48,7 +48,6 @@ const BillDetails: React.FC<billDetailsProps> = ({
   locationUuid,
   claimsVisit,
 }) => {
-  console.log('CLAIMS VISIT', claimsVisit);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
   const [showEffectiveCoverageModal, setShowEffectiveCoverageModal] = useState<boolean>(false);
