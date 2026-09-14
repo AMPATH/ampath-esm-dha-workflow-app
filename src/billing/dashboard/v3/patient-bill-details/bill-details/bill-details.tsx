@@ -42,7 +42,6 @@ const BillDetails: React.FC<billDetailsProps> = ({
   locationUuid,
   claimsVisit,
 }) => {
-  console.log('CLAIMS VISIT', claimsVisit);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
   const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
@@ -69,6 +68,11 @@ const BillDetails: React.FC<billDetailsProps> = ({
     handleClosePayModal();
   }
   function handleClaimLineAddition(patientBillDetail: PatientFacilityBillDetails) {
+    setSelectedBillItem(patientBillDetail);
+    setShowAddClaimLineModal(true);
+  }
+
+  function handleProtocalAddition(patientBillDetail: PatientFacilityBillDetails) {
     setSelectedBillItem(patientBillDetail);
     setShowAddClaimLineModal(true);
   }
@@ -152,7 +156,15 @@ const BillDetails: React.FC<billDetailsProps> = ({
                         claimsVisit ? (
                           claimsVisit.workflow_state === 'DRAFT' ? (
                             !interventionAddedToClaimLine(b) && (
-                              <Button size="sm" kind="tertiary" onClick={() => handleClaimLineAddition(b)}>
+                              <Button
+                                size="sm"
+                                kind="tertiary"
+                                onClick={() =>
+                                  b.service_type === 'EMERGENCY'
+                                    ? handleProtocalAddition(b)
+                                    : handleClaimLineAddition(b)
+                                }
+                              >
                                 {b.service_type === 'EMERGENCY' ? 'Add Protocol' : 'Add Claim Line'}
                               </Button>
                             )
