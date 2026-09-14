@@ -44,7 +44,17 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const [generatingDocumentId, setGeneratingDocumentId] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<GeneratedDocument[]>(() => {
-    const uniqueDocumentTypes = [...new Set(claimInterventions?.applicable_document_types ?? [])];
+    const uploadOnlyDocumentTypes = new Set([
+      ApplicableDocumentType.CLAIM_FORM,
+      ApplicableDocumentType.BIRTH_NOTIFICATION,
+    ]);
+    const uniqueDocumentTypes = [
+      ...new Set(
+        (claimInterventions?.applicable_document_types ?? []).filter(
+          (documentType) => !uploadOnlyDocumentTypes.has(documentType.trim().toUpperCase() as ApplicableDocumentType),
+        ),
+      ),
+    ];
 
     return uniqueDocumentTypes.map((documentType) => ({
       id: crypto.randomUUID(),
@@ -213,11 +223,11 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         break;
 
       default:
-        console.warn(`No generator implemented for ${document.name}`);
+        console.warn(`${document.name} cannot be generated. Kindly upload it instead using the upload button.`);
         showSnackbar({
           kind: 'error',
           title: 'Error Generating Attachment',
-          subtitle: `No generator implemented for ${document.name}. Kindly and Upload it instead`,
+          subtitle: `No generator implemented for ${document.name}. Kindly use the upload button to upload it instead`,
         });
         return;
     }

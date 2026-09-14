@@ -189,13 +189,18 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
             uploadFile={uploadFile}
           />
         ))}
-        <Button
-          className={styles.addAttachment}
-          kind="secondary"
-          onClick={() => setAttachments((prev) => [...prev, createAttachment()])}
-        >
-          Add Attachment
-        </Button>
+        <ButtonSet>
+          <Button
+            className={styles.addAttachment}
+            kind="primary"
+            onClick={() => setAttachments((prev) => [...prev, createAttachment()])}
+          >
+            Add Attachment
+          </Button>
+          <Button kind="secondary" className={styles.addAttachment} onClick={handleDiscard}>
+            {t('close', 'Close')}
+          </Button>
+        </ButtonSet>
       </Form>
       <Modal
         open={previewOpen}
