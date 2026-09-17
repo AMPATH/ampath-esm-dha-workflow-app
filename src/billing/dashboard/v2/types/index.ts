@@ -245,6 +245,8 @@ export type ClaimVisitReponse = {
   locationUuid: string;
   patientId: string;
   serviceType: string;
+  providerStatus: string;
+  payerStatus: string;
   claimVisitId: string;
   claimVisitNumber: string;
   visitStart: string;
@@ -252,8 +254,6 @@ export type ClaimVisitReponse = {
   authorizationGuid: string;
   visitResponse: ClaimsVisit;
   createdBy?: string | null;
-  /** When this snapshot of the claim was recorded locally. The same claim is returned
-      once per local visit, so this is what tells the snapshots apart. */
   dateCreated?: string | null;
 };
 
