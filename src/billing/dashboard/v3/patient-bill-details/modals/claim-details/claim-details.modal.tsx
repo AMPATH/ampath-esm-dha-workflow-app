@@ -7,7 +7,7 @@ import ClaimDiagnosisDetails from '../../../../v3/claim-visits/claim-diagnosis-d
 import ClaimDoctors from '../../../../v3/claim-visits/claim-doctors/claim-doctors';
 import ClaimDocuments from '../../../claim-visits/claim-documents/claim-documents';
 import ClaimInvoiceDetails from '../../../../v3/claim-visits/claim-invoice-details/claim-invoice-details.component';
-import { Modal, ModalBody, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import { InlineLoading, Modal, ModalBody, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 interface claimDetailsModalProps {
   open: boolean;
   onClose: () => void;
@@ -16,12 +16,14 @@ interface claimDetailsModalProps {
 }
 const ClaimDetailsModal: React.FC<claimDetailsModalProps> = ({ open, onClose, consentToken, locationUuid }) => {
   const [claimsVisit, setClaimsVisit] = useState<ClaimsVisit | null>(null);
+  const [loading,setLoading] = useState<boolean>(false);
   useEffect(() => {
     if (locationUuid && consentToken) {
       getClaimProviderPreview();
     }
   }, [locationUuid, consentToken]);
   async function getClaimProviderPreview() {
+    setLoading(true);
     const resp = await fetchProviderClaimPreview({
       locationUuid: locationUuid,
       consentToken: consentToken,
@@ -29,6 +31,10 @@ const ClaimDetailsModal: React.FC<claimDetailsModalProps> = ({ open, onClose, co
     if (resp) {
       setClaimsVisit(resp);
     }
+    setLoading(false);
+  }
+  if(loading){
+      return <><InlineLoading  description='fetching claim details..please wait'/></>
   }
   if (!claimsVisit) {
     return <>No Data to display</>;

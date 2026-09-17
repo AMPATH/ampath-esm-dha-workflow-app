@@ -26,6 +26,7 @@ import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
 import BillingAndClaimsPatientChart from './billing-and-claims-patient-chart.component';
 import ClaimsStatsDashboard from '../v3/claims-stats-dashboard/claims-stats-dashboard.component';
 import Chart from '../../../dashboard/charts/chart.component';
+import ClaimVisits from './claim-visits/claim-list/claim-visits.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -309,18 +310,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                   )}
                 </TabPanel>
                 <TabPanel>
-                  {/* The same table on the SHA payer. It was a sub-tab inside Facility
-                      bills; claims are read often enough, and are enough their own thing,
-                      to be reached in one click rather than two. */}
-                  {visitedTabs.has(TAB_SHA_CLAIMS) && (
-                    <FacilityBills
-                      locationUuid={locationUuid}
-                      billingDate={billingDate}
-                      payerTab={SHA_PAYER_TAB}
-                      navStatusKey={claimsNav.statusKey}
-                      navNonce={claimsNav.nonce}
-                    />
-                  )}
+                  <ClaimVisits locationUuid={locationUuid} billingDate={billingDate}/>
                 </TabPanel>
                 <TabPanel>
                   {visitedTabs.has(TAB_PREAUTHORIZATIONS) && (

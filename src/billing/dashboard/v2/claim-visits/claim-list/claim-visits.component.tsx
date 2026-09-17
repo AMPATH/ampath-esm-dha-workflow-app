@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import styles from './claim-visits.component.scss';
-import { fetchFacilityClaimVisits } from '../../../billing-claims.resource';
-import { type ClaimVisitReponse, type ClaimVisitsDto } from '../types';
+import { fetchFacilityClaimVisits } from '../../../../billing-claims.resource';
+import { type ClaimVisitReponse, type ClaimVisitsDto } from '../../types';
 import { formatDate, parseDate, showSnackbar } from '@openmrs/esm-framework';
 import {
   Button,
@@ -13,8 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from '@carbon/react';
-import ClaimVisitDetailsModal from './modal/claim-visit-details/claim-visit-details.modal';
-import TableToolbar from '../shared/table-toolbar.component';
+import TableToolbar from '../../shared/table-toolbar.component';
+import ClaimDetailsModal from '../../../../../billing/dashboard/v3/patient-bill-details/modals/claim-details/claim-details.modal';
 interface claimVisitsProps {
   locationUuid: string;
   billingDate: string;
@@ -85,6 +85,8 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
               <TableHeader>Date</TableHeader>
               <TableHeader>Patient</TableHeader>
               <TableHeader>Service Type</TableHeader>
+              <TableHeader>Provider Status</TableHeader>
+              <TableHeader>Payer Status</TableHeader>
               <TableHeader>Action</TableHeader>
             </TableRow>
           </TableHead>
@@ -104,6 +106,8 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
                         <div>{cv.patientId}</div>
                       </TableCell>
                       <TableCell>{cv.serviceType}</TableCell>
+                      <TableCell>{cv.providerStatus}</TableCell>
+                       <TableCell>{cv.payerStatus}</TableCell>
                       <TableCell>
                         <Button kind="ghost" onClick={() => handleSelectedClaimsVisit(cv)} size="sm">
                           {loading ? <InlineLoading description="Fetching data...." /> : 'View Claim'}
@@ -116,10 +120,10 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
           </TableBody>
         </Table>
         {showClaimsVisitModal && consentToken ? (
-          <ClaimVisitDetailsModal
+          <ClaimDetailsModal
             open={showClaimsVisitModal}
             consentToken={consentToken}
-            handleClose={handleCloseClaimsModal}
+            onClose={handleCloseClaimsModal}
             locationUuid={locationUuid}
           />
         ) : (
