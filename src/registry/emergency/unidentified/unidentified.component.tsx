@@ -260,6 +260,7 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
         const requiredPreauthDocumentTypes = data.required_preauth_document_types ?? [];
         const applicableDocumentTypes = data.applicable_document_types ?? [];
         const requiresPreauth = data.needs_preauth ?? data.requires_preauth;
+        const protocolCode = emergencyForm.protocolCode ?? data.protocol_code ?? null;
 
         await createOrderBillInHie({
           bill_uuid: bill.uuid,
@@ -272,6 +273,7 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
           normal_preauth: Boolean(requiresPreauth),
           elective_preauth: false,
           patient_uuid: patientUuid,
+          ...(protocolCode && { protocol_code: protocolCode }),
           ...(applicableDocumentTypes.length > 0 && {
             applicable_document_types: Array.isArray(applicableDocumentTypes)
               ? applicableDocumentTypes.join(',')

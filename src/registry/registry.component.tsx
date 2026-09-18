@@ -425,6 +425,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     emergencyServicePriceUuid?: string;
     emergencyCashPointUuid?: string;
     emergencyIntervention?: Intervention;
+    protocolCode?: string;
   }) => {
     // Ensure the client exists in AMRS before starting a visit.
     let amrsPatient = amrsPatients[0];
@@ -543,6 +544,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
           normal_preauth: requiresPreauth && !electivePreauth,
           elective_preauth: Boolean(interventionResult?.needsManualPreauthApproval && electivePreauth),
           patient_uuid: amrsPatient?.uuid,
+          ...(details?.protocolCode && {
+            protocol_code: details.protocolCode,
+          }),
           ...(applicableDocumentTypes.length > 0 && {
             applicable_document_types: applicableDocumentTypes.join(','),
           }),
