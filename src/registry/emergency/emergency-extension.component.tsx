@@ -285,6 +285,9 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     if (item) {
       setSelectedIntervention(item.selectedItem);
       setSelectedProtocol(null);
+      setSelectedBillableService(null);
+      setSelectedServicePrice(null);
+      userPickedService.current = false;
     }
   };
 
@@ -531,15 +534,18 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
             id="billable-service"
             titleText="Billable service"
             placeholder="Search billable service"
-            items={allBillableServices ?? []}
-            itemToString={(item) => (item ? `${item?.name} ` : '')}
+            items={filteredBillableServices ?? []}
+            itemToString={(item) => (item ? (item?.name ?? '') : '')}
             shouldFilterItem={({ item, inputValue }) => {
-              const selectedLabel = selectedBillableService ? `${selectedBillableService?.name}` : '';
+              const selectedLabel = selectedBillableService ? (selectedBillableService.name ?? '') : '';
               if (!inputValue || inputValue === selectedLabel) {
                 return true;
               }
-              const text = item ? `${item?.name} ` : '';
-              return text.includes(inputValue.toLowerCase());
+
+              const text = normalizeText(item?.name ?? item?.display ?? item?.shortName ?? '');
+              const searchText = normalizeText(inputValue);
+
+              return !searchText || text.includes(searchText);
             }}
             selectedItem={selectedBillableService ?? null}
             onChange={({ selectedItem }) =>
