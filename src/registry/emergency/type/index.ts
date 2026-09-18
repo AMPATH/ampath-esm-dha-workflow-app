@@ -13,6 +13,7 @@ export interface EmergencyFormData {
   modeOfArrival?: string;
   broughtBy?: string;
   interventionCode?: string;
+  protocolCode?: string;
   providerNationalId?: string;
   identificationType?: string;
   licensingBody?: string;
@@ -46,3 +47,15 @@ export function getAbbreviation(value?: string): string {
     .join('')
     .toUpperCase();
 }
+
+export type EmergencyProtocol = {
+  id: number;
+  guid: string;
+  name: string;
+  protocolType: string;
+  protocolCode: string;
+  applicableTariff: string;
+  protocolClassificationType: string;
+  status: string;
+  intervention: Intervention[];
+};

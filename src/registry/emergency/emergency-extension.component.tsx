@@ -1,13 +1,24 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import styles from './emergency.scss';
-import { ComboBox, Dropdown, TextArea } from '@carbon/react';
+import { ComboBox, Dropdown, InlineLoading, TextArea } from '@carbon/react';
 import EmergencyOtpComponent from './otp-component';
 import { type HieClient } from '../types';
-import { fetchEmergencyInterventions, fetchProviders, sendEmergencyClaimIdentified } from './emergency.resource';
+import {
+  fetchEmergencyInterventions,
+  fetchEmergencyProtocals,
+  fetchProviders,
+  sendEmergencyClaimIdentified,
+} from './emergency.resource';
 import { type Intervention } from 'src/claims';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { generateReferenceNumber, getAbbreviation, type EmergencyFormData, type Provider } from './type';
+import {
+  type EmergencyProtocol,
+  generateReferenceNumber,
+  getAbbreviation,
+  type EmergencyFormData,
+  type Provider,
+} from './type';
 import { type ServicePrice, type CashPoint, type BillableService, type PayableBillableService } from 'src/shared/types';
 import { type Bill } from 'src/billing/types';
 
@@ -45,8 +56,10 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     intervention: false,
     provider: false,
     notes: false,
+    protocol: false,
   });
   const [selectedCashPoint, setSelectedCashPoint] = useState<CashPoint | null>(null);
+  const [allBillableServices, setAllBillableServices] = useState<BillableService[]>([]);
   const [selectedBillableService, setSelectedBillableService] = useState<BillableService | null>(null);
   const [filteredBillableServices, setFilteredBillableServices] = useState<BillableService[]>([]);
   const [cashPoints, setCashPoints] = useState<CashPoint[]>([]);
@@ -54,9 +67,92 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
   const [selectedServicePrice, setSelectedServicePrice] = useState<ServicePrice | null>(null);
   const userPickedService = useRef(false);
   const [patientBills, setPatientBills] = useState<Bill[]>([]);
+  const [protocals, setProtocols] = useState<EmergencyProtocol[]>([]);
+  const [protocolsLoading, setProtocolsLoading] = useState(false);
+  const [selectedProtocol, setSelectedProtocol] = useState<EmergencyProtocol | null>(null);
 
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
+
+  const normalizeText = (value?: string) =>
+    (value ?? '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  useEffect(() => {
+    if (!selectedIntervention?.code || !locationUuid) {
+      setProtocols([]);
+      setSelectedProtocol(null);
+      return;
+    }
+
+    const loadProtocols = async () => {
+      setProtocolsLoading(true);
+      try {
+        const res = await fetchEmergencyProtocals(selectedIntervention.code, locationUuid);
+        const nextProtocols = res?.results ?? [];
+        setProtocols(nextProtocols);
+        setSelectedProtocol((prev) => {
+          if (
+            prev &&
+            nextProtocols.some((protocol: EmergencyProtocol) => protocol.protocolCode === prev.protocolCode)
+          ) {
+            return prev;
+          }
+          return null;
+        });
+      } catch {
+        setProtocols([]);
+        setSelectedProtocol(null);
+      } finally {
+        setProtocolsLoading(false);
+      }
+    };
+
+    loadProtocols();
+  }, [selectedIntervention?.code, locationUuid]);
+
+  useEffect(() => {
+    const serviceNameMatchesProtocol = (service: BillableService, protocolNames: string[]) => {
+      const serviceName = normalizeText(service.name ?? service.display ?? service.shortName ?? '');
+      if (!serviceName) {
+        return false;
+      }
+
+      const serviceWords = new Set(serviceName.split(/\s+/).filter(Boolean));
+      return protocolNames.some((protocolName) => {
+        const normalizedProtocol = normalizeText(protocolName);
+        if (!normalizedProtocol) {
+          return false;
+        }
+
+        if (normalizedProtocol.includes(serviceName) || serviceName.includes(normalizedProtocol)) {
+          return true;
+        }
+
+        const protocolWords = new Set(normalizedProtocol.split(/\s+/).filter(Boolean));
+        return [...protocolWords].some((word) => serviceWords.has(word) && word.length > 3);
+      });
+    };
+
+    if (allBillableServices.length === 0) {
+      setFilteredBillableServices([]);
+      return;
+    }
+
+    const protocolNames = protocals.length > 0 ? protocals.map((protocol) => protocol.name).filter(Boolean) : [];
+    const nextFiltered =
+      protocolNames.length > 0
+        ? allBillableServices.filter((service) => serviceNameMatchesProtocol(service, protocolNames))
+        : allBillableServices;
+
+    setFilteredBillableServices(nextFiltered);
+    if (selectedBillableService && !nextFiltered.some((service) => service.uuid === selectedBillableService.uuid)) {
+      setSelectedBillableService(null);
+      setSelectedServicePrice(null);
+    }
+  }, [allBillableServices, protocals, selectedBillableService]);
 
   const handleModeOfArrivalChange = (item: any) => {
     if (item) {
@@ -65,12 +161,14 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
   };
 
   useEffect(() => {
+    const requiresProtocolSelection = protocals.length > 0;
     const isValid = Boolean(
       selectedCashPoint?.uuid &&
       selectedServicePrice?.uuid &&
       modeOfArrival &&
       broughtBy &&
       selectedIntervention?.code &&
+      (!requiresProtocolSelection || selectedProtocol?.protocolCode) &&
       selectedProvider?.provider_national_id &&
       notes.trim() &&
       (!showOtp || (otpVerified && otp.length === 6)),
@@ -84,6 +182,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       modeOfArrival,
       broughtBy,
       interventionCode: selectedIntervention?.code,
+      protocolCode: selectedProtocol?.protocolCode,
       providerNationalId: selectedProvider?.provider_national_id,
       identificationType: 'National ID',
       licensingBody: getAbbreviation(selectedProvider?.licensing_body),
@@ -97,6 +196,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     modeOfArrival,
     broughtBy,
     selectedIntervention,
+    selectedProtocol,
     selectedProvider,
     notes,
     onFormChange,
@@ -104,6 +204,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     otpVerified,
     otp,
     showOtp,
+    protocals,
   ]);
 
   const getInterventions = async () => {
@@ -131,50 +232,65 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     }
   };
 
-  const initiateEmergencyClaim = async () => {
-    const validationErrors = {
-      modeOfArrival: !modeOfArrival,
-      broughtBy: !broughtBy,
-      intervention: !selectedIntervention?.code,
-      provider: !selectedProvider,
-      notes: !notes.trim(),
-    };
+  // const initiateEmergencyClaim = async () => {
+  //   const validationErrors = {
+  //     modeOfArrival: !modeOfArrival,
+  //     broughtBy: !broughtBy,
+  //     intervention: !selectedIntervention?.code,
+  //     provider: !selectedProvider,
+  //     notes: !notes.trim(),
+  //   };
 
-    setErrors(validationErrors);
+  //   setErrors(validationErrors);
 
-    const hasErrors = Object.values(validationErrors).some(Boolean);
+  //   const hasErrors = Object.values(validationErrors).some(Boolean);
 
-    if (hasErrors) {
-      return;
-    }
+  //   if (hasErrors) {
+  //     return;
+  //   }
 
-    try {
-      const res = await sendEmergencyClaimIdentified(
-        modeOfArrival,
-        broughtBy,
-        locationUuid,
-        selectedIntervention?.code,
-        generateReferenceNumber(),
-        client?.id,
-        selectedProvider?.provider_national_id,
-        'National ID',
-        getAbbreviation(selectedProvider?.licensing_body),
-        notes.trim(),
-        otp,
-      );
-    } catch (error) {
-      console.error('Error initiating emergency claim:', error);
-    }
-  };
+  //   try {
+  //     const res = await sendEmergencyClaimIdentified(
+  //       modeOfArrival,
+  //       broughtBy,
+  //       locationUuid,
+  //       selectedIntervention?.code,
+  //       generateReferenceNumber(),
+  //       client?.id,
+  //       selectedProvider?.provider_national_id,
+  //       'National ID',
+  //       getAbbreviation(selectedProvider?.licensing_body),
+  //       notes.trim(),
+  //       otp,
+  //     );
+  //   } catch (error) {
+  //     console.error('Error initiating emergency claim:', error);
+  //   }
+  // };
 
   const getProviders = async () => {
     const res = await fetchProviders();
     setProviders(res?.results ?? []);
   };
 
+  const getProtocols = async () => {
+    if (selectedIntervention?.code && locationUuid) {
+      const res = await fetchEmergencyProtocals(selectedIntervention.code, locationUuid);
+      setProtocols(res?.results ?? []);
+      setSelectedProtocol(null);
+    }
+  };
+
   const handleInterventionChange = (item: any) => {
     if (item) {
       setSelectedIntervention(item.selectedItem);
+      setSelectedProtocol(null);
+    }
+  };
+
+  const handleProtocolChange = (item: any) => {
+    if (item) {
+      setSelectedProtocol(item.selectedItem ?? null);
     }
   };
 
@@ -194,13 +310,12 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
   async function getBillableServices() {
     const billableServices = await fetchBillableServicePage<BillableService>();
     const outpatientServices = billableServices.filter((bs) => {
-      return bs?.shortName?.toLowerCase().includes('emergency');
+      return bs?.shortName?.toLowerCase();
     });
-    const firstBillableService = outpatientServices[0] ?? null;
     const outpatientServicePrices = outpatientServices.flatMap((bs) => bs.servicePrices ?? []);
-    const shaServicePrice = firstBillableService?.servicePrices?.find((servicePrice) => /sha/i.test(servicePrice.name));
-    setSelectedBillableService(firstBillableService);
-    setSelectedServicePrice(shaServicePrice ?? null);
+    setAllBillableServices(outpatientServices);
+    setSelectedBillableService(null);
+    setSelectedServicePrice(null);
     setFilteredBillableServices(outpatientServices);
     setServicePrices(outpatientServicePrices);
   }
@@ -295,6 +410,74 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
 
   return (
     <>
+      <div className={styles.dropDownContainer}>
+        <div className={styles.dropDown} />
+        <Dropdown
+          autoAlign
+          direction="top"
+          id="mode-of-arrival"
+          invalidText="Kindly select mode of arrival"
+          items={MODE_OF_ARRIVAL}
+          label=""
+          onChange={handleModeOfArrivalChange}
+          size="md"
+          titleText="Mode of Arrival"
+          type="default"
+          invalid={errors.modeOfArrival}
+        />
+      </div>
+      <div className={styles.dropDownContainer}>
+        <div className={styles.dropDown} />
+        <Dropdown
+          autoAlign
+          direction="top"
+          id="brought-by"
+          invalidText="Kindly select brought by"
+          items={BROUGHT_BY}
+          label=""
+          onChange={handleBroughtByChange}
+          size="md"
+          titleText="Brought By"
+          type="default"
+          invalid={errors.broughtBy}
+        />
+      </div>
+      <div className={styles.dropDownContainer}>
+        <div className={styles.dropDown} />
+        <Dropdown
+          autoAlign
+          direction="top"
+          id="interventions"
+          invalidText="Kindly select an intervention"
+          items={interventions}
+          itemToString={(item) => `${item?.name} - ${item?.code}`}
+          label=""
+          onChange={handleInterventionChange}
+          size="md"
+          titleText="Interventions"
+          type="default"
+          invalid={errors.intervention}
+        />
+      </div>
+      <div className={styles.dropDownContainer}>
+        <div className={styles.dropDown} />
+        {protocolsLoading ? <InlineLoading description="Loading protocols..." /> : null}
+        <Dropdown
+          autoAlign
+          direction="top"
+          id="protocol"
+          invalidText="Kindly select protocol"
+          items={protocals}
+          itemToString={(item) => (item ? `${item.name} (${item.protocolCode})` : '')}
+          label=""
+          onChange={handleProtocolChange}
+          size="md"
+          titleText="Protocol"
+          type="default"
+          invalid={errors.protocol}
+          disabled={protocolsLoading}
+        />
+      </div>
       <div className={styles.formRow}>
         <div
           className={styles.formControl}
@@ -348,7 +531,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
             id="billable-service"
             titleText="Billable service"
             placeholder="Search billable service"
-            items={filteredBillableServices ?? []}
+            items={allBillableServices ?? []}
             itemToString={(item) => (item ? `${item?.name} ` : '')}
             shouldFilterItem={({ item, inputValue }) => {
               const selectedLabel = selectedBillableService ? `${selectedBillableService?.name}` : '';
@@ -402,100 +585,6 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
             }
           />
         </div>
-      </div>
-      <div className={styles.dropDownContainer}>
-        <div className={styles.dropDown} />
-        <Dropdown
-          autoAlign
-          direction="top"
-          id="mode-of-arrival"
-          invalidText="Kindly select mode of arrival"
-          items={MODE_OF_ARRIVAL}
-          label=""
-          onChange={handleModeOfArrivalChange}
-          size="md"
-          titleText="Mode of Arrival"
-          type="default"
-          invalid={errors.modeOfArrival}
-        />
-      </div>
-      <div className={styles.dropDownContainer}>
-        <div className={styles.dropDown} />
-        <Dropdown
-          autoAlign
-          direction="top"
-          id="brought-by"
-          invalidText="Kindly select brought by"
-          items={BROUGHT_BY}
-          label=""
-          onChange={handleBroughtByChange}
-          size="md"
-          titleText="Brought By"
-          type="default"
-          invalid={errors.broughtBy}
-        />
-      </div>
-      {/* <div className={styles.identifier}>
-        <div>
-          <TextInput
-            defaultValue=""
-            id="identifier-value"
-            labelText="Identifier Value"
-            maxCount={10}
-            onChange={handleProviderIdentifierChange}
-            placeholder="Identifier Value"
-            size="md"
-            type="text"
-          />
-        </div>
-        <div className={styles.dropDownContainer}>
-          <div className={styles.dropDown} />
-          <Dropdown
-            className={styles.identifierValue}
-            autoAlign
-            direction="top"
-            id="identification-type"
-            invalidText="Kindly select identification type"
-            items={IDENTIFICATION_TYPES}
-            label=""
-            onChange={handleProviderIdentifierTypeChange}
-            size="md"
-            titleText="identification Type"
-            type="default"
-          />
-        </div>
-      </div>*/}
-      {/* <div className={styles.dropDownContainer}>
-        <div className={styles.dropDown} />
-        <Dropdown
-          autoAlign
-          direction="top"
-          id="regulatory-body"
-          invalidText="Kindly select regulatory body"
-          items={REGULATORY_BODIES}
-          label=""
-          onChange={handleRegulatoryBodyChange}
-          size="md"
-          titleText="Regulatory Body"
-          type="default"
-        />
-      </div> */}
-      <div className={styles.dropDownContainer}>
-        <div className={styles.dropDown} />
-        <Dropdown
-          autoAlign
-          direction="top"
-          id="interventions"
-          invalidText="Kindly select an intervention"
-          items={interventions}
-          itemToString={(item) => `${item?.name} - ${item?.code}`}
-          label=""
-          onChange={handleInterventionChange}
-          size="md"
-          titleText="Interventions"
-          type="default"
-          invalid={errors.intervention}
-        />
       </div>
       <div className={styles.dropDownContainer}>
         <div className={styles.dropDown} />

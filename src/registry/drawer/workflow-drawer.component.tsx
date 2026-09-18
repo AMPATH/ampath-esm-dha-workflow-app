@@ -205,6 +205,7 @@ interface WorkflowDrawerProps {
     emergencyCashPointUuid?: string;
     emergencyServicePriceUuid?: string;
     emergencyIntervention?: Intervention;
+    protocolCode?: string;
   }) => Promise<void>;
 }
 
@@ -757,6 +758,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
         emergencyCashPointUuid: visitType === 'Emergency' ? emergencyForm?.cashpointUuid : undefined,
         emergencyServicePriceUuid: visitType === 'Emergency' ? emergencyForm?.servicePriceUuid : undefined,
         emergencyIntervention: visitType === 'Emergency' ? emergencyForm?.intervention : undefined,
+        protocolCode: visitType === 'Emergency' ? emergencyForm?.protocolCode : undefined,
       });
     } finally {
       setStartingVisit(false);
