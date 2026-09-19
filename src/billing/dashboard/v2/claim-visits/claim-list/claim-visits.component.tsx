@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import styles from './claim-visits.component.scss';
 import { fetchFacilityClaimVisits } from '../../../../billing-claims.resource';
 import { type ClaimVisitReponse, type ClaimVisitsDto } from '../../types';
 import { formatDate, parseDate, showSnackbar } from '@openmrs/esm-framework';
 import {
   Button,
+  ComboBox,
   InlineLoading,
   Table,
   TableBody,
@@ -12,9 +13,12 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tag,
+  TextInput,
 } from '@carbon/react';
-import TableToolbar from '../../shared/table-toolbar.component';
 import ClaimDetailsModal from '../../../../../billing/dashboard/v3/patient-bill-details/modals/claim-details/claim-details.modal';
+import { ClaimPayerStatus, ClaimProviderStatus } from '../../../../../billing/dashboard/v3/types';
+import { type TagColor } from 'src/types/types';
 interface claimVisitsProps {
   locationUuid: string;
   billingDate: string;
@@ -25,9 +29,22 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
   const [showClaimsVisitModal, setShowClaimsVisitModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [consentToken, setConsentToken] = useState<string>();
-  const [search, setSearch] = useState<string>('');
-  // The modal loads the claim from the token itself — including the wait, and the guard
-  // against SWR serving the claim opened before this one.
+  const [selectedProviderStatus, setSelectedProviderStatus] = useState<string>('');
+  const [selectedPayerStatus, setSelectedPayerStatus] = useState<string>('');
+  const [searchString, setSearchString] = useState<string>();
+  const providerStatusOptions = Object.values(ClaimProviderStatus).map((s) => {
+      return {
+        text: s,
+        id: s,
+      };
+  });
+  const payerStatusOptions = Object.values(ClaimPayerStatus).map((s) => {
+      return {
+        text: s,
+        id: s,
+      };
+  });
+  const filteredClaimVisits = useMemo(() => filterClaimsVisits(claimVisits ?? []), [claimVisits, selectedProviderStatus, selectedPayerStatus, searchString]);
   useEffect(() => {
     if (locationUuid && billingDate) {
       getFacilityClaimVisits();
@@ -67,17 +84,131 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
   function handleCloseClaimsModal() {
     setShowClaimsVisitModal(false);
   }
+  function providerStatusChangeHandler(selectedStatus: { selectedItem: { id: string; text: string } }) {
+      let status = '';
+      if (selectedStatus && selectedStatus.selectedItem) {
+        status = selectedStatus.selectedItem.id;
+      }
+  
+      setSelectedProviderStatus(status);
+  }
+  function payerStatusChangeHandler(selectedStatus: { selectedItem: { id: string; text: string } }) {
+      let status = '';
+      if (selectedStatus && selectedStatus.selectedItem) {
+        status = selectedStatus.selectedItem.id;
+      }
+  
+      setSelectedPayerStatus(status);
+  }
+    const getTagTypeByStatus = (status: string): TagColor => {
+      let type: TagColor;
+      switch (status) {
+        case ClaimProviderStatus.Submitted:
+          type = 'green';
+          break;
+        case ClaimProviderStatus.SubmissionReady:
+          type = 'gray';
+          break;
+        case ClaimProviderStatus.FailedToSubmit:
+          type = 'blue';
+          break;
+        case ClaimProviderStatus.Draft:
+          type = 'gray';
+          break;
+        case ClaimProviderStatus.Closed:
+          type = 'gray';
+          break;
+        case ClaimProviderStatus.TimeBarred:
+          type = 'red';
+          break;
+        default:
+          type = 'gray';
+      }
+      return type;
+    };
+  
+    const handleVisitsSearch = (searchTerm: string) => {
+      setSearchString(searchTerm);
+    };
+  
+  function filterClaimsVisits(claimVisits: ClaimVisitReponse[]) {
+      return claimVisits.filter((b) => {
+        if(!selectedProviderStatus || selectedProviderStatus === 'ALL'){
+          return true;
+        }
+        return b.providerStatus === selectedProviderStatus;
+      }).filter((b)=>{
+        if(!searchString){
+          return true;
+        }
+         const searchVal = searchString ? searchString.toLowerCase(): '';
+         return b.patientId?.trim().toLowerCase().includes(searchVal);
+      }).filter((b) => {
+        if(!selectedPayerStatus || selectedPayerStatus === 'ALL'){
+          return true;
+        }
+        return b.payerStatus === selectedPayerStatus;
+      })
+    }
+    function handleResetFilters(){
+       setSearchString('')
+       setSelectedProviderStatus('ALL');
+       setSelectedPayerStatus('ALL');
+    }
+    function handleRefresh(){
+        getFacilityClaimVisits();
+    }
   return (
     <>
       <div className={styles.claimVisitsLayout}>
-        <TableToolbar
-          id="claim-visits"
-          search={search}
-          onSearch={setSearch}
-          date={billingDate}
-          onDate={onDateChange}
-          searchPlaceholder="Search patient or service type…"
-        />
+        <div className={styles.filterRow}>
+        <div className={styles.filter}>
+          <ComboBox
+            onChange={providerStatusChangeHandler}
+            id="provider-status-combobox"
+            items={[
+              {
+                text: 'ALL',
+                id: 'ALL',
+              },
+              ...providerStatusOptions,
+            ]}
+            itemToString={(item) => (item ? item.text : '')}
+            titleText="Claim Provider Status"
+            value={selectedProviderStatus}
+          />
+        </div>
+         <div className={styles.filter}>
+          <ComboBox
+            onChange={payerStatusChangeHandler}
+            id="payer-status-combobox"
+            items={[
+              {
+                text: 'ALL',
+                id: 'ALL',
+              },
+              ...payerStatusOptions,
+            ]}
+            itemToString={(item) => (item ? item.text : '')}
+            titleText="Claim Payer Status"
+            value={selectedPayerStatus}
+          />
+        </div>
+        <div className={styles.filter}>
+          <TextInput
+            id="queue-search"
+            labelText="Identifier"
+            onChange={(e) => handleVisitsSearch(e.target.value)}
+            placeholder="Enter patient identifier to filter"
+             value={searchString}
+          />
+        </div>
+         <div className={styles.actionCol}>
+             <Button kind='secondary' onClick={handleResetFilters}>Reset Filters</Button>
+             <Button kind='tertiary' onClick={handleRefresh}>Refresh</Button>
+         </div>
+      </div>
+      <div>
         <Table aria-label="claim visits" size="sm">
           <TableHead>
             <TableRow>
@@ -91,12 +222,7 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
             </TableRow>
           </TableHead>
           <TableBody>
-            {(claimVisits ?? [])
-              .filter((cv) => {
-                const term = search.trim().toLowerCase();
-                return !term || `${cv.patientId} ${cv.serviceType}`.toLowerCase().includes(term);
-              })
-              .map((cv, index) => {
+            { filteredClaimVisits && filteredClaimVisits.map((cv, index) => {
                 return (
                   <>
                     <TableRow key={cv.id}>
@@ -106,11 +232,13 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
                         <div>{cv.patientId}</div>
                       </TableCell>
                       <TableCell>{cv.serviceType}</TableCell>
-                      <TableCell>{cv.providerStatus}</TableCell>
+                      <TableCell>
+                         <Tag type={getTagTypeByStatus(cv.providerStatus ?? '')}>{cv.providerStatus}</Tag>
+                      </TableCell>
                        <TableCell>{cv.payerStatus}</TableCell>
                       <TableCell>
                         <Button kind="ghost" onClick={() => handleSelectedClaimsVisit(cv)} size="sm">
-                          {loading ? <InlineLoading description="Fetching data...." /> : 'View Claim'}
+                          {loading ? <InlineLoading description="Fetching data...." /> : 'View'}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -119,6 +247,7 @@ const ClaimVisits: React.FC<claimVisitsProps> = ({ locationUuid, billingDate, on
               })}
           </TableBody>
         </Table>
+        </div>
         {showClaimsVisitModal && consentToken ? (
           <ClaimDetailsModal
             open={showClaimsVisitModal}
