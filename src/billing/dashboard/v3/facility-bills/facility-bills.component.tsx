@@ -197,6 +197,7 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
             ]}
             itemToString={(item) => (item ? item.text : '')}
             titleText="Claim Status"
+            value={selectedStatus}
           />
         </div>
         <div className={styles.filter}>
@@ -205,6 +206,7 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
             labelText="Name/Identifier"
             onChange={(e) => handlBillsSearch (e.target.value)}
             placeholder="Enter patient name or identifier to filter"
+            value={searchString}
           />
         </div>
          <div className={styles.actionCol}>
