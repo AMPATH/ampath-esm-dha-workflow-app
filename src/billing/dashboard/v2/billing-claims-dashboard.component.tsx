@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './billing-claims-dashboard.component.scss';
-import { DatePicker, DatePickerInput, Tab, TabList, TabPanel, TabPanels, Tabs, Tooltip } from '@carbon/react';
+import { DatePicker, DatePickerInput, Modal, Tab, TabList, TabPanel, TabPanels, Tabs, Tooltip } from '@carbon/react';
 import { Information, Wallet } from '@carbon/react/icons';
 import FacilityBills, {
   CASH_PAYER_TAB,
@@ -12,7 +12,7 @@ import ActiveVisits from './active-visits/active-visits.component';
 import Clearance from './clearance/clearance.component';
 import { billBalance, getPayableBills } from './cash-checklist/cash-checklist.resource';
 import { getClearanceCounts } from '../../../shared/services/consultation-clearance.resource';
-import { useFacilityClaimVisits } from '../../billing-claims.resource';
+import { fetchClaimsDashboard, useFacilityClaimVisits } from '../../billing-claims.resource';
 import { CLAIM_BUCKETS } from './facility-bills/claim-status';
 import {
   MetricsCard,
@@ -20,10 +20,13 @@ import {
   MetricsCardBody,
   MetricsCardItem,
 } from '../../../service-queues/metrics/metrics-cards/metrics-card.component';
-import FacilityAndWorkerSlot from '../../../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import PreauthorizationsTab from './preauth/preauthorizations-tab.component';
 import AdmissionRequestsTab from './admissions/admission-requests-tab.component';
 import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
+import BillingAndClaimsPatientChart from './billing-and-claims-patient-chart.component';
+import ClaimsStatsDashboard from '../v3/claims-stats-dashboard/claims-stats-dashboard.component';
+import Chart from '../../../dashboard/charts/chart.component';
+import ClaimVisits from './claim-visits/claim-list/claim-visits.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -74,6 +77,14 @@ const PREAUTH_HINT =
   'Preauths for the selected date. Needs raise lists items still waiting for one; Status shows their live position at SHA and can resend doctor consent.';
 const ADMISSIONS_HINT =
   'Patients a clinician has asked to admit at this facility. Admit one to a bed, or start the SHA claim for the inpatient visit it opens.';
+const CHART_HINT = 'Charts showing daily, weekly and monthly claims summary';
+
+/* Said on the two claim tiles, because their number is not the live one. See the comment on
+   claimCounts: the state stored against a claim is the state it was in when its visit was
+   recorded, so anything submitted or closed since still counts here. Open the tile to see
+   where the claims actually stand. */
+const CLAIM_COUNT_HINT =
+  'Counted from the state recorded with each claim, so claims submitted or closed since are still included — this can read high. Open the tile for the live status of each claim.';
 
 /* Said on the two claim tiles, because their number is not the live one. See the comment on
    claimCounts: the state stored against a claim is the state it was in when its visit was
@@ -143,6 +154,8 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
   const session = useSession();
   const locationUuid = session.sessionLocation?.uuid ?? '';
   const [billingDate, setBillingDate] = useState<string>(() => lastSelectedDate ?? today());
+  const [summaryStartDate, setSummaryStartDate] = useState<string>(() => today());
+  const [summaryEndDate, setSummaryEndDate] = useState<string>(() => today());
   const [awaiting, setAwaiting] = useState(0);
   const [cashDue, setCashDue] = useState(0);
   const [selectedTab, setSelectedTab] = useState(() => lastSelectedTab ?? 0);
@@ -157,6 +170,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
   // sharing billsNav would send both lists to the same bucket.
   const [claimsNav, setClaimsNav] = useState<{ statusKey?: string; nonce: number }>({ nonce: 0 });
   const visitedTabs = useVisitedTabs(selectedTab);
+  const [indicator, setIndicator] = useState<string | null>(null);
 
   useEffect(() => {
     lastSelectedTab = selectedTab;
@@ -198,82 +212,29 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
 
   const claimTileValue = (bucketKey: string) => (claimCountsReady ? (claimCounts[bucketKey] ?? 0) : 0);
 
-  const summary: {
-    key: string;
-    label: string;
-    unit: string;
-    value: number;
-    tab: number;
-    color?: 'red';
-    /** Hung off the tile's title, for a number that needs qualifying. */
-    hint?: string;
-    clearKey?: string;
-    billsStatusKey?: string;
-    claimsStatusKey?: string;
-  }[] = [
-    {
-      key: 'awaiting',
-      label: 'Awaiting clearance',
-      unit: 'Patients',
-      value: awaiting,
-      tab: TAB_PENDING_CLEARANCE,
-      clearKey: 'pending',
-    },
-    {
-      key: 'cashdue',
-      label: 'Facility bills',
-      unit: 'Patients',
-      value: cashDue,
-      tab: TAB_FACILITY_BILLS,
-      // The tile counts bills still owing, so it lands on the bucket holding them rather
-      // than on whichever one was last being read.
-      billsStatusKey: 'pending',
-    },
-    // Straight to the bucket being counted: the SHA claims tab, Drafts / Rejected.
-    {
-      key: 'draft',
-      label: 'Draft claims',
-      unit: 'Claims',
-      value: claimTileValue('draft'),
-      tab: TAB_SHA_CLAIMS,
-      hint: CLAIM_COUNT_HINT,
-      claimsStatusKey: 'draft',
-    },
-    {
-      key: 'rejected',
-      label: 'Rejected claims',
-      unit: 'Claims',
-      value: claimTileValue('rejected'),
-      color: 'red',
-      tab: TAB_SHA_CLAIMS,
-      hint: CLAIM_COUNT_HINT,
-      claimsStatusKey: 'rejected',
-    },
-  ];
-
-  const handleTileClick = (s: {
-    tab: number;
-    clearKey?: string;
-    billsStatusKey?: string;
-    claimsStatusKey?: string;
-  }) => {
-    setSelectedTab(s.tab);
-    if (s.clearKey) {
-      setClearanceNav((p) => ({ key: s.clearKey, nonce: p.nonce + 1 }));
-    }
-    if (s.billsStatusKey) {
-      setBillsNav((p) => ({ statusKey: s.billsStatusKey, nonce: p.nonce + 1 }));
-    }
-    if (s.claimsStatusKey) {
-      setClaimsNav((p) => ({ statusKey: s.claimsStatusKey, nonce: p.nonce + 1 }));
-    }
-  };
+2  const claimSummaryDefaults = useMemo(
+    () => ({
+      draft: null,
+      submitted: null,
+      failed_to_submit: null,
+      closed: null,
+      approved: null,
+      rejected: null,
+      in_review: null,
+      sent_back: null,
+      paid: null,
+    }),
+    [],
+  );
 
   const handleDateChange = (value: string) => {
     const next = value || today();
     lastSelectedDate = next;
     setBillingDate(next);
   };
+
+  const closeSummaryModal = () => setIndicator(null);
+
   return (
     <>
       <div className={styles.bcLayout}>
@@ -285,20 +246,8 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
             <h3 className={styles.bcTitle}>Billing &amp; Claims</h3>
           </div>
         </div>
-        <div className={styles.summaryRow}>
-          {summary.map((s) => (
-            <button key={s.key} type="button" className={styles.metricButton} onClick={() => handleTileClick(s)}>
-              <MetricsCard>
-                <MetricsCardHeader title={s.label}>{s.hint && <Hint text={s.hint} />}</MetricsCardHeader>
-                <MetricsCardBody>
-                  <MetricsCardItem label={s.unit} value={s.value ? s.value : '--'} color={s.color} />
-                </MetricsCardBody>
-              </MetricsCard>
-            </button>
-          ))}
-        </div>
-        <div className={styles.bcContent}>
-          <div className={styles.bcContentTabs}>
+        <div className={styles.bcFilterRow}>
+          <div>
             <DatePicker
               className={styles.tabRowDate}
               datePickerType="single"
@@ -309,6 +258,14 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
             >
               <DatePickerInput id="billing-date" labelText="" placeholder="yyyy-mm-dd" size="sm" />
             </DatePicker>
+          </div>
+        </div>
+        <div className={styles.bcClaimStatsRow}>
+          <ClaimsStatsDashboard reportDate={billingDate} locationUuid={locationUuid} />
+        </div>
+
+        <div className={styles.bcContent}>
+          <div className={styles.bcContentTabs}>
             <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}>
               {/* Tab list hidden while a bill's details are open, but a visited panel stays
                   mounted so FacilityBills keeps its selected patient and fetched data.
@@ -336,6 +293,10 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                   Admission Requests
                   <Hint text={ADMISSIONS_HINT} />
                 </Tab>
+                <Tab>
+                  Charts
+                  <Hint text={CHART_HINT} />
+                </Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
@@ -356,18 +317,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                   )}
                 </TabPanel>
                 <TabPanel>
-                  {/* The same table on the SHA payer. It was a sub-tab inside Facility
-                      bills; claims are read often enough, and are enough their own thing,
-                      to be reached in one click rather than two. */}
-                  {visitedTabs.has(TAB_SHA_CLAIMS) && (
-                    <FacilityBills
-                      locationUuid={locationUuid}
-                      billingDate={billingDate}
-                      payerTab={SHA_PAYER_TAB}
-                      navStatusKey={claimsNav.statusKey}
-                      navNonce={claimsNav.nonce}
-                    />
-                  )}
+                  <ClaimVisits locationUuid={locationUuid} billingDate={billingDate}/>
                 </TabPanel>
                 <TabPanel>
                   {visitedTabs.has(TAB_PREAUTHORIZATIONS) && (
@@ -383,6 +333,9 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                       selecting it showed the preauth list or nothing depending on how
                       Carbon indexed them. */}
                   {visitedTabs.has(TAB_ADMISSION_REQUESTS) && <AdmissionRequestsTab locationUuid={locationUuid} />}
+                </TabPanel>
+                <TabPanel>
+                  <Chart dashboardId="4b876667-307a-4458-a9cd-283331970ae1" />
                 </TabPanel>
               </TabPanels>
             </Tabs>

@@ -1,14 +1,26 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useState } from 'react';
-import { type FacilityBillsDto, type FacilityBill, BillingView } from '../types';
-import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
+import { type FacilityBillsDto, BillingView, ClaimProviderStatus } from '../types';
+import {
+  Button,
+  ComboBox,
+  InlineLoading,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+  TextInput,
+} from '@carbon/react';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { fetchFacilityBills } from '../../../billing-claims.resource';
 import styles from './facility-bills.component.scss';
-import PatientBillDetails from '../patient-bill-details/patient-bill-details';
-import TableToolbar from '../shared/table-toolbar.component';
 import EmptyState from '../shared/empty-state.component';
 import { type PatientBill } from '../../v2/types';
+import PatientVisitDetailsComponent from '../patient-bill-details/patient-visit-details';
+import { type TagColor } from 'src/types/types';
 
 interface facilityBillsProps {
   billingDate: string;
@@ -20,12 +32,26 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
   const [currentView, setCurrentView] = useState<BillingView>(BillingView.Bills);
   const [selectedPatientUuid, setSelectedPatientUuid] = useState<string>('');
   const [search, setSearch] = useState<string>('');
+  const [selectedStatus, setSelectedStatus] = useState<string>('');
+  const [searchString, setSearchString] = useState<string>();
+  const [loading,setLoading] = useState<boolean>(false);
+  const statusOptions = Object.values(ClaimProviderStatus).map((s) => {
+    return {
+      text: s,
+      id: s,
+    };
+  });
+  const filtedFacilityBills = useMemo(() => filterFacilityBills(facilityBills), [facilityBills, selectedStatus,searchString]);
   useEffect(() => {
     if (locationUuid && billingDate) {
       getFacilityBills();
     }
   }, [billingDate, locationUuid]);
+  if(loading){
+      return <><InlineLoading  description='Fetching data.. please wait!...'/></>
+  }
   async function getFacilityBills() {
+    setLoading(true);
     const facilityBillsPayload = generateFacilityBillsPayload();
     try {
       const data = await fetchFacilityBills(facilityBillsPayload);
@@ -40,6 +66,8 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
         title: 'Error fetching facility bills',
         subtitle: 'An error occurred while fetehcing facility bills, please reload or contact support',
       });
+    }finally{
+      setLoading(false);
     }
   }
   function generateFacilityBillsPayload(): FacilityBillsDto {
@@ -92,21 +120,106 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
     }).format(new Date(date));
   };
 
+  function statusChangeHandler(selectedStatus: { selectedItem: { id: string; text: string } }) {
+    let status = '';
+    if (selectedStatus && selectedStatus.selectedItem) {
+      status = selectedStatus.selectedItem.id;
+    }
+
+    setSelectedStatus(status);
+  }
+  const getTagTypeByStatus = (status: string): TagColor => {
+    let type: TagColor;
+    switch (status) {
+      case ClaimProviderStatus.Submitted:
+        type = 'green';
+        break;
+      case ClaimProviderStatus.SubmissionReady:
+        type = 'gray';
+        break;
+      case ClaimProviderStatus.FailedToSubmit:
+        type = 'blue';
+        break;
+      case ClaimProviderStatus.Draft:
+        type = 'gray';
+        break;
+      case ClaimProviderStatus.Closed:
+        type = 'gray';
+        break;
+      case ClaimProviderStatus.TimeBarred:
+        type = 'red';
+        break;
+      default:
+        type = 'gray';
+    }
+    return type;
+  };
+
+  const handlBillsSearch = (searchTerm: string) => {
+    setSearchString(searchTerm);
+  };
+
+  function filterFacilityBills(facilityBills: PatientBill[]) {
+    return facilityBills.filter((b) => {
+      if(!selectedStatus || selectedStatus === 'ALL'){
+        return true;
+      }
+      return b.claim_status === selectedStatus;
+    }).filter((b)=>{
+      if(!searchString){
+        return true;
+      }
+       const searchVal = searchString ? searchString.toLowerCase(): '';
+       return b?.patient_name.trim().toLowerCase().includes(searchVal) || b.cr_id?.trim().toLowerCase().includes(searchVal);
+    });
+  }
+  function handleResetFilters(){
+     setSearchString('')
+     setSelectedStatus('ALL');
+  }
+  function handleRefresh(){
+      getFacilityBills();
+  }
+
   return (
     <>
-      <TableToolbar
-        id="facility-bills"
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="Search patient, status or cash point…"
-        onDate={onDateChange}
-      />
+      <div className={styles.filterRow}>
+        <div className={styles.filter}>
+          <ComboBox
+            onChange={statusChangeHandler}
+            id="queue-status-combobox"
+            items={[
+              {
+                text: 'ALL',
+                id: 'ALL',
+              },
+              ...statusOptions,
+            ]}
+            itemToString={(item) => (item ? item.text : '')}
+            titleText="Claim Status"
+            value={selectedStatus}
+          />
+        </div>
+        <div className={styles.filter}>
+          <TextInput
+            id="queue-search"
+            labelText="Name/Identifier"
+            onChange={(e) => handlBillsSearch (e.target.value)}
+            placeholder="Enter patient name or identifier to filter"
+            value={searchString}
+          />
+        </div>
+         <div className={styles.actionCol}>
+             <Button kind='secondary' onClick={handleResetFilters}>Reset Filters</Button>
+             <Button kind='tertiary' onClick={handleRefresh}>Refresh</Button>
+         </div>
+      </div>
       {currentView === BillingView.Bills ? (
-        (facilityBills ?? []).length === 0 ? (
+        (filtedFacilityBills ?? []).length === 0 ? (
           <EmptyState message="No bills." />
         ) : (
           <>
-            {facilityBills.length === 0 ? (
+            {filtedFacilityBills.length === 0 ? (
               <EmptyState message="No bills match your search." />
             ) : (
               <Table aria-label="facility bills" size="sm">
@@ -115,12 +228,13 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
                     <TableHeader>No</TableHeader>
                     <TableHeader>Date</TableHeader>
                     <TableHeader>Patient</TableHeader>
-                    <TableHeader>Status</TableHeader>
+                    <TableHeader> Claim Status</TableHeader>
+                    <TableHeader> Cash Status</TableHeader>
                     <TableHeader>Identifier</TableHeader>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {facilityBills.map((fb, index) => {
+                  {filtedFacilityBills.map((fb, index) => {
                     return (
                       <TableRow key={fb.patient_uuid}>
                         <TableCell>{index + 1}</TableCell>
@@ -132,6 +246,9 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
                           >
                             {fb.patient_name}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Tag type={getTagTypeByStatus(fb?.claim_status ?? '')}>{fb.claim_status}</Tag>
                         </TableCell>
                         <TableCell>
                           {(() => {
@@ -164,7 +281,7 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
             </Button>
           </div>
           <div>
-            <PatientBillDetails
+            <PatientVisitDetailsComponent
               locationUuid={locationUuid}
               billingDate={billingDate}
               patientUuid={selectedPatientUuid}

@@ -34,6 +34,9 @@ import {
 } from './types';
 import { createVisit } from '../resources/visit.resource';
 import { createQueueEntry } from '../resources/queue.resource';
+import { createBill, createOrderBillInHie, fetchBillableServices } from '../shared/services/billing.resource';
+import { type CreateBillDto, type BillableService } from '../shared/types';
+import { createOrderEncounter, getOrder } from '../shared/services/encounters.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../shared/constants/concepts';
 import { VisitTypeUuids } from '../shared/constants/visit-types';
 import {
@@ -55,6 +58,8 @@ import { usePatient } from '../context/patient-context';
 import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import RegistrationList from './registration-list/registration-list.component';
 import { type ConfigObject } from '../config-schema';
+import { type ClaimResult, type Intervention } from 'src/claims';
+import UnidentifiedRegistrationComponent from './emergency/unidentified/unidentified-registration.component';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -77,8 +82,15 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
   const { setPatient } = usePatient();
-  const { cashPaymentModeUuid, shaPaymentModeUuid } = useConfig<ConfigObject>();
+  const {
+    cashPaymentModeUuid,
+    shaPaymentModeUuid,
+    outPatientCareSettingUuid,
+    orderEncounterTypeUuid,
+    emergencyConceptUuid,
+  } = useConfig<ConfigObject>();
   const emtHandoffConsumed = useRef(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Arriving from an EMT handover (`?emtCrId=...`): skip straight to the
   // found-patient view instead of making staff re-search by an identifier
@@ -282,7 +294,11 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     setDisplayDrawer(true);
   };
   const handleEmergencyRegistration = () => {
-    window.location.href = `${window.spaBase}/patient-registration`;
+    // window.location.href = `${window.spaBase}/patient-registration`;
+    setModalOpen(true);
+  };
+  const handleCloseModal = () => {
+    setModalOpen(false);
   };
   const handleManualRegistration = () => {
     setdisplaytStartVisitModal(false);
@@ -366,18 +382,38 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   // Create the AMRS visit for the verified client once the workflow drawer is submitted,
   // add them to the selected triage queue, and raise the consultation clearance so they
   // wait "Awaiting clearance" until Accounting settles the fee (exempt patients auto-clear).
-  const getVisitAttributes = (paymentMethod: 'cash' | 'insurance', insurance: string) => {
+  const getVisitAttributes = (
+    paymentMethod: 'cash' | 'insurance',
+    insurance: string,
+    emergencyResponse?: ClaimResult,
+  ) => {
     const attributes: VisitAttribute[] = [];
     if (paymentMethod) {
       attributes.push({
         attributeType: '8553afa0-bdb9-4d3c-8a98-05fa9350aa85',
-        value: paymentMethod === "cash"
-          ? cashPaymentModeUuid
-          : shaPaymentModeUuid // /sha|shif/i.test(insurance) ? shaPaymentModeUuid : "",
+        value: paymentMethod === 'cash' ? cashPaymentModeUuid : shaPaymentModeUuid, // /sha|shif/i.test(insurance) ? shaPaymentModeUuid : "",
+      });
+    }
+    if (emergencyResponse && Object.keys(emergencyResponse).length !== 0) {
+      attributes.push({
+        attributeType: '4962a633-c4f8-474c-857c-5c68c72fbbe3',
+        value: emergencyResponse.authorization_code,
+      });
+
+      // scheme code
+      attributes.push({
+        attributeType: '79072572-80c0-4a38-9da0-afe207e3ef2d',
+        value: emergencyResponse.scheme_code,
+      });
+
+      // service type
+      attributes.push({
+        attributeType: '97d892fe-38a4-4cfb-bdf7-2a03dff6e7cf',
+        value: emergencyResponse.service_type,
       });
     }
     return attributes;
-  }
+  };
   const startVisitForClient = async (details: {
     patientCategory: string;
     room: string;
@@ -385,6 +421,11 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     visitType: string;
     method?: 'cash' | 'insurance';
     insurance?: string;
+    emergencyResponse?: ClaimResult;
+    emergencyServicePriceUuid?: string;
+    emergencyCashPointUuid?: string;
+    emergencyIntervention?: Intervention;
+    protocolCode?: string;
   }) => {
     // Ensure the client exists in AMRS before starting a visit.
     let amrsPatient = amrsPatients[0];
@@ -402,7 +443,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     const visitType =
       details.visitType === 'Inpatient'
         ? VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID
-        : VisitTypeUuids.OPD_VISIT_TYPE_UUID;
+        : details.visitType === 'Emergency'
+          ? VisitTypeUuids.EMERGENCY_VISIT_TYPE_UUID
+          : VisitTypeUuids.OPD_VISIT_TYPE_UUID;
     const visitDto: CreateVisitDto = {
       visitType,
       location: locationUuid ?? '',
@@ -410,7 +453,11 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       stopDatetime: null,
       patient: amrsPatient.uuid,
     };
-    const visitAttributes = getVisitAttributes(details.method, details.insurance);
+    const visitAttributes = getVisitAttributes(
+      details.method,
+      details.insurance,
+      details.emergencyResponse ? details.emergencyResponse : undefined,
+    );
     if (visitAttributes.length > 0) {
       visitDto['attributes'] = visitAttributes;
     }
@@ -434,6 +481,82 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         },
       };
       await createQueueEntry(queueEntryDto);
+
+      if (details.emergencyResponse && details.emergencyCashPointUuid && details.emergencyServicePriceUuid) {
+        const billDto: CreateBillDto = {
+          lineItems: [
+            {
+              quantity: 1,
+              priceUuid: details.emergencyServicePriceUuid,
+            },
+          ],
+          cashPoint: details.emergencyCashPointUuid,
+          patient: amrsPatient.uuid,
+          visit: visit.uuid,
+          status: 'PENDING',
+          payments: [],
+        };
+        const bill = await createBill(billDto);
+        if (!bill) {
+          throw new Error('Error creating emergency bill');
+        }
+
+        const orderEncounter = await createOrderEncounter({
+          patient: amrsPatient.uuid,
+          location: locationUuid ?? '',
+          encounterType: orderEncounterTypeUuid,
+          visit: visit.uuid,
+          obs: [],
+          orders: [
+            {
+              action: 'NEW',
+              type: 'order',
+              patient: amrsPatient.uuid,
+              careSetting: outPatientCareSettingUuid,
+              orderer: session.currentProvider?.uuid ?? 'pd25871c-1359-11df-a1f1-0026b9348838',
+              concept: emergencyConceptUuid,
+              urgency: 'ROUTINE',
+            },
+          ],
+        });
+
+        const orderUuid = orderEncounter?.orders?.[0]?.uuid;
+        const order = orderUuid ? await getOrder(orderUuid) : undefined;
+        const emergencyResponse = details.emergencyResponse;
+        const interventionResult = details.emergencyIntervention;
+        const electivePreauth =
+          interventionResult?.requiresOncologyPreauth ||
+          interventionResult?.requiresOpticalPreauth ||
+          interventionResult?.requiresRadiologyPreauth ||
+          interventionResult?.requiresRenalPreauth ||
+          interventionResult?.requiresSurgicalPreauth;
+        const requiresPreauth = interventionResult?.needsPreauth;
+        const requiredPreauthDocumentTypes = interventionResult?.requiredPreauthDocumentTypes ?? [];
+        const applicableDocumentTypes = interventionResult?.applicableDocumentTypes ?? [];
+        const billOrderDto = {
+          bill_uuid: bill.uuid,
+          order_no: order?.orderNumber ?? '',
+          line_item_uuid: bill.lineItems?.[0]?.uuid ?? '',
+          intervention_code: interventionResult?.code ?? emergencyResponse.initial_intervention ?? '',
+          consent_token: emergencyResponse.authorization_code ?? '',
+          service_type: emergencyResponse.service_type ?? 'EMERGENCY',
+          requires_preauth: requiresPreauth,
+          normal_preauth: requiresPreauth && !electivePreauth,
+          elective_preauth: Boolean(interventionResult?.needsManualPreauthApproval && electivePreauth),
+          patient_uuid: amrsPatient?.uuid,
+          ...(details?.protocolCode && {
+            protocol_code: details.protocolCode,
+          }),
+          ...(applicableDocumentTypes.length > 0 && {
+            applicable_document_types: applicableDocumentTypes.join(','),
+          }),
+          ...(requiredPreauthDocumentTypes.length > 0 && {
+            required_preauth_document_types: requiredPreauthDocumentTypes.join(','),
+          }),
+        };
+        await createOrderBillInHie(billOrderDto);
+        showAlert('success', 'Bill successfully created', '');
+      }
 
       // Raise the consultation clearance for CASH patients only — they sit
       // "Awaiting payment" in the Accounting dashboard until the fee is settled.
@@ -462,7 +585,6 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         }
       }
       */
-    
 
       showAlert('success', 'Patient sent to the triage queue, awaiting clearance', '');
       // Land on the accounting Pending clearance section so the new patient can be cleared.
@@ -500,7 +622,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     <>
       <div className={styles.registryLayout}>
         <div className={styles.headerSection}>
-            <FacilityAndWorkerSlot />
+          <FacilityAndWorkerSlot />
         </div>
         <div className={styles.mainContent}>
           <div className={styles.registryHeader}>
@@ -513,9 +635,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                 <Identification size={20} className={styles.sectionIcon} />
                 <h5 className={styles.sectionTitle}>Search client</h5>
               </div>
-              <p className={styles.formIntro}>
-                Search the national Client Registry by identification number to begin.
-              </p>
+              <p className={styles.formIntro}>Search the national Client Registry by identification number to begin.</p>
               <div className={styles.formGrid}>
                 <Dropdown
                   id="identifier-type-dropdown"
@@ -602,6 +722,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                 <Button size="sm" kind="secondary" renderIcon={WarningAlt} onClick={handleEmergencyRegistration}>
                   Emergency Registration
                 </Button>
+                <UnidentifiedRegistrationComponent open={modalOpen} onClose={handleCloseModal} />
               </div>
             </Layer>
             {notFound ? (
@@ -675,7 +796,8 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                         <div className={styles.optionBody}>
                           <div className={styles.optionTopline}>
                             <span className={styles.optionName}>
-                              {maskExceptFirstAndLast(principal.first_name)} {maskExceptFirstAndLast(principal.middle_name)}{' '}
+                              {maskExceptFirstAndLast(principal.first_name)}{' '}
+                              {maskExceptFirstAndLast(principal.middle_name)}{' '}
                               {maskExceptFirstAndLast(principal.last_name)}
                             </span>
                             <Tag type="blue" size="sm">
@@ -709,7 +831,8 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                               <div className={styles.optionBody}>
                                 <div className={styles.optionTopline}>
                                   <span className={styles.optionName}>
-                                    {maskExceptFirstAndLast(dependant.first_name)} {maskExceptFirstAndLast(dependant.middle_name)}{' '}
+                                    {maskExceptFirstAndLast(dependant.first_name)}{' '}
+                                    {maskExceptFirstAndLast(dependant.middle_name)}{' '}
                                     {maskExceptFirstAndLast(dependant.last_name)}
                                   </span>
                                   <Tag type="teal" size="sm">
@@ -757,9 +880,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                         setDisplayDrawer(false);
                         setAmrsChecked(false);
                       }}
-                      onStartVisit={(details) => {
+                      onStartVisit={async (details) => {
+                        await startVisitForClient(details);
                         setDisplayDrawer(false);
-                        startVisitForClient(details);
                       }}
                     />
                   </div>
@@ -770,7 +893,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
             )}
           </div>
           <div className={styles.registeredPatientsSection}>
-             <RegistrationList />
+            <RegistrationList />
           </div>
         </div>
       </div>

@@ -20,7 +20,10 @@ import BillItemPaymentModal from '../modals/bill-item-payment/bill-item-payment.
 import AddClaimLineModal from '../modals/add-claim-line/add-claim-line.modal';
 import { type AmrsVisitDiagnosis } from '../../../../types';
 import VisitDiagnosisDetails from '../visit-diagnosis-details/visit-diagnosis-details.component';
-import { useInvalidateProviderClaimPreview } from '../../../../billing-claims.resource';
+import {
+  useInvalidatePatientBillDetails,
+  useInvalidateProviderClaimPreview,
+} from '../../../../billing-claims.resource';
 
 interface billDetailsProps {
   patientBillDetails: PatientFacilityBillDetails[];
@@ -30,6 +33,7 @@ interface billDetailsProps {
   locationUuid: string;
   claimsVisit: ClaimsVisit;
 }
+
 type BillingScope = 'OPD' | 'INPATIENT';
 const BillDetails: React.FC<billDetailsProps> = ({
   patientBillDetails,
@@ -43,8 +47,8 @@ const BillDetails: React.FC<billDetailsProps> = ({
   const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
   const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
   const setDiagnosisInterventionCode = useMemo(() => getConsultationBillIntervantionCode(), [patientBillDetails]);
-  const [billingScope, setBillingScope] = useState<BillingScope>('OPD');
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
+  const invalidatePatientBillDetails = useInvalidatePatientBillDetails();
 
   const scopedBillDetails = patientBillDetails;
   const scopedPayments = patientPayments;
@@ -62,9 +66,15 @@ const BillDetails: React.FC<billDetailsProps> = ({
     setShowPaymentModal(false);
   }
   function handleSuccessfullPayment() {
+    invalidatePatientBillDetails();
     handleClosePayModal();
   }
   function handleClaimLineAddition(patientBillDetail: PatientFacilityBillDetails) {
+    setSelectedBillItem(patientBillDetail);
+    setShowAddClaimLineModal(true);
+  }
+
+  function handleProtocalAddition(patientBillDetail: PatientFacilityBillDetails) {
     setSelectedBillItem(patientBillDetail);
     setShowAddClaimLineModal(true);
   }
@@ -76,7 +86,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
       return '';
     }
     const consultationBill = patientBillDetails.find((b) => {
-      return b.billable_service.toLocaleLowerCase().trim().includes('consultation');
+      return b.billable_service?.toLocaleLowerCase()?.trim()?.includes('consultation');
     });
     if (consultationBill) {
       return consultationBill.intervention_code;
@@ -87,6 +97,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
   function onSuccess() {
     handleCloseAddClaimItemModal();
     invalidateProviderClaimPreview();
+    invalidatePatientBillDetails();
   }
 
   function interventionAddedToClaimLine(b: PatientFacilityBillDetails) {
@@ -138,7 +149,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
                     <TableCell>{b.item_quantity}</TableCell>
                     <TableCell>Ksh {b.item_total_price}</TableCell>
                     <TableCell>
-                      {b.paid_status !== 'PAID' && !b.intervention_code && (
+                      {!(b.status == 'PAID' || b.paid_status == 'PAID') && !b.intervention_code && (
                         <Button size="sm" kind="tertiary" onClick={() => handleBillItemPayment(b)}>
                           Pay
                         </Button>
@@ -147,8 +158,16 @@ const BillDetails: React.FC<billDetailsProps> = ({
                         claimsVisit ? (
                           claimsVisit.workflow_state === 'DRAFT' ? (
                             !interventionAddedToClaimLine(b) && (
-                              <Button size="sm" kind="tertiary" onClick={() => handleClaimLineAddition(b)}>
-                                Add Claim Line
+                              <Button
+                                size="sm"
+                                kind="tertiary"
+                                onClick={() =>
+                                  b.service_type === 'EMERGENCY'
+                                    ? handleProtocalAddition(b)
+                                    : handleClaimLineAddition(b)
+                                }
+                              >
+                                {b.service_type === 'EMERGENCY' ? 'Add Protocol' : 'Add Claim Line'}
                               </Button>
                             )
                           ) : (
@@ -222,18 +241,6 @@ const BillDetails: React.FC<billDetailsProps> = ({
 
   return (
     <>
-      <RadioButtonGroup
-        className={styles.radioGroup}
-        name="billing-scope"
-        valueSelected={billingScope}
-        onChange={(value) => setBillingScope(value as BillingScope)}
-        invalidText="Invalid selection"
-        warnText="Please notice the warning"
-      >
-        <RadioButton id="outpatient" labelText="OPD" value="OPD" />
-        <RadioButton id="inpatient" labelText="INPATIENT" value="INPATIENT" />
-      </RadioButtonGroup>
-
       {billDetailsLayout}
 
       {showPaymentModal && selectedBillItem && (

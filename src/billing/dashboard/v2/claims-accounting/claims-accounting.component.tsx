@@ -27,7 +27,7 @@ import ClaimDetail from './claim-detail.component';
 import RemittancesView from './remittances.component';
 import TableToolbar from '../shared/table-toolbar.component';
 import EmptyState from '../shared/empty-state.component';
-import ClaimVisits from '../claim-visits/claim-visits.component';
+import ClaimVisits from '../claim-visits/claim-list/claim-visits.component';
 
 const money = (n: number) => `KES ${n.toLocaleString('en-KE')}`;
 

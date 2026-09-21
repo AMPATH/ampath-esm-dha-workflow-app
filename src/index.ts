@@ -16,6 +16,8 @@ import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admis
 import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
 import { emtDashboardMeta } from './dashboard-meta/emt-dashboard.meta';
 import { electivePreauthMeta } from './dashboard-meta/elective-preauth.meta';
+import { shrDashboardMeta } from './dashboard-meta/shr-dashboard.meta';
+import { claimsAdminDashboardMeta } from './dashboard-meta/claims-admin.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -261,5 +263,23 @@ export const payerPreviewWorkspace = getAsyncLifecycle(
 
 export const electivePreauthRequestWorkspace = getAsyncLifecycle(
   () => import('./billing/dashboard/v3/preauth/elective/elective-preauth-request.workspace'),
+  options,
+);
+
+export const shrDashboardLink = getSyncLifecycle(openMrsCreateDashboardLink(shrDashboardMeta as any), options);
+
+export const sharedHealthRecord = getAsyncLifecycle(() => import('./shr/shr.component'), options);
+
+export const shrConsentWorkspace = getAsyncLifecycle(
+  () => import('./shr/workspaces/shr-consent-workspace/shr-consent.workspace'),
+  options,
+);
+
+export const claimsAdminLink = getSyncLifecycle(createDashboardLink(claimsAdminDashboardMeta), options);
+
+export const CriticalCareUnitRoot = getAsyncLifecycle(() => import('./critical-care-unit/critical-care-root'), options);
+
+export const criticalCareUnitDashboardLink = getAsyncLifecycle(
+  () => import('./side-nav-menu/critical-care-nav-links'),
   options,
 );

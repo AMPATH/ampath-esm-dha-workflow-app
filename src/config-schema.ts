@@ -75,7 +75,7 @@ export const configSchema = {
     weightUuid: {
       _type: Type.ConceptUuid,
       _default: '5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-    }
+    },
   },
   subDomainUrl: {
     _type: Type.String,
@@ -145,49 +145,89 @@ export const configSchema = {
   nonSHAPaymentModes: {
     _type: Type.Array,
     _description: 'NON SHA payment modes',
-    _default: []
+    _default: [],
   },
   registrationServicequeues: {
     _type: Type.Array,
     _description: 'Service Queues to display at send to triage',
-    _default: []
+    _default: [],
   },
   consultationBillableServiceNames: {
     _type: Type.Array,
     _description: 'Consultation billable service names',
-    _default: ["CONSULTATION", "KESSES CONSULTATION"]
+    _default: ['CONSULTATION', 'KESSES CONSULTATION'],
   },
   maternityDischargeFormUuid: {
     _type: Type.ConceptUuid,
-    _default: 'a6f7d96d-7d6e-3c51-9786-7b817515ff5b'
+    _default: 'a6f7d96d-7d6e-3c51-9786-7b817515ff5b',
   },
   maternityDischargeEncounterTypeUuid: {
     _type: Type.ConceptUuid,
-    _default: 'e3c2a17f-4d58-4725-b702-a5d75a2231d0'
+    _default: 'e3c2a17f-4d58-4725-b702-a5d75a2231d0',
   },
   shaPaymentModeUuid: {
     _type: Type.ConceptUuid,
-    _default: "1be55f87-2931-41e0-89c8-8f5652c7c303"
+    _default: '1be55f87-2931-41e0-89c8-8f5652c7c303',
   },
   shaVariantPaymentModeUuids: {
     _type: Type.Array,
-    _default: ["1be55f87-2931-41e0-89c8-8f5652c7c303", "18763f02-16f7-4dfc-aff9-15b53eea20b2", "783ddd3c-52bb-489a-9b39-937eccc6c55c"]
+    _default: [
+      '1be55f87-2931-41e0-89c8-8f5652c7c303',
+      '18763f02-16f7-4dfc-aff9-15b53eea20b2',
+      '783ddd3c-52bb-489a-9b39-937eccc6c55c',
+    ],
   },
   cashPaymentModeUuid: {
     _type: Type.ConceptUuid,
-    _default: "63eff7a4-6f82-43c4-a333-dbcc58fe9f74"
+    _default: '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
   },
   subBenefitCodesWithHiddenClaimWidget: {
     _type: Type.Array,
-    _default: ["SHA-08-SC-02"]
+    _default: ['SHA-08-SC-02'],
   },
   startClaimVisitLocationAttributeUuid: {
     _type: Type.String,
-    _default: "49df844d-79c0-40fc-8ca9-c27d6391f647"
+    _default: '49df844d-79c0-40fc-8ca9-c27d6391f647',
   },
   pmfSchemeNames: {
     _type: Type.Array,
-    _default: ["POMSF", "USALAMA", "TSC"]
+    _default: ['POMSF', 'USALAMA', 'TSC'],
+  },
+  shrResourceTypes: {
+    _type: Type.Array,
+    _description:
+      'FHIR resource types to request from the SHR patient-records endpoint, and how ' +
+      'to label them as tabs in the viewer. Order controls tab order. Observation ' +
+      'categories not listed here still appear, labelled from the payload — see ' +
+      'categoryCode.',
+    _default: [
+      { resourceType: 'Condition', label: 'Conditions' },
+      { resourceType: 'MedicationRequest', label: 'Medications' },
+      { resourceType: 'Encounter', label: 'Encounters' },
+      { resourceType: 'Observation', label: 'Vitals', categoryCode: 'vital-signs' },
+      { resourceType: 'Observation', label: 'Exam findings', categoryCode: 'exam' },
+      { resourceType: 'Observation', label: 'Lab results', categoryCode: 'laboratory' },
+      { resourceType: 'Observation', label: 'Other observations' },
+      { resourceType: 'ServiceRequest', label: 'Requests' },
+      { resourceType: 'Specimen', label: 'Specimens' },
+    ],
+    _elements: {
+      resourceType: {
+        _type: Type.String,
+        _description: 'FHIR resource type name, spelled exactly as the SHR returns it, e.g. "MedicationRequest".',
+      },
+      label: {
+        _type: Type.String,
+        _description: 'Clinician-facing tab label for this resource type, e.g. "Medications".',
+      },
+      categoryCode: {
+        _type: Type.String,
+        _description:
+          'Optional FHIR category code (e.g. "vital-signs", "exam") to split one resourceType across ' +
+          'several tabs. Leave unset on one entry per resourceType to catch whatever no other entry claims.',
+        _default: '',
+      },
+    },
   },
   electivePreauth: {
     encounterTypeUuid: {
@@ -214,6 +254,31 @@ export const configSchema = {
     },
   },
 };
+
+/** One SHR record-viewer category: a FHIR resource type plus its clinician-facing tab label. */
+export interface ShrResourceTypeConfig {
+  resourceType: string;
+  label: string;
+  /**
+   * Optional: restrict this category to resources whose `category[].coding[].code`
+   * includes this value (e.g. `"vital-signs"`, `"exam"`, `"laboratory"`). Lets one
+   * FHIR `resourceType` be split across several tabs — `Observation` is every
+   * kind of observation in FHIR, told apart only by this code.
+   *
+   * This list does **not** have to be exhaustive. Any category present in the
+   * payload that no entry here claims still gets its own tab, labelled from the
+   * data (see `buildCategories` in `shr-viewer/shr-categories.ts`) — so listing a
+   * code here is about choosing its wording and position, not about making it
+   * visible. `Observation.category` has a *preferred*, not required, binding in
+   * FHIR R4, so an SHR can and does send codes outside the standard value set.
+   *
+   * An entry with no `categoryCode`, for a `resourceType` that some other entry
+   * splits by category, holds only the resources carrying no category at all —
+   * not "everything else". For a `resourceType` nothing splits, it holds every
+   * resource of that type as usual.
+   */
+  categoryCode?: string;
+}
 
 export type Config = {
   casualGreeting: boolean;
@@ -279,12 +344,14 @@ export interface ConfigObject {
   subBenefitCodesWithHiddenClaimWidget: Array<string>;
   startClaimVisitLocationAttributeUuid: string;
   pmfSchemeNames: Array<string>;
+  shrResourceTypes: Array<ShrResourceTypeConfig>;
   electivePreauth: {
     encounterTypeUuid: string;
     clientRegistryIdentifierTypeUuid: string;
     encounterRoleUuid: string;
     plannedServiceObsConceptUuid: string;
   };
+  emergencyConceptUuid: string;
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;

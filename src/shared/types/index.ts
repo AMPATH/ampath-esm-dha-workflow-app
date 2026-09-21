@@ -45,13 +45,13 @@ export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
 
 export type LineItem = {
   uuid?: string;
-  billableService: string;
+  billableService?: string;
   quantity: number;
-  price: number;
-  priceName: string;
+  price?: number;
+  priceName?: string;
   priceUuid: string;
-  lineItemOrder: number;
-  status: PaymentStatus;
+  lineItemOrder?: number;
+  status?: PaymentStatus;
   voided?: boolean;
   voidedReason?: string;
 };

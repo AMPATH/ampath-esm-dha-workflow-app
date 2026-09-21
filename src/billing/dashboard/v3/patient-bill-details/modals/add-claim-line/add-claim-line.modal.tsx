@@ -42,11 +42,11 @@ const AddClaimLineModal: React.FC<addClaimLineModalProps> = ({
            });
            onSuccess();
         }
-    }catch(error){
+    }catch(error: any){
        showSnackbar({
         kind: 'error',
         title: 'Error Adding Claim Line',
-        subtitle: 'An error occurred while adding the claim line. Kindy retry or contact support'
+        subtitle: error ?? 'An error occurred while adding the claim line. Kindy retry or contact support'
        });
     }finally{
         setLoading(false);

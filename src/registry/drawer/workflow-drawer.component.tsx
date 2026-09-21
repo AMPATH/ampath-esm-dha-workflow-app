@@ -25,11 +25,11 @@ import {
   CheckmarkOutline,
   CloudUpload,
   Close,
-  FingerprintRecognition,
+  // FingerprintRecognition,
   Information,
   PendingFilled,
   Renew,
-  ScanDisabled,
+  // ScanDisabled,
   WarningAltFilled,
 } from '@carbon/react/icons';
 import { type Patient, showSnackbar } from '@openmrs/esm-framework';
@@ -41,33 +41,32 @@ import OtpVerificationStep from './otp-verification-step.component';
 import EmrCompare from './emr-compare.component';
 import EmrCreatePreview from './emr-create-preview.component';
 import {
-  getBiometricCaptureUrl,
+  // getBiometricCaptureUrl,
   getOtpWhitelistStatus,
-  isBiometricConfigured,
+  // isBiometricConfigured,
   requestOtpWhitelist,
 } from './verification.resource';
 import { fetchServiceQueuesByLocationUuid } from '../../resources/queue.resource';
 import { fetchCashPoints, fetchPaymentModes } from '../../shared/services/billing.resource';
 import { getReadableErrorMessage } from '../utils/error-handler';
 import { fetchPomsfBalance } from '../../claims/claims.resource';
-import { type PomsfBalance } from '../../claims';
+import { type Intervention, type ClaimResult, type PomsfBalance } from '../../claims';
 import { formatKes, getAllPomsfBenefitBalances, getPomsfDisplayBalance, isPomsfActive } from './pomsf-balance.util';
+import EmergencySlotComponent from '../emergency/emergency-extension.component';
+import { generateReferenceNumber, type EmergencyFormData } from '../emergency/type';
+import { sendEmergencyClaimIdentified } from '../emergency/emergency.resource';
 
 type Phase =
-  | 'biometric'
-  | 'biometric-not-setup'
-  | 'otp-gate'
-  | 'whitelist-request'
-  | 'whitelist-pending'
-  | 'otp'
-  | 'consent'
-  | 'visit';
+  // | 'biometric'
+  // | 'biometric-not-setup'
+  'otp-gate' | 'whitelist-request' | 'whitelist-pending' | 'otp' | 'consent' | 'visit';
 
 type Method = 'cash' | 'insurance';
 
 type RequiredField = 'visitType' | 'room' | 'insurance';
 
 const STEPS = ['Verify & consent', 'Start visit'];
+// Retained for the commented biometric/OTP whitelist workflow below.
 const BIOMETRIC_MAX_ATTEMPTS = 3;
 
 // Decode HTML entities in backend-provided names (e.g. "Accident &amp; Emergency").
@@ -90,7 +89,7 @@ const WALK_IN_ROOMS = [];
 const NON_INSURANCE_PAYMENT_MODES = /cash|mpesa|m-pesa|waiver/i;
 
 // OpenMRS visit types (searchable).
-const VISIT_TYPE_OPTIONS = ['Outpatient', 'Inpatient'];
+const VISIT_TYPE_OPTIONS = ['Outpatient', 'Inpatient', 'Emergency'];
 
 // Keys that still have to work while an option is selected: menu navigation, commit
 // and dismiss. Everything else that would mutate the text is blocked below.
@@ -171,8 +170,8 @@ const WHITELIST_REASONS = [
 ];
 
 const phaseToIndex: Record<Phase, number> = {
-  biometric: 0,
-  'biometric-not-setup': 0,
+  // biometric: 0,
+  // 'biometric-not-setup': 0,
   'otp-gate': 0,
   'whitelist-request': 0,
   'whitelist-pending': 0,
@@ -202,7 +201,12 @@ interface WorkflowDrawerProps {
     visitType: string;
     method?: Method;
     insurance?: string;
-  }) => void;
+    emergencyResponse?: ClaimResult;
+    emergencyCashPointUuid?: string;
+    emergencyServicePriceUuid?: string;
+    emergencyIntervention?: Intervention;
+    protocolCode?: string;
+  }) => Promise<void>;
 }
 
 const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
@@ -220,12 +224,13 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   onClose,
   onStartVisit,
 }) => {
-  const [phase, setPhase] = useState<Phase>('biometric');
+  const [phase, setPhase] = useState<Phase>('otp');
   const [pendingEmrAction, setPendingEmrAction] = useState<'create' | 'sync' | null>(null);
   const [isOtpWhitelisted, setIsOtpWhitelisted] = useState(false);
   const [consent, setConsent] = useState(false);
-  const [launchingBiometric, setLaunchingBiometric] = useState(false);
-  const [biometricUrl, setBiometricUrl] = useState<string | null>(null);
+  // const [launchingBiometric, setLaunchingBiometric] = useState(false);
+  // const [biometricUrl, setBiometricUrl] = useState<string | null>(null);
+  // Retained for the commented biometric/OTP whitelist workflow below.
   const [failCount, setFailCount] = useState(0);
   const [checkingWhitelist, setCheckingWhitelist] = useState(false);
   const [submittingWhitelist, setSubmittingWhitelist] = useState(false);
@@ -261,18 +266,21 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     room: false,
     insurance: false,
   });
+  const [emergencyForm, setEmergencyForm] = useState<EmergencyFormData>();
+  const [emergencyFormValid, setEmergencyFormValid] = useState(false);
+  const [startingVisit, setStartingVisit] = useState(false);
   const markTouched = (field: RequiredField) => () =>
     setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
 
   useEffect(() => {
     if (open) {
-      setPhase(isBiometricConfigured() ? 'biometric' : 'biometric-not-setup');
+      setPhase('otp');
       setPendingEmrAction(null);
       setIsOtpWhitelisted(false);
       setConsent(false);
-      setLaunchingBiometric(false);
-      setBiometricUrl(null);
-      setFailCount(0);
+      // setLaunchingBiometric(false);
+      // setBiometricUrl(null);
+      // setFailCount(0);
       setReason('');
       setFailedImage(null);
       setReasonError('');
@@ -291,6 +299,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       setHasCashMode(null);
       setEligibilityChecked(false);
       setTouched({ visitType: false, room: false, insurance: false });
+      setStartingVisit(false);
     }
   }, [open]);
 
@@ -619,6 +628,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     </div>
   );
 
+  /*
   const launchBiometric = async () => {
     setLaunchingBiometric(true);
     try {
@@ -645,6 +655,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       setPhase(isOtpWhitelisted ? 'otp' : 'otp-gate');
     }
   };
+  */
 
   // `stay` keeps the current screen (both buttons) instead of moving to the
   // pending screen when the status is not yet approved.
@@ -700,21 +711,58 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     }
   };
 
-  const handleStartVisit = () => {
+  const handleStartVisit = async () => {
     const usingInsurance = method === 'insurance';
 
-    // CCC patients do not require a payment method selection.
-    if (!room || !visitType || (!isCccPatient && usingInsurance && !insurance)) {
+    if (!room || !visitType || (usingInsurance && !insurance)) {
       return;
     }
+    setStartingVisit(true);
+    try {
+      let emergencyResponse: ClaimResult = {} as ClaimResult;
+      if (visitType === 'Emergency') {
+        const res = await sendEmergencyClaimIdentified(
+          emergencyForm?.modeOfArrival,
+          emergencyForm?.broughtBy,
+          locationUuid,
+          emergencyForm?.interventionCode,
+          generateReferenceNumber(),
+          client?.id,
+          emergencyForm?.providerNationalId,
+          emergencyForm?.identificationType,
+          emergencyForm?.licensingBody,
+          emergencyForm?.notes,
+          emergencyForm?.otp,
+        );
 
-    onStartVisit({
-      patientCategory,
-      room,
-      roomUuid: triageQueueByRoom[room] ?? '',
-      visitType,
-      ...(isCccPatient ? {} : { method, insurance: usingInsurance ? insurance : undefined }),
-    });
+        if (res && 'error' in res && 'message' in res) {
+          const message = res.message ?? '';
+          showSnackbar({
+            kind: 'error',
+            title: 'An error occured while starting the visit',
+            subtitle: message,
+          });
+          return;
+        }
+        emergencyResponse = res;
+      }
+
+      await onStartVisit({
+        patientCategory,
+        room,
+        roomUuid: triageQueueByRoom[room] ?? '',
+        visitType,
+        method,
+        insurance: usingInsurance ? insurance : undefined,
+        emergencyResponse,
+        emergencyCashPointUuid: visitType === 'Emergency' ? emergencyForm?.cashpointUuid : undefined,
+        emergencyServicePriceUuid: visitType === 'Emergency' ? emergencyForm?.servicePriceUuid : undefined,
+        emergencyIntervention: visitType === 'Emergency' ? emergencyForm?.intervention : undefined,
+        protocolCode: visitType === 'Emergency' ? emergencyForm?.protocolCode : undefined,
+      });
+    } finally {
+      setStartingVisit(false);
+    }
   };
 
   // Required-field validation. A field flags only once the user has been in it and
@@ -729,8 +777,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   const isCccPatient = patientCategory === 'CCC';
 
   const insuranceInvalidText =
-    insuranceError ||
-    (!isCccPatient && method === 'insurance' && touched.insurance && !insurance ? 'Select an insurance scheme' : '');
+    insuranceError || (method === 'insurance' && touched.insurance && !insurance ? 'Select an insurance scheme' : '');
 
   // A scheme is active/eligible when its coverage status is '1'.
   const isActiveScheme = (s: Scheme) => s.coverage?.status === '1';
@@ -756,7 +803,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   // Insurance dropdown items. SHA carries its eligibility in the name and is not
   // selectable unless the patient is eligible (has an active eligible scheme).
   const insuranceItems = insuranceSchemes.map((name) => {
-    const isSha = /sha|shif/i.test(name);
+    const isSha = /sha|shif|phc/i.test(name);
     if (!isSha) {
       return { id: name, label: name, isSha: false, eligible: true, disabled: false };
     }
@@ -831,13 +878,13 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
           </div>
 
           <div className={styles.bodyInner}>
-            {/* ---- Step 1: Verify — biometric ---- */}
+            {/*
+            ---- Step 1: Verify — biometric ----
             {phase === 'biometric' ? (
               <div className={styles.verifyContent}>
                 {!biometricUrl && clientStrip}
                 {!biometricUrl ? (
                   <>
-                    {/* The scanner card — the primary action */}
                     <div className={styles.biometricArea}>
                       <button
                         type="button"
@@ -861,7 +908,6 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                         <></>
                       )}
                     </div>
-                    {/* The step-by-step guide, below the scanner */}
                     <div className={styles.guidePanel}>
                       <div className={styles.guideHead}>
                         <Information size={18} className={styles.guideHeadIcon} />
@@ -908,8 +954,10 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
             ) : (
               <></>
             )}
+            */}
 
-            {/* ---- Step 1: Verify — biometric not configured ---- */}
+            {/*
+            ---- Step 1: Verify — biometric not configured ----
             {phase === 'biometric-not-setup' ? (
               <div className={styles.verifyContent}>
                 {clientStrip}
@@ -935,6 +983,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
             ) : (
               <></>
             )}
+            */}
 
             {/* ---- Step 1: Verify — checking whitelist ---- */}
             {phase === 'otp-gate' ? (
@@ -1419,6 +1468,15 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
             ) : (
               <></>
             )}
+            <div className={styles.formSection}>
+              {visitType === 'Emergency' && (
+                <EmergencySlotComponent
+                  client={client}
+                  onFormChange={setEmergencyForm}
+                  onValidationChange={setEmergencyFormValid}
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -1432,7 +1490,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
             <div />
           )}
           <div className={styles.footerRight}>
-            <Button kind="secondary" size="sm" onClick={onClose}>
+            <Button kind="secondary" size="sm" onClick={onClose} disabled={startingVisit}>
               Cancel
             </Button>
             {phase === 'consent' ? (
@@ -1455,15 +1513,21 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                 size="sm"
                 renderIcon={ArrowRight}
                 disabled={
+                  startingVisit ||
                   !room ||
                   !visitType ||
-                  (!isCccPatient && hasCashPoint === false) ||
-                  (!isCccPatient && method === 'cash' && hasCashMode === false) ||
-                  (!isCccPatient && method === 'insurance' && !insurance)
+                  hasCashPoint === false ||
+                  (method === 'cash' && hasCashMode === false) ||
+                  (method === 'insurance' && !insurance) ||
+                  (visitType === 'Emergency' && !emergencyFormValid)
                 }
                 onClick={handleStartVisit}
               >
-                Start visit &amp; send to {patientCategory === 'Walk-in' ? 'walk-in' : 'triage'}
+                {startingVisit ? (
+                  <InlineLoading description="Starting visit and sending to triage..." />
+                ) : (
+                  `Start visit & send to ${patientCategory === 'Walk-in' ? 'walk-in' : 'triage'}`
+                )}
               </Button>
             ) : (
               <></>

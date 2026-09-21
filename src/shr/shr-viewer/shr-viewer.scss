@@ -1,0 +1,239 @@
+@use '@carbon/colors';
+@use '@carbon/layout';
+@use '@carbon/type';
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-05;
+  padding: layout.$spacing-05;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.title {
+  @include type.type-style('heading-03');
+  margin: 0;
+  color: colors.$gray-100;
+}
+
+.provenance {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  margin: layout.$spacing-02 0 0;
+  overflow-wrap: anywhere;
+}
+
+.connected {
+  color: colors.$green-50;
+}
+
+.headerActions {
+  display: flex;
+  gap: layout.$spacing-03;
+  flex-shrink: 0;
+}
+
+.tiles {
+  display: grid;
+  // minmax(0, 1fr) rather than 1fr so a long source-system name shrinks the tile
+  // instead of forcing the whole dashboard wider than its container.
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: layout.$spacing-03;
+}
+
+.tile {
+  min-width: 0;
+  // Carbon's Tile is borderless, which leaves it shapeless against this
+  // module's own near-white background. Bordered to match the other surfaces.
+  border: 1px solid colors.$gray-20;
+}
+
+.tileLabel {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  display: block;
+}
+
+.tileValue {
+  @include type.type-style('productive-heading-04');
+  color: colors.$gray-100;
+  margin-top: layout.$spacing-02;
+  overflow-wrap: anywhere;
+}
+
+.tileValueText {
+  @include type.type-style('heading-compact-01');
+  color: colors.$gray-100;
+  margin-top: layout.$spacing-03;
+  overflow-wrap: anywhere;
+}
+
+// Vertical tabs: the category list sits in a left rail, the selected category's
+// table fills the pane beside it. Carbon owns the two-column grid here (its
+// `TabsVertical` renders a `Grid`, the nav spans 2 columns — 4 at `lg` — and the
+// panel takes `3/-1`), so this only needs to stop `min-width: auto` on the flex
+// child from letting a wide table push the whole viewer sideways.
+//
+// Deliberately no `overflow-x` and no bottom border: both existed for the old
+// horizontal strip, and `overflow-x` on this wrapper would now clip the rail.
+.tabs {
+  min-width: 0;
+
+  // Grid items default to `min-width: auto`, which lets a wide table stretch the
+  // content column past the viewer instead of scrolling inside `.tableWrap`.
+  :global(.cds--tab-content) {
+    min-width: 0;
+  }
+
+  // Lay each rail item out as [icon] label … count. Carbon renders the icon
+  // *after* the label (its own leading-icon variant is only wired up for
+  // dismissable tabs), so the icon is reordered rather than re-marked-up —
+  // leading icons are what this app's own navigation and the summary cards use.
+  :global(.cds--tabs__nav-item-label-wrapper) {
+    display: flex;
+    align-items: center;
+    inline-size: 100%;
+    min-width: 0;
+  }
+
+  :global(.cds--tabs__nav-item--icon) {
+    order: -1;
+    flex-shrink: 0;
+    padding-inline: 0 layout.$spacing-03;
+  }
+
+  // Carbon sets this to `-webkit-box` for its line clamp; flex instead, so the
+  // label and count become items that can be pushed apart. Truncation is
+  // restored on `.railLabel` below.
+  :global(.cds--tabs__nav-item-label) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: layout.$spacing-03;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.railLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.railCount {
+  @include type.type-style('label-01');
+  color: colors.$gray-100;
+  flex-shrink: 0;
+  // Counts sit in a column, so fix the digit width to stop them shifting.
+  font-variant-numeric: tabular-nums;
+}
+
+// An empty category is still worth listing — it says the SHR was asked and had
+// nothing — but it shouldn't compete with the ones holding records.
+.railCountEmpty {
+  @extend .railCount;
+  color: colors.$gray-50;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(14rem, 100%), 1fr));
+  gap: layout.$spacing-03;
+  min-width: 0;
+}
+
+.summaryCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  min-width: 0;
+  width: 100%;
+  padding: layout.$spacing-04;
+  // White on gray-20, matching this module's other surfaces (see shr.scss).
+  background-color: colors.$white;
+  border: 1px solid colors.$gray-20;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: colors.$gray-10;
+    border-color: colors.$gray-40;
+  }
+}
+
+// Same card, muted: nothing to open, so it recedes behind the populated ones.
+.summaryCardEmpty {
+  @extend .summaryCard;
+  color: colors.$gray-70;
+}
+
+.summaryCardLabel {
+  @include type.type-style('body-compact-01');
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.summaryCardCount {
+  @include type.type-style('heading-compact-02');
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.categoryEmpty {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+  padding: layout.$spacing-06 0;
+  text-align: center;
+}
+
+.detailPanel {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-03 0;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: layout.$spacing-04;
+  min-width: 0;
+}
+
+.detailField {
+  min-width: 0;
+}
+
+.detailLabel {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  display: block;
+}
+
+.detailValue {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-100;
+  overflow-wrap: anywhere;
+}

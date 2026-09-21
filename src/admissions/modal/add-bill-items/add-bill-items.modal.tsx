@@ -2,9 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Button, ComboBox, Modal, ModalBody } from "@carbon/react";
 import styles from './add-bill-items.modal.scss';
 import { showSnackbar, useSession, useVisit } from "@openmrs/esm-framework";
-import { createBill, fetchBillableServices, fetchCashPoints, fetchCurrentDayPendingPatientBills, updateBill } from "../../../shared/services/billing.resource";
+import { createBill, createBillLineItem, fetchBillableServices, fetchCashPoints, fetchCurrentDayPendingPatientBills } from "../../../shared/services/billing.resource";
 import { type CreateBillDto, type LineItem, type ServicePrice, type BillableService } from "../../../shared/types";
-import { generateUpdateBillLineItems } from "../../../billing/utils";
 
 interface addBillItemsModalProps {
     crId: string;
@@ -77,25 +76,21 @@ const AddBillItemsModal: React.FC<addBillItemsModalProps> = ({ crId, patientUuid
         setDraftBillItems((current) => (current.length > 1 ? current.filter((row) => row.id !== rowId) : current));
     }
 
-    function buildLineItems(startOrder = 0): LineItem[] {
+    function buildLineItems(): LineItem[] {
         return draftBillItems
             .filter((item) => item.billableService && item.servicePrice)
-            .map((item, index) => {
+            .map((item) => {
                 const servicePrice = item.servicePrice as ServicePrice;
                 const price = Number(servicePrice?.price ?? 0);
                 const status: LineItem['status'] = price === 0 ? 'PAID' : 'PENDING';
 
                 return {
-                    billableService: servicePrice?.billableService?.uuid ?? '',
                     quantity: 1,
-                    price,
-                    priceName: servicePrice?.name ?? 'Default',
                     priceUuid: servicePrice?.uuid ?? '',
-                    lineItemOrder: startOrder + index,
                     status,
                 };
             })
-            .filter((lineItem) => Boolean(lineItem.billableService && lineItem.priceUuid));
+            .filter((lineItem) => Boolean(lineItem.priceUuid));
     }
 
     async function handleRequestSubmit() {
@@ -116,15 +111,7 @@ const AddBillItemsModal: React.FC<addBillItemsModalProps> = ({ crId, patientUuid
 
             if (currentDayPendingBills?.length) {
                 const currentBill = currentDayPendingBills[0];
-                const initialLineItems = generateUpdateBillLineItems(currentBill, billableServices as any);
-                const maxLineItemOrder = initialLineItems.reduce((max, lineItem) => {
-                    return Math.max(max, Number(lineItem?.lineItemOrder ?? -1));
-                }, -1);
-
-                const newLineItems = buildLineItems(maxLineItemOrder + 1);
-                await updateBill(currentBill.uuid, {
-                    lineItems: [...initialLineItems, ...newLineItems],
-                });
+                await Promise.all(buildLineItems().map((lineItem) => createBillLineItem(currentBill.uuid, lineItem)));
             } else {
                 const cashPoints = await fetchCashPoints();
                 const locationCashPoint = cashPoints.find((cp) => cp?.location?.uuid === sessionLocation?.uuid) ?? cashPoints?.[0];
@@ -134,7 +121,7 @@ const AddBillItemsModal: React.FC<addBillItemsModalProps> = ({ crId, patientUuid
                 }
 
                 const payload: CreateBillDto = {
-                    lineItems: buildLineItems(0),
+                    lineItems: buildLineItems(),
                     cashPoint: locationCashPoint.uuid,
                     patient: patientUuid,
                     visit: activeVisit?.uuid ?? '',

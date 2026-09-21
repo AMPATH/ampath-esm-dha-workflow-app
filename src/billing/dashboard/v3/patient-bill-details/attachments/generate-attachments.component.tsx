@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
 
 import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
-import { type VisitIntervention } from '../../types';
+import { ApplicableDocumentType, type VisitIntervention } from '../../types';
 
 import styles from './attachments.scss';
-import { Button, Form, Modal, Tag } from '@carbon/react';
+import { Button, Form, InlineLoading, Modal, Tag } from '@carbon/react';
 import { useTranslation } from 'react-i18next';
 import { type GeneratedDocument } from './type';
 import { DocumentPdf, TrashCan, View } from '@carbon/react/icons';
@@ -17,6 +17,9 @@ import FinalBillComponent from './final-bill.component';
 import CaseSummary from './case-summary/case-summary';
 import DialysisChart from './dialysis/dialysis-chart';
 import GeneralDischargeSummary from './general-discharge-summary/general-discharge-summary';
+import LabOrdersComponent from './lab-results/lab-orders.component';
+import ProformaInvoiceComponent from './proforma-invoice/proforma-invoice.component';
+import UltrasoundReport from './ultrasound-report/utlrasound-report.component';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
@@ -38,9 +41,20 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [generatingDocumentId, setGeneratingDocumentId] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<GeneratedDocument[]>(() => {
-    const uniqueDocumentTypes = [...new Set(claimInterventions?.applicable_document_types ?? [])];
+    const uploadOnlyDocumentTypes = new Set([
+      ApplicableDocumentType.CLAIM_FORM,
+      ApplicableDocumentType.BIRTH_NOTIFICATION,
+    ]);
+    const uniqueDocumentTypes = [
+      ...new Set(
+        (claimInterventions?.applicable_document_types ?? []).filter(
+          (documentType) => !uploadOnlyDocumentTypes.has(documentType.trim().toUpperCase() as ApplicableDocumentType),
+        ),
+      ),
+    ];
 
     return uniqueDocumentTypes.map((documentType) => ({
       id: crypto.randomUUID(),
@@ -50,7 +64,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     }));
   });
   const session = useSession();
-  const locationUuid = session.sessionLocation?.uuid;
+  const locationUuid = session?.sessionLocation?.uuid;
 
   const invoiceRef = useRef<HTMLDivElement>(null);
   const dischargeRef = useRef<HTMLDivElement>(null);
@@ -58,6 +72,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const dialysisRef = useRef<HTMLDivElement>(null);
   const caseSummaryRef = useRef<HTMLDivElement>(null);
   const generalDischargeSummary = useRef<HTMLDivElement>(null);
+  const labResultsRef = useRef<HTMLDivElement>(null);
+  const proformaInvoiceRef = useRef<HTMLDivElement>(null);
+  const ultrasoundReportRef = useRef<HTMLDivElement>(null);
 
   if (!claimInterventions) return null;
 
@@ -78,6 +95,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
+
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
@@ -97,6 +115,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   };
 
   const docTypes = claimInterventions.applicable_document_types;
+  const shouldUseBirthNotificationDischargeSummary = (docTypes ?? []).includes(
+    ApplicableDocumentType.BIRTH_NOTIFICATION,
+  );
 
   const handleSubmit = async (document: GeneratedDocument) => {
     if (!document.file) {
@@ -162,11 +183,12 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   };
 
   const generateDocument = async (document: GeneratedDocument) => {
+    setGeneratingDocumentId(document.id);
     let element: HTMLDivElement | null = null;
 
     switch (document.name) {
       case 'INVOICE':
-        element = caseSummaryRef.current;
+        element = invoiceRef.current;
         break;
 
       case 'FINAL_BILL':
@@ -174,7 +196,11 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         break;
 
       case 'DISCHARGE_SUMMARY':
-        element = generalDischargeSummary.current;
+        element = shouldUseBirthNotificationDischargeSummary ? dischargeRef.current : generalDischargeSummary.current;
+        break;
+
+      case 'MEDICAL_REPORT':
+        element = caseSummaryRef.current;
         break;
 
       case 'CASE_SUMMARY':
@@ -186,13 +212,22 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
       case 'GENERAL_DISCHARGE_SUMMARY':
         element = generalDischargeSummary.current;
         break;
+      case 'LAB_RESULTS':
+        element = labResultsRef.current;
+        break;
+      case 'PROFORMA_INVOICE':
+        element = proformaInvoiceRef.current;
+        break;
+      case 'ULTRASOUND_REPORT':
+        element = ultrasoundReportRef.current;
+        break;
 
       default:
-        console.warn(`No generator implemented for ${document.name}`);
+        console.warn(`${document.name} cannot be generated. Kindly upload it instead using the upload button.`);
         showSnackbar({
           kind: 'error',
           title: 'Error Generating Attachment',
-          subtitle: `No generator implemented for ${document.name}. Kindly and Upload it instead`,
+          subtitle: `No generator implemented for ${document.name}. Kindly use the upload button to upload it instead`,
         });
         return;
     }
@@ -223,6 +258,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
           : d,
       ),
     );
+    setGeneratingDocumentId(null);
   };
 
   const generatedCount = documents.filter((d) => d.generated).length;
@@ -265,15 +301,22 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
               </div>
 
               {!document.generated ? (
-                <Button kind="ghost" size="sm" onClick={() => generateDocument(document)}>
-                  Generate
-                </Button>
-              ) : !document.uploaded ? (
-                <Button kind="primary" size="sm" onClick={() => handleSubmit(document)}>
-                  Upload
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => generateDocument(document)}
+                  disabled={generatingDocumentId !== null}
+                >
+                  {generatingDocumentId === document.id ? <InlineLoading description="Generating…" /> : 'Generate'}
                 </Button>
               ) : (
-                <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
                   <Button
                     kind="ghost"
                     size="sm"
@@ -283,13 +326,19 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
                       setPreviewOpen(true);
                     }}
                   >
-                    View
+                    Preview
                   </Button>
+
+                  {!document.uploaded && (
+                    <Button kind="primary" size="sm" onClick={() => handleSubmit(document)}>
+                      Upload
+                    </Button>
+                  )}
 
                   <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => deleteDocument(document.id)}>
                     Delete
                   </Button>
-                </>
+                </div>
               )}
             </div>
           ))}
@@ -329,7 +378,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
           zIndex: -1,
         }}
       >
-        <InvoiceComponent ref={invoiceRef} bill={bill} />
+        <InvoiceComponent ref={invoiceRef} bill={bill} patientUuid={patientUuid} />
 
         <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
 
@@ -337,6 +386,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
         <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
         <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
+        <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
+        <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
+        <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
       </div>
     </>
   );

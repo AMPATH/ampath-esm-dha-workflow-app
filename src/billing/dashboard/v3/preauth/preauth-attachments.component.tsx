@@ -91,7 +91,6 @@ const PreauthAttachments: React.FC<Props> = ({
         intervention_code: intervention.code,
         intervention_name: intervention.name ?? intervention.code,
         applicable_document_types: (intervention.applicableDocumentTypes ??
-          intervention.requiredPreauthDocumentTypes ??
           []) as VisitIntervention['applicable_document_types'],
         requires_surgical_preauth: !!intervention.requiresSurgicalPreauth,
         requires_renal_preauth: !!intervention.requiresRenalPreauth,

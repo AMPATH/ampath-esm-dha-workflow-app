@@ -158,6 +158,15 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const { patient } = usePatient();
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+  const selectedServicePrice = useMemo(
+    () =>
+      servicePrices.find(
+        (servicePrice) =>
+          servicePrice.billableService.uuid === selectedBillableService?.billableService.uuid &&
+          servicePrice.paymentMode?.uuid === selectedPaymentMode?.uuid,
+      ),
+    [servicePrices, selectedBillableService, selectedPaymentMode],
+  );
 
   const visitTypeOptions = useMemo(
     () => [
@@ -732,13 +741,9 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     const payload: CreateBillDto = {
       lineItems: [
         {
-          billableService: selectedBillableService.billableService.uuid,
           quantity: 1,
-          price: selectedBillableService.price,
-          priceName: selectedBillableService.name,
-          priceUuid: selectedBillableService.uuid,
-          lineItemOrder: 0,
-          status: 'PENDING',
+          priceUuid: selectedServicePrice.uuid,
+          status: selectedServicePrice.price === 0 ? 'PAID' : 'PENDING',
         },
       ],
       cashPoint: selectedCashPoint.uuid,

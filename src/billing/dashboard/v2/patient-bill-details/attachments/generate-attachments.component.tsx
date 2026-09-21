@@ -17,6 +17,9 @@ import FinalBillComponent from './final-bill.component';
 import CaseSummary from '../../../v3/patient-bill-details/attachments/case-summary/case-summary';
 import DialysisChart from '../../../v3/patient-bill-details/attachments/dialysis/dialysis-chart';
 import GeneralDischargeSummary from '../../../v3/patient-bill-details/attachments/general-discharge-summary/general-discharge-summary';
+import LabOrdersComponent from '../../../v3/patient-bill-details/attachments/lab-results/lab-orders.component';
+import ProformaInvoiceComponent from '../../../v3/patient-bill-details/attachments/proforma-invoice/proforma-invoice.component';
+import UltrasoundReport from '../../../v3/patient-bill-details/attachments/ultrasound-report/utlrasound-report.component';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
@@ -35,15 +38,23 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   patientUuid,
   billingDate,
 }) => {
-  console.log('BILL GENERATE: ', bill);
-
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatingDocumentId, setGeneratingDocumentId] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<GeneratedDocument[]>(() => {
-    const uniqueDocumentTypes = [...new Set(claimInterventions?.applicable_document_types ?? [])];
+    const uploadOnlyDocumentTypes = new Set([
+      ApplicableDocumentType.CLAIM_FORM,
+      ApplicableDocumentType.BIRTH_NOTIFICATION,
+    ]);
+    const uniqueDocumentTypes = [
+      ...new Set(
+        (claimInterventions?.applicable_document_types ?? []).filter(
+          (documentType) => !uploadOnlyDocumentTypes.has(documentType.trim().toUpperCase() as ApplicableDocumentType),
+        ),
+      ),
+    ];
 
     return uniqueDocumentTypes.map((documentType) => ({
       id: crypto.randomUUID(),
@@ -61,6 +72,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const dialysisRef = useRef<HTMLDivElement>(null);
   const caseSummaryRef = useRef<HTMLDivElement>(null);
   const generalDischargeSummary = useRef<HTMLDivElement>(null);
+  const labResultsRef = useRef<HTMLDivElement>(null);
+  const proformaInvoiceRef = useRef<HTMLDivElement>(null);
+  const ultrasoundReportRef = useRef<HTMLDivElement>(null);
 
   if (!claimInterventions) return null;
 
@@ -198,13 +212,22 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
       case 'GENERAL_DISCHARGE_SUMMARY':
         element = generalDischargeSummary.current;
         break;
+      case 'LAB_RESULTS':
+        element = labResultsRef.current;
+        break;
+      case 'PROFORMA_INVOICE':
+        element = proformaInvoiceRef.current;
+        break;
+      case 'ULTRASOUND_REPORT':
+        element = ultrasoundReportRef.current;
+        break;
 
       default:
-        console.warn(`No generator implemented for ${document.name}`);
+        console.warn(`${document.name} cannot be generated. Kindly upload it instead using the upload button.`);
         showSnackbar({
           kind: 'error',
           title: 'Error Generating Attachment',
-          subtitle: `No generator implemented for ${document.name}. Kindly and Upload it instead`,
+          subtitle: `No generator implemented for ${document.name}. Kindly use the upload button to upload it instead`,
         });
         return;
     }
@@ -363,6 +386,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
         <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
         <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
+        <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
+        <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
+        <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
       </div>
     </>
   );

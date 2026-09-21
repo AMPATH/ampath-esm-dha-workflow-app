@@ -49,10 +49,12 @@ import PreauthAttachments, { type PreauthAttachmentRow } from './preauth-attachm
 import {
   billingDateToVisitDate,
   dateToServiceIso,
-  fetchPreauthFormValues,
+  fetchTodaysTriageVitalsConcat,
   mergeSpecialtyFlags,
   preauthFormLabel,
   readSpecialtyFlags,
+  resolveAndLoadRaisePrefill,
+  resolvePatientUuidFromCr,
   resolveUnitPriceFromPatientBills,
   searchDiagnosisConcepts,
   searchHealthWorkerRegistry,
@@ -162,6 +164,11 @@ interface PreauthWorkspaceProps extends DefaultWorkspaceProps {
   locationUuid: string;
   /** Elective (pre-visit) mode — uses authorize token + expected_service_start_date */
   isElective?: boolean;
+  /** Elective hold encounter — Raise loads prefill from this encounter only */
+  encounterUuid?: string;
+  initialDoctorNationalId?: string;
+  initialProviderDisplay?: string;
+  initialExpectedServiceStartDate?: string;
   billItem: Partial<PatientFacilityBillDetails> & {
     intervention_code: string;
     patient_uuid?: string;
@@ -233,6 +240,10 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   patientUuid,
   locationUuid,
   isElective = false,
+  encounterUuid: encounterUuidProp,
+  initialDoctorNationalId,
+  initialProviderDisplay,
+  initialExpectedServiceStartDate,
   billItem,
   intervention,
   onSuccess,
@@ -256,10 +267,20 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   const [selectedContactId, setSelectedContactId] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [activeConsentToken, setActiveConsentToken] = useState(isElective ? '' : consentTokenProp || '');
-  const [expectedServiceStartDate, setExpectedServiceStartDate] = useState(toIsoLocal());
+  const [expectedServiceStartDate, setExpectedServiceStartDate] = useState(() => {
+    if (initialExpectedServiceStartDate) {
+      const d = dayjs(initialExpectedServiceStartDate);
+      if (d.isValid()) return d.format('YYYY-MM-DDTHH:mm:ssZ');
+    }
+    return toIsoLocal();
+  });
   const abortRef = useRef<AbortController | null>(null);
   /** Skip unsaved-changes prompt after a successful submit (state may still say submitting/dirty). */
   const allowCloseWithoutPromptRef = useRef(false);
+  /** Encounter diagnoses[] already applied — ETL preferred must not overwrite. */
+  const encounterDxAppliedRef = useRef(false);
+  /** Provider National ID already applied from encounter / launch props. */
+  const providerPrefillAppliedRef = useRef(false);
   const [existingPreauth, setExistingPreauth] = useState<ExistingPreauthMatch | null>(null);
   const [checkingExistingPreauth, setCheckingExistingPreauth] = useState(false);
   const [cancellingExistingPreauth, setCancellingExistingPreauth] = useState(false);
@@ -270,13 +291,30 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     mergeSpecialtyFlags(readSpecialtyFlags(intervention), readSpecialtyFlags(billItem)),
   );
   const specialtyLabel = preauthFormLabel(specialty);
+  const [requiredDocs, setRequiredDocs] = useState<string[]>(() => [
+    ...new Set(intervention.requiredPreauthDocumentTypes ?? []),
+  ]);
+  const [optionalDocs, setOptionalDocs] = useState<string[]>(() => {
+    const required = new Set(intervention.requiredPreauthDocumentTypes ?? []);
+    return [...new Set(intervention.applicableDocumentTypes ?? [])].filter((d) => !required.has(d));
+  });
   const interventionForSubmit = useMemo(
     () => ({
       ...intervention,
       ...specialty,
+      requiredPreauthDocumentTypes: requiredDocs,
+      applicableDocumentTypes: optionalDocs,
     }),
-    [intervention, specialty],
+    [intervention, specialty, requiredDocs, optionalDocs],
   );
+
+  /** Non-specialty “normal” preauth — needs clinical_indications in UI + HIE payload. */
+  const isPlainNormalPreauth =
+    !specialty.requiresSurgicalPreauth &&
+    !specialty.requiresRenalPreauth &&
+    !specialty.requiresOpticalPreauth &&
+    !specialty.requiresRadiologyPreauth &&
+    !specialty.requiresOncologyPreauth;
 
   const [serviceStart, setServiceStart] = useState(toIsoLocal());
   const [serviceEnd, setServiceEnd] = useState(toIsoLocal(dayjs().add(30, 'minute').toDate()));
@@ -306,7 +344,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   const providerSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchingHwr, setSearchingHwr] = useState(false);
   const [hwrHit, setHwrHit] = useState<HwrSearchResult | null>(null);
-  const [doctorId, setDoctorId] = useState('');
+  const [doctorId, setDoctorId] = useState(() => (initialDoctorNationalId ?? '').trim());
   const [regulationBody, setRegulationBody] = useState<RegulationBody>('KMPDC');
 
   // Specialty fields — empty until Pre-authorization form obs (or bill unit price) loads.
@@ -358,14 +396,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   const patientName = billItem.patient_name ?? '';
   const crNo = billItem.cr_no ?? '';
   const billableService = billItem.billable_service ?? intervention.name ?? intervention.code;
-  const requiredDocs = useMemo(
-    () => [...new Set(intervention.requiredPreauthDocumentTypes ?? [])],
-    [intervention.requiredPreauthDocumentTypes],
-  );
-  const optionalDocs = useMemo(() => {
-    const required = new Set(requiredDocs);
-    return [...new Set(intervention.applicableDocumentTypes ?? [])].filter((d) => !required.has(d));
-  }, [intervention.applicableDocumentTypes, requiredDocs]);
 
   const [attachments, setAttachments] = useState<PreauthAttachmentRow[]>(() => {
     const required = requiredDocs.map((document_type) => ({
@@ -480,7 +510,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     patientUuid,
   ]);
 
-  // Enrich specialty flags from SHA interventions coverage when launch props lack them.
+  // Enrich specialty flags + preauth document types from SHA interventions coverage.
   useEffect(() => {
     const patientId = (billItem.cr_no ?? '').trim();
     const code = (intervention.code || billItem.intervention_code || '').trim();
@@ -505,15 +535,39 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           }
           return next;
         });
-        // Do not seed specialty field defaults — obs / bill loaders fill real values.
+
+        const shaRequired = [...new Set((sha.requiredPreauthDocumentTypes ?? []).filter(Boolean))];
+        const shaApplicable = [...new Set((sha.applicableDocumentTypes ?? []).filter(Boolean))];
+        if (shaRequired.length || shaApplicable.length) {
+          const nextRequired = shaRequired.length ? shaRequired : requiredDocs;
+          const requiredSet = new Set(nextRequired);
+          const nextOptional = (shaApplicable.length ? shaApplicable : optionalDocs).filter(
+            (d) => !requiredSet.has(d),
+          );
+          setRequiredDocs(nextRequired);
+          setOptionalDocs(nextOptional);
+          // Reseed required rows only when the user has not attached files yet.
+          setAttachments((prev) => {
+            const hasUserFiles = prev.some((a) => Boolean(a.file));
+            if (hasUserFiles) return prev;
+            if (!nextRequired.length) return prev;
+            return nextRequired.map((document_type) => ({
+              id: crypto.randomUUID(),
+              document_type,
+              document_title: document_type.replace(/_/g, ' '),
+              required: true,
+            }));
+          });
+        }
       } catch {
-        // Keep launch-prop flags if coverage lookup fails
+        // Keep launch-prop flags / docs if coverage lookup fails
       }
     })();
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once from SHA; avoid re-loop on doc state
   }, [billItem.cr_no, billItem.intervention_code, intervention.code, locationUuid]);
 
   useEffect(() => {
@@ -543,7 +597,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     }
     if (pick?.kind === 'visit') {
       const dx = pick.dx;
-      if (dx.practioner_nat_id) {
+      if (dx.practioner_nat_id && !providerPrefillAppliedRef.current) {
         setDoctorId(dx.practioner_nat_id);
       }
       if (dx.practitioner_body) {
@@ -552,7 +606,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     }
   };
 
-  // Prefill from visit + maternity + encounter diagnoses (same three ETL sources as bill details).
+  // Prefill from visit + maternity + encounter diagnoses (ETL) — fallback when no encounter.diagnoses[].
   useEffect(() => {
     const uuid = patientUuid || billItem.patient_uuid;
     if (!uuid || !locationUuid) return;
@@ -570,11 +624,11 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
         });
         if (!cancelled) {
           setVisitDiagnoses(results ?? []);
-          // Prefer dx_rank === 1; otherwise best-ranked ICD-coded row. Multiple options
-          // stay available in the ComboBox (already ordered by rank from the fetch).
-          const preferred = preferredDiagnosisForPreauth(results ?? []);
-          if (preferred) {
-            applyDiagnosisPick(visitDxPick(preferred), { fromUser: false });
+          if (!encounterDxAppliedRef.current) {
+            const preferred = preferredDiagnosisForPreauth(results ?? []);
+            if (preferred) {
+              applyDiagnosisPick(visitDxPick(preferred), { fromUser: false });
+            }
           }
         }
       } catch {
@@ -694,13 +748,14 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   // Elective preauth usually has no patient bill yet — always offer the catalog picker.
   const needsBillableServicePicker = isElective;
 
-  // Prefill specialty fields from POC Pre-authorization form (encounter, else latest obs).
+  // Unified Raise prefill: Preauth/Clinical (or explicit encounterUuid) → formValues + diagnoses + provider.
   useEffect(() => {
-    const needsForm =
+    const specialtyNeedsForm =
       specialty.requiresSurgicalPreauth ||
       specialty.requiresRenalPreauth ||
       specialty.requiresRadiologyPreauth ||
       specialty.requiresOpticalPreauth;
+    const needsForm = specialtyNeedsForm || isPlainNormalPreauth;
     const uuid = patientUuid || billItem.patient_uuid;
     if (!needsForm || !uuid) {
       setFormLoadState('idle');
@@ -710,41 +765,119 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     }
 
     let cancelled = false;
-    setFormLoadState('loading');
+
     (async () => {
-      const values = await fetchPreauthFormValues(uuid);
+      let uuid = (patientUuid || billItem.patient_uuid || '').trim();
+      if (!uuid) {
+        const cr = (billItem.cr_no || '').trim();
+        if (cr) {
+          uuid = await resolvePatientUuidFromCr(cr);
+        }
+      }
+      if (!uuid) {
+        if (!cancelled) {
+          setFormLoadState('idle');
+          setFormFound(new Set());
+          setFormRelevant(new Set());
+        }
+        return;
+      }
+
+      setFormLoadState('loading');
+      let model: Awaited<ReturnType<typeof resolveAndLoadRaisePrefill>> = null;
+      try {
+        model = await resolveAndLoadRaisePrefill({
+          patientUuid: uuid,
+          encounterUuid: encounterUuidProp,
+          specialtyNeedsForm,
+        });
+      } catch {
+        if (!cancelled) {
+          setFormLoadState(needsForm ? 'done' : 'idle');
+          setFormFound(new Set());
+          setFormRelevant(new Set());
+        }
+        return;
+      }
       if (cancelled) return;
 
-      // Apply every mapped value found on the form — do not gate on specialty flags here.
-      // Specialty only controls which keys are required / shown as missing below.
-      // (Gating on flags raced with SHA enrichment and skipped renal fields.)
-      if (values.found.has('clinicalIndications')) {
-        setClinicalIndications(values.clinicalIndications);
-      }
-      if (values.found.has('startDate')) setStartDate(values.startDate);
-      if (values.found.has('sessionsRequired')) setSessionsRequired(values.sessionsRequired);
-      if (values.found.has('frequency')) setFrequency(values.frequency);
-      if (values.found.has('chiefComplaint')) setChiefComplaint(values.chiefComplaint);
-      if (values.found.has('hpi')) setHpi(values.hpi);
-      if (values.found.has('physicalExam')) setPhysicalExam(values.physicalExam);
-      if (values.found.has('investigations')) setInvestigations(values.investigations);
-      if (values.found.has('anaesthesia')) setAnaesthesia(values.anaesthesia);
-      if (values.found.has('surgeryDate')) setSurgeryDate(values.surgeryDate);
-      if (values.found.has('relatedToEmployment') && values.relatedToEmployment !== null) {
-        setRelatedToEmployment(values.relatedToEmployment);
-      }
-      if (values.found.has('relatedToAccident') && values.relatedToAccident !== null) {
-        setRelatedToAccident(values.relatedToAccident);
-      }
-      if (values.found.has('isCoInsured') && values.isCoInsured !== null) {
-        setIsCoInsured(values.isCoInsured);
-      }
-      if (values.found.has('coInsuranceDetails')) {
-        setCoInsuranceDetails(values.coInsuranceDetails);
+      const values = model?.formValues;
+      if (values) {
+        if (values.found.has('clinicalIndications') || values.clinicalIndications.trim()) {
+          setClinicalIndications(values.clinicalIndications);
+        }
+        if (values.found.has('startDate')) setStartDate(values.startDate);
+        if (values.found.has('sessionsRequired')) setSessionsRequired(values.sessionsRequired);
+        if (values.found.has('frequency')) setFrequency(values.frequency);
+        if (values.found.has('chiefComplaint')) setChiefComplaint(values.chiefComplaint);
+        if (values.found.has('hpi')) setHpi(values.hpi);
+        if (values.found.has('physicalExam')) setPhysicalExam(values.physicalExam);
+        if (values.found.has('investigations')) setInvestigations(values.investigations);
+        if (values.found.has('anaesthesia')) setAnaesthesia(values.anaesthesia);
+        if (values.found.has('surgeryDate')) setSurgeryDate(values.surgeryDate);
+        if (values.found.has('relatedToEmployment') && values.relatedToEmployment !== null) {
+          setRelatedToEmployment(values.relatedToEmployment);
+        }
+        if (values.found.has('relatedToAccident') && values.relatedToAccident !== null) {
+          setRelatedToAccident(values.relatedToAccident);
+        }
+        if (values.found.has('isCoInsured') && values.isCoInsured !== null) {
+          setIsCoInsured(values.isCoInsured);
+        }
+        if (values.found.has('coInsuranceDetails')) {
+          setCoInsuranceDetails(values.coInsuranceDetails);
+        }
+        if (isElective && values.expectedServiceStartDate) {
+          const d = dayjs(values.expectedServiceStartDate);
+          if (d.isValid()) setExpectedServiceStartDate(d.format('YYYY-MM-DDTHH:mm:ssZ'));
+        }
       }
 
-      // Always prefer bill line price resolved from facility patient bills (see resolve effect).
-      // Do not overwrite with launch billItem.item_price (often keph tariff / wrong line).
+      const preferredDx = model?.diagnoses?.[0];
+      if (preferredDx?.conceptUuid) {
+        encounterDxAppliedRef.current = true;
+        const hit: DiagnosisConceptHit = {
+          uuid: preferredDx.conceptUuid,
+          display: preferredDx.display || preferredDx.icd11Code || preferredDx.conceptUuid,
+          icd11Code: preferredDx.icd11Code || '',
+        };
+        applyDiagnosisPick(conceptDxPick(hit), { fromUser: false });
+        setConceptDxHits((prev) => {
+          if (prev.some((p) => p.uuid === hit.uuid)) return prev;
+          return [hit, ...prev];
+        });
+      }
+
+      const natId =
+        (model?.providerNationalId || initialDoctorNationalId || '').trim() ||
+        (initialDoctorNationalId ?? '').trim();
+      if (natId && !providerPrefillAppliedRef.current) {
+        providerPrefillAppliedRef.current = true;
+        setDoctorId(natId);
+        if (model?.providerDisplay || initialProviderDisplay) {
+          setSelectedProvider({
+            uuid: model?.providerUuid || 'prefill',
+            display: model?.providerDisplay || initialProviderDisplay || natId,
+            nationalId: natId,
+          });
+        }
+        try {
+          const results = await searchHealthWorkerRegistry({
+            identifierType: DEFAULT_DOCTOR_ID_TYPE,
+            identifierValue: natId,
+            locationUuid,
+          });
+          if (!cancelled && results[0]) {
+            setHwrHit(results[0]);
+            setRegulationBody(normalizeRegulationBody(results[0].membership?.licensing_body));
+            if (results[0].contacts?.email) {
+              setProviderEmail(results[0].contacts.email);
+            }
+          }
+        } catch {
+          // soft-fail HWR
+        }
+      }
 
       const relevant = new Set<PreauthFormFieldKey>();
       if (
@@ -752,35 +885,58 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
         specialty.requiresOpticalPreauth ||
         specialty.requiresRenalPreauth
       ) {
+        // Specialty: clinical indications must come from the Pre-authorization form (locked).
         relevant.add('clinicalIndications');
       }
+      // Plain normal: prefill when present but keep the field editable (not formRelevant).
       if (specialty.requiresRenalPreauth) {
         RENAL_FORM_KEYS.forEach((k) => relevant.add(k));
       }
       if (specialty.requiresSurgicalPreauth) {
         SURGICAL_FORM_KEYS.forEach((k) => relevant.add(k));
       }
-      // coInsuranceDetails only required when patient is co-insured
-      if (values.isCoInsured !== true) {
+      if (values?.isCoInsured !== true) {
         relevant.delete('coInsuranceDetails');
       }
 
       setFormRelevant(relevant);
-      setFormFound(new Set([...relevant].filter((k) => values.found.has(k))));
-      setFormLoadState('done');
+      setFormFound(
+        values ? new Set([...relevant].filter((k) => values.found.has(k))) : new Set(),
+      );
+      setFormLoadState(needsForm || model ? 'done' : 'idle');
     })();
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     patientUuid,
     billItem.patient_uuid,
+    isPlainNormalPreauth,
     specialty.requiresSurgicalPreauth,
     specialty.requiresRenalPreauth,
     specialty.requiresRadiologyPreauth,
     specialty.requiresOpticalPreauth,
+    locationUuid,
   ]);
+
+  // Surgical vital_signs — concatenate today's OPD Triage vitals (editable after prefill).
+  useEffect(() => {
+    if (!specialty.requiresSurgicalPreauth) return;
+    const uuid = patientUuid || billItem.patient_uuid;
+    if (!uuid) return;
+    let cancelled = false;
+    (async () => {
+      const concat = await fetchTodaysTriageVitalsConcat(uuid, locationUuid);
+      if (!cancelled && concat) {
+        setVitalSigns((prev) => (prev.trim() ? prev : concat));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [patientUuid, billItem.patient_uuid, locationUuid, specialty.requiresSurgicalPreauth]);
 
   const clinicalIndicationsFieldProps = {
     labelText: 'Clinical indications',
@@ -1076,7 +1232,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       };
     });
 
-    const billUnitPrice = String(billItem.item_price ?? billItem.item_total_price ?? unitPrice ?? '').trim();
+    // Prefer the text-box value so edits are submitted, not the launch bill line.
+    const billUnitPrice = String(unitPrice ?? billItem.item_price ?? billItem.item_total_price ?? '').trim();
     const resolvedUnitPrice = billUnitPrice;
 
     const payload: PreauthFormPayload = {
@@ -1120,7 +1277,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       payload.number_of_sessions_required = Number.isFinite(sessionsNum) ? sessionsNum : sessionsRequired;
       payload.cost_per_session = String(costPerSession || billUnitPrice || '').trim();
       payload.frequency_of_sessions = frequency;
-      payload.clinical_indications = clinicalIndications.trim();
       payload.start_date = startDate;
       payload.is_co_insured = isCoInsured;
       if (isCoInsured && coInsuranceDetails.trim()) {
@@ -1135,7 +1291,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       payload.eye_examination_amount = eyeExamAmount;
       payload.frame_amount = frameAmount;
       payload.new_or_replacement = newOrReplacement;
-      payload.clinical_indications = clinicalIndications.trim();
     }
 
     if (specialty.requiresOncologyPreauth) {
@@ -1156,7 +1311,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       }
     }
 
-    if (specialty.requiresRadiologyPreauth) {
+    // Renal / optical / imaging / plain normal — always send when captured.
+    if (clinicalIndications.trim()) {
       payload.clinical_indications = clinicalIndications.trim();
     }
 
@@ -1235,9 +1391,11 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       });
       return;
     }
-    const billUnitPrice = String(billItem.item_price ?? billItem.item_total_price ?? unitPrice ?? '').trim();
+    // Prefer the text-box value so edits are validated/submitted, not the launch bill line.
+    const billUnitPrice = String(unitPrice ?? billItem.item_price ?? billItem.item_total_price ?? '').trim();
     const resolvedUnitPrice = billUnitPrice;
     const needsClinicalIndications =
+      isPlainNormalPreauth ||
       specialty.requiresRadiologyPreauth ||
       specialty.requiresRenalPreauth ||
       specialty.requiresOpticalPreauth;
@@ -1251,7 +1409,9 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       isElective && !expectedServiceStartDate && 'Expected service start date',
       needsClinicalIndications &&
         !clinicalIndications.trim() &&
-        'Clinical indications (complete Pre-authorization form on the patient chart)',
+        (isPlainNormalPreauth
+          ? 'Clinical indications'
+          : 'Clinical indications (complete Pre-authorization form on the patient chart)'),
       missingFormFields.length > 0 &&
         `Pre-authorization form fields (${missingFormFields.join(', ')})`,
     ].filter(Boolean);
@@ -1686,7 +1846,10 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
             }
             type="number"
             value={unitPrice}
-            readOnly
+            onChange={(e) => {
+              markDirty();
+              setUnitPrice(e.target.value);
+            }}
           />
 
           <div className={styles.searchBlock}>
@@ -1783,6 +1946,13 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
             <p className={styles.fieldHint}>COC = Clinical Officers Council · NCK = Nursing Council of Kenya</p>
           </div>
         </section>
+
+        {isPlainNormalPreauth ? (
+          <section className={styles.section}>
+            <h5>Clinical indications</h5>
+            <TextArea id="normal-clinical-indications" {...clinicalIndicationsFieldProps} />
+          </section>
+        ) : null}
 
         {specialty.requiresSurgicalPreauth ? (
           <section className={styles.section}>

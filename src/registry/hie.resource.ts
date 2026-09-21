@@ -202,12 +202,9 @@ export async function getBiometrictsRequestUrl(
   interventionCode: string,
   serviceType?: string,
   workstationId?: string,
-  { isDischarge }: { isDischarge?: boolean } = { isDischarge: false }
+  { isDischarge }: { isDischarge?: boolean } = { isDischarge: false },
 ): Promise<any> {
   const hieBaseUrl = await getHieBaseUrl();
-
-  // eslint-disable-next-line no-console
-  console.log('WORKSTATION ID:', workstationId);
 
   const payload = {
     interventions: [interventionCode],
@@ -342,11 +339,7 @@ export async function sendDischargeOTP(consentToken: string, patientId: string, 
   return data;
 }
 
-export async function getAuthorizations(
-  locationUuid: string,
-  crId?: string,
-  token?: string,
-): Promise<Authorization[]> {
+export async function getAuthorizations(locationUuid: string, crId?: string, token?: string): Promise<Authorization[]> {
   const hieBaseUrl = await getHieBaseUrl();
 
   const params = new URLSearchParams({
@@ -404,10 +397,11 @@ export async function resolvePreVisitConsentAuthorization(opts: {
 
   if (consentToken) {
     const byToken = await getAuthorizations(locationUuid, undefined, consentToken);
-    const hit =
-      byToken.find((a) => String(a?.token ?? '').trim() === consentToken) ?? byToken[0] ?? null;
+    const hit = byToken.find((a) => String(a?.token ?? '').trim() === consentToken) ?? byToken[0] ?? null;
     if (!hit?.token) return null;
-    const status = String(hit.status ?? '').trim().toUpperCase();
+    const status = String(hit.status ?? '')
+      .trim()
+      .toUpperCase();
     if (status && !PREVISIT_USABLE_STATUSES.has(status) && status !== 'PENDING') {
       throw new Error(`Consent token status is ${status}; expected AUTHORIZED_PENDING_VISIT.`);
     }
@@ -421,7 +415,11 @@ export async function resolvePreVisitConsentAuthorization(opts: {
 
   const byBeneficiary = await getAuthorizations(locationUuid, beneficiaryCode, undefined);
   const usable = byBeneficiary.filter((a) =>
-    PREVISIT_USABLE_STATUSES.has(String(a?.status ?? '').trim().toUpperCase()),
+    PREVISIT_USABLE_STATUSES.has(
+      String(a?.status ?? '')
+        .trim()
+        .toUpperCase(),
+    ),
   );
   const preferred = usable[0] ?? null;
   return preferred?.token ? preferred : null;
@@ -449,8 +447,8 @@ export async function cancelPendingAuthorizations(consentToken: string, location
 
   if (!response.ok) {
     const details = Array.isArray(data?.details) ? data.details.join('; ') : '';
-    const errorText = [data?.message, data?.error, details].filter(Boolean).join(' — ') ||
-      'Failed to cancel pending authorization';
+    const errorText =
+      [data?.message, data?.error, details].filter(Boolean).join(' — ') || 'Failed to cancel pending authorization';
     throw new Error(String(errorText));
   }
 

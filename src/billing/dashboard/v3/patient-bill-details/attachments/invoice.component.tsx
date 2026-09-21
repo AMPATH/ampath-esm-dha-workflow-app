@@ -1,9 +1,11 @@
 import React, { forwardRef } from 'react';
 import { type VisitIntervention } from '../../types';
 import styles from './invoice.scss';
+import { useSession } from '@openmrs/esm-framework';
 
 interface InvoiceComponentProps {
   bill?: any;
+  patientUuid?: any;
 }
 
 function formatCurrency(value?: number | string) {
@@ -20,6 +22,8 @@ function formatDate(value?: string) {
 }
 
 const InvoiceComponent = forwardRef<HTMLDivElement, InvoiceComponentProps>(({ bill }, ref) => {
+  const session = useSession();
+  const locationUuid = session?.sessionLocation?.uuid;
   if (!bill) {
     return (
       <div ref={ref} className={styles.invRoot}>
@@ -28,12 +32,9 @@ const InvoiceComponent = forwardRef<HTMLDivElement, InvoiceComponentProps>(({ bi
     );
   }
 
-  // Some callers pass a single flattened bill item, others may pass a full bill with
-  // an `items` array. Normalise to a list so the table always has a consistent shape,
-  // without silently dropping data either caller might send.
   const items =
-    Array.isArray(bill.items) && bill.items.length > 0
-      ? bill.items
+    Array.isArray(bill) && bill.length > 0
+      ? bill
       : [
           {
             billable_service: bill.billable_service,

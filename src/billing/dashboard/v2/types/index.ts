@@ -245,6 +245,8 @@ export type ClaimVisitReponse = {
   locationUuid: string;
   patientId: string;
   serviceType: string;
+  providerStatus: string;
+  payerStatus: string;
   claimVisitId: string;
   claimVisitNumber: string;
   visitStart: string;
@@ -252,8 +254,6 @@ export type ClaimVisitReponse = {
   authorizationGuid: string;
   visitResponse: ClaimsVisit;
   createdBy?: string | null;
-  /** When this snapshot of the claim was recorded locally. The same claim is returned
-      once per local visit, so this is what tells the snapshots apart. */
   dateCreated?: string | null;
 };
 
@@ -477,6 +477,7 @@ export interface PatientBill {
   paid_status: string;
   visit_start_date: string;
   cr_id: string;
+  claim_status: string;
 }
 
 export interface PendingLineItem {
@@ -511,4 +512,14 @@ export type BillPayment = {
   amount: number;
   amount_tendered: number;
   bill_id: string;
+};
+
+export type ClaimPatientList = {
+  patient_name: string;
+  age: string;
+  gender: string;
+  county_sub_county: string;
+  village_estate_landmark: string;
+  phone_number: string;
+  diagnosis: string;
 };

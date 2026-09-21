@@ -35,12 +35,15 @@ import {
   type AmrsVisitDiagnosisDto,
   type AmrsVisitDiagnosisResponse,
   type BedOccupancy,
-  PayerPreviewResponse,
+  type PayerPreviewResponse,
   PayerPreviewResult,
+  ClaimVisit,
+  FetchClaimVisitDto,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
+import { type VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
+import { ClaimsDashboardStatsData, ClaimsDashboardStatsDataResp, type PatientBillVisit } from './dashboard/v3/types';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -145,14 +148,8 @@ export async function fetchProviderClaimPreview(
   providerClaimPreviewDto: ProviderClaimPreviewDto,
 ): Promise<ClaimsVisit> {
   const { hieBaseUrl } = await getHieBaseUrl();
-  const providerClaimPreviewUrl = `${hieBaseUrl}/claim-preview/provider`;
-  const response = await openmrsFetch(providerClaimPreviewUrl, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(providerClaimPreviewDto),
-  });
+  const providerClaimPreviewUrl = `${hieBaseUrl}/claim-preview/provider?consentToken=${providerClaimPreviewDto.consentToken}&locationUuid=${providerClaimPreviewDto.locationUuid}`;
+  const response = await openmrsFetch(providerClaimPreviewUrl);
   const data = (await response.json()) as ClaimsVisit;
   return data ?? null;
 }
@@ -819,30 +816,30 @@ export async function fetchPatientDiagnosesForBilling(
   const maternityRows: AmrsVisitDiagnosis[] =
     maternityResult.status === 'fulfilled'
       ? (maternityResult.value ?? [])
-          .filter((r) => r?.uuid != null)
-          .map(
-            (v): AmrsVisitDiagnosis => ({
-              patient_id: Number(v.patient_id) || 0,
-              encounter_id: v.encounter_id,
-              encounter_datetime: v.encounter_datetime,
-              facility: v.facility ?? '',
-              encounter_type: v.encounter_type,
-              concept_id: v.concept_id != null ? Number(v.concept_id) : null,
-              value_coded: v.value_coded != null ? Number(v.value_coded) : null,
-              dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
-              concept_source_name: v.concept_source_name,
-              hl7_code: v.hl7_code,
-              icd11_code: v.icd11_code,
-              provider_id: '',
-              national_id: v.practioner_nat_id ?? '',
-              speciality: v.practitioner_speciality ?? null,
-              uuid: v.uuid,
-              practioner_nat_id: v.practioner_nat_id,
-              practitioner_speciality: v.practitioner_speciality,
-              practitioner_identifier_type: 'National ID',
-              practitioner_body: v.practitioner_body,
-            }),
-          )
+        .filter((r) => r?.uuid != null)
+        .map(
+          (v): AmrsVisitDiagnosis => ({
+            patient_id: Number(v.patient_id) || 0,
+            encounter_id: v.encounter_id,
+            encounter_datetime: v.encounter_datetime,
+            facility: v.facility ?? '',
+            encounter_type: v.encounter_type,
+            concept_id: v.concept_id != null ? Number(v.concept_id) : null,
+            value_coded: v.value_coded != null ? Number(v.value_coded) : null,
+            dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
+            concept_source_name: v.concept_source_name,
+            hl7_code: v.hl7_code,
+            icd11_code: v.icd11_code,
+            provider_id: '',
+            national_id: v.practioner_nat_id ?? '',
+            speciality: v.practitioner_speciality ?? null,
+            uuid: v.uuid,
+            practioner_nat_id: v.practioner_nat_id,
+            practitioner_speciality: v.practitioner_speciality,
+            practitioner_identifier_type: 'National ID',
+            practitioner_body: v.practitioner_body,
+          }),
+        )
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
@@ -914,3 +911,165 @@ export function usePayerClaimPreview(invoiceNo: string, locationUuid: string) {
     isValidating,
   };
 }
+
+export async function fetchPatientVisits(
+  patientUuid: string,
+  billingDate: string,
+  locationUuid: string,
+): Promise<PatientBillVisit[]> {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url =
+      `${etlBaseUrl}/patient/patient-visits` +
+      `?patientUuid=${encodeURIComponent(patientUuid)}` +
+      `&locationUuid=${encodeURIComponent(locationUuid)}` +
+      `&billingDate=${encodeURIComponent(billingDate)}`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.results ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient visits');
+  }
+}
+
+export async function fetchPatientBillDetails(visitUuid: string) {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url = `${etlBaseUrl}/facility/patient/bill?visitUuid=${visitUuid}`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.results ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
+  }
+}
+
+export function usePatientBillDetails(visitUuid: string) {
+  const { etlBaseUrl } = useConfig({
+    externalModuleName: '@ampath/esm-dha-workflow-app',
+  });
+
+  const url = visitUuid ? `${etlBaseUrl}/facility/patient/bill?visitUuid=${visitUuid}` : null;
+
+  const { data, error, isLoading, isValidating } = useSWR<{
+    data: {
+      results: Array<PatientFacilityBillDetails>
+    }
+  }>(url, openmrsFetch);
+
+  const results = data?.data?.results || [];
+
+  return {
+    results,
+    error,
+    isLoading,
+    isValidating,
+  };
+}
+
+export function useInvalidatePatientBillDetails() {
+  const { etlBaseUrl } = useConfig({
+    externalModuleName: '@ampath/esm-dha-workflow-app',
+  });
+  return useCallback(() => {
+    const url = `${etlBaseUrl}/facility/patient/bill`;
+    mutate((key) => typeof key === 'string' && key.startsWith(`${url}`), undefined, { revalidate: true });
+  }, [etlBaseUrl]);
+}
+
+export async function fetchClaimsDashboard(
+  startDate: string,
+  endDate: string,
+  locationUuid: string,
+): Promise<ClaimsDashboardStatsData | null> {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url = `${etlBaseUrl}/claims-dashboard?startDate=${startDate}&endDate=${endDate}&locationUuids=${locationUuid}`;
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    if ('result' in data) {
+      const results = data.result;
+      if (results.length > 0) {
+        return results[0];
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
+  }
+}
+
+export async function fetchClaimsDashboardPatientChart(
+  indicator: string,
+  startDate: string,
+  endDate: string,
+  locationUuid: string,
+) {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url = `${etlBaseUrl}/claims-dahsboard-patient-list?indicator=${indicator}&startDate=${startDate}&endDate=${endDate}&locationUuids=${locationUuid}&limit=30`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.results.results ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
+  }
+}
+
+export async function fethClaimVisits(fetchClaimVisitDto: FetchClaimVisitDto): Promise<ClaimVisit[]> {
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const fetchClaimsPayload: FetchClaimVisitDto = {
+    ...fetchClaimVisitDto,
+  };
+  const queryString = new URLSearchParams(fetchClaimsPayload).toString();
+  const response = await openmrsFetch(`${hieBaseUrl}/claims-visit?${queryString}`);
+  const data = (await response.json()) as ClaimVisit[];
+  return data;
+}
+
+export const useBill = (billUuid: string) => {
+  const url = billUuid ? `${restBaseUrl}/billing/bill/${billUuid}?v=custom:(uuid,patient:(uuid),lineItems,status)` : null;
+
+  const {
+    data,
+    error,
+    isLoading,
+    isValidating,
+    mutate: mutated,
+  } = useSWR<{
+    data: {
+      uuid: string,
+      patient: {
+        uuid: string
+      },
+      lineItems: Array<any>,
+      status: string
+    }
+  }>(url, openmrsFetch, {
+    errorRetryCount: 2,
+  });
+
+  const result = data?.data;
+
+  return {
+    bill: result,
+    error,
+    isLoading,
+    isValidating,
+    mutated,
+  };
+};

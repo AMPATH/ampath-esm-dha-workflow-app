@@ -169,12 +169,8 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
       const billPayload: CreateBillDto = {
         lineItems: [
           {
-            billableService: selectedBillableItem.uuid,
             quantity: 1,
-            price: shaPrice.price,
-            priceName: shaPrice.name,
             priceUuid: shaPrice.uuid,
-            lineItemOrder: 0,
             status: shaPrice.price === 0 ? 'PAID' : 'PENDING',
           },
         ],
