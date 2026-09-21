@@ -81,7 +81,7 @@ function decodeHtmlEntities(value: string): string {
 const OTP_EXPIRY_SECONDS = 300; // 5 minutes
 
 // Where the patient is sent first, and the rooms available for each category.
-const PATIENT_CATEGORIES = ['Triage', 'Walk-in'];
+const PATIENT_CATEGORIES = ['Triage', 'Walk-in', 'CCC'];
 const WALK_IN_ROOMS = [];
 
 // Payment modes that are direct payment (not insurance schemes) — excluded from
@@ -774,6 +774,8 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   // The SHA-ineligibility message (set on selecting an ineligible scheme) takes
   // precedence over the "select a scheme" prompt, and is shown regardless of touch
   // state because it's a response to something the user just did.
+  const isCccPatient = patientCategory === 'CCC';
+
   const insuranceInvalidText =
     insuranceError || (method === 'insurance' && touched.insurance && !insurance ? 'Select an insurance scheme' : '');
 
@@ -1307,7 +1309,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                   </div>
 
                   <div className={styles.formSection}>
-                    <h6 className={styles.sectionLabel}>Payment</h6>
+                    {!isCccPatient ? <h6 className={styles.sectionLabel}>Payment</h6> : <></>}
                     {hasCashPoint === false ? (
                       <div className={styles.errorNote}>
                         <WarningAltFilled size={20} className={styles.errorNoteIcon} />
@@ -1322,7 +1324,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       name="method-group"
                       orientation="horizontal"
                       valueSelected={method}
-                      disabled={hasCashPoint === false}
+                      disabled={isCccPatient || hasCashPoint === false}
                       onChange={(v) => {
                         // Switching payment method clears any preselected
                         // insurance so it can't carry into the payer mapping —
@@ -1345,7 +1347,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       </div>
                     ) : null}
 
-                    {method === 'insurance' ? (
+                    {method === 'insurance' && !isCccPatient ? (
                       <div {...lockSelection(!!insurance)} onBlurCapture={markTouched('insurance')}>
                         <ComboBox
                           id="insurance-scheme"
@@ -1408,7 +1410,10 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       <></>
                     )}
 
-                    {method === 'insurance' && /pomsf/i.test(insurance) && pomsfDisplayBalance !== null ? (
+                    {method === 'insurance' &&
+                    !isCccPatient &&
+                    /pomsf/i.test(insurance) &&
+                    pomsfDisplayBalance !== null ? (
                       <div className={styles.eligibilityRow}>
                         <span className={styles.eligibilityRowLabel}>Eligibility</span>
                         <Tag size="sm" type="green">
@@ -1417,7 +1422,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       </div>
                     ) : null}
 
-                    {method === 'insurance' && /sha|shif/i.test(insurance) ? (
+                    {method === 'insurance' && !isCccPatient && /sha|shif/i.test(insurance) ? (
                       <div className={styles.eligibilityRow}>
                         <span className={styles.eligibilityRowLabel}>Eligibility</span>
                         {shaEligibilityTag}
@@ -1434,7 +1439,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       </div>
                     ) : null}
 
-                    {method === 'insurance' && pomsfAllBenefits.length > 0 ? (
+                    {method === 'insurance' && !isCccPatient && pomsfAllBenefits.length > 0 ? (
                       <div className={styles.pomsfBenefitsSection}>
                         <span className={styles.eligibilityRowLabel}>POMSF benefits</span>
                         <div className={styles.tableWrapper}>

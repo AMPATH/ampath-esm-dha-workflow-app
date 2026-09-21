@@ -34,6 +34,7 @@ interface billDetailsProps {
   claimsVisit: ClaimsVisit;
 }
 
+type BillingScope = 'OPD' | 'INPATIENT';
 const BillDetails: React.FC<billDetailsProps> = ({
   patientBillDetails,
   patientPayments,
@@ -57,6 +58,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
     return <>No Data</>;
   }
   function handleBillItemPayment(patientBillDetail: PatientFacilityBillDetails) {
+    console.log('ACTION PAY BILL: ', patientBillDetail);
     setSelectedBillItem(patientBillDetail);
     setShowPaymentModal(true);
   }
