@@ -30,6 +30,7 @@ import {
   listOpenVisits,
   normalizeError,
   refreshVisitConsent,
+  submitClosedVisitToShr,
   summariseRecords,
   verifyConsentOtp,
 } from './shr.resource';
@@ -360,6 +361,96 @@ describe('closeShrVisit', () => {
     // "closure initiated" with an otp_record means the visit is still open.
     expect(res.otp_record).toBe('9fh38gd21k');
     expect(res.end_date).toBeUndefined();
+  });
+});
+
+// ── submitClosedVisitToShr ────────────────────────────────────────────────────
+
+describe('submitClosedVisitToShr', () => {
+  it('POSTs patientUuid + locationUuid to the visit-submission path and returns the outcome', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: {
+        status: 'submitted',
+        patientUuid: 'patient-uuid-1',
+        visitUuid: 'visit-uuid-1',
+        visitClosedAt: '2026-09-01T11:30:00+03:00',
+        entries: 11,
+        consentTokenSource: 'active-consent',
+        mediatorId: 'mediator-42',
+        mediatorMessage: 'Bundle accepted',
+        mediatorStatus: 'accepted',
+      },
+    } as any);
+
+    const res = await submitClosedVisitToShr({ patientUuid: 'patient-uuid-1', locationUuid: LOCATION_UUID });
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(`${BASE_URL}/shr/visit-submission`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: { patientUuid: 'patient-uuid-1', locationUuid: LOCATION_UUID },
+    });
+    expect(res.status).toBe('submitted');
+    expect(res.mediatorId).toBe('mediator-42');
+    expect(res.mediatorStatus).toBe('accepted');
+    expect(res.entries).toBe(11);
+  });
+
+  it('forwards the optional targeting and context fields verbatim', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { status: 'validated' } } as any);
+
+    await submitClosedVisitToShr({
+      patientUuid: 'patient-uuid-1',
+      locationUuid: LOCATION_UUID,
+      visitUuid: 'visit-uuid-1',
+      consentToken: 'tok-1',
+      dryRun: true,
+    });
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(`${BASE_URL}/shr/visit-submission`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        patientUuid: 'patient-uuid-1',
+        locationUuid: LOCATION_UUID,
+        visitUuid: 'visit-uuid-1',
+        consentToken: 'tok-1',
+        dryRun: true,
+      },
+    });
+  });
+
+  it('returns "skipped" unchanged — no closed visit is a normal answer, not an error', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: {
+        status: 'skipped',
+        patientUuid: 'patient-uuid-1',
+        message: 'No closed visit found for this patient — nothing to submit.',
+      },
+    } as any);
+
+    const res = await submitClosedVisitToShr({ patientUuid: 'patient-uuid-1', locationUuid: LOCATION_UUID });
+
+    expect(res.status).toBe('skipped');
+    expect(res.message).toContain('No closed visit');
+  });
+
+  it('wraps a backend failure (422 validation) as a ShrApiError carrying the real status', async () => {
+    mockOpenmrsFetch.mockRejectedValueOnce(
+      fetchError(422, 'Server responded with 422', {
+        status: 'failed',
+        message: 'The bundle did not pass SHA pre-submission validation.',
+        errors: ['Encounter.period: Period start must be <= end'],
+      }),
+    );
+
+    try {
+      await submitClosedVisitToShr({ patientUuid: 'patient-uuid-1', locationUuid: LOCATION_UUID });
+      fail('Should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ShrApiError);
+      expect((err as ShrApiError).status).toBe(422);
+      expect((err as ShrApiError).message).toContain('pre-submission validation');
+    }
   });
 });
 

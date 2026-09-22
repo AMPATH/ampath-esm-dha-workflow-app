@@ -202,6 +202,102 @@ export interface RefreshConsentResponse {
   status?: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Closed-visit FHIR submission (hie-saf: src/shr/visit-submission)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The bundle family the backend builds for a closed visit:
+ *
+ *  - `emergency` — the Kenya Emergency Care IG shape the SHA enforces
+ *    (em-* profiles, incident scaffolding, triage acuity);
+ *  - `clinical` — routine non-emergency care as a base-R4 Encounter whose
+ *    class comes from the AMRS visit type.
+ */
+export type ShrVisitSubmissionFamily = 'emergency' | 'clinical';
+
+/** What a submission request may ask for: a concrete family, or `auto`. */
+export type ShrVisitSubmissionFamilySelection = 'auto' | ShrVisitSubmissionFamily;
+
+/**
+ * Body for `POST {hieBaseUrl}/shr/visit-submission` — the hie-saf backend that
+ * maps a closed AMRS visit onto a SHA-IG-compliant FHIR collection bundle and
+ * submits it to the national SHR through DHA's middleware. With no `visitUuid`
+ * the backend picks the latest closed visit for the patient at `locationUuid`.
+ */
+export interface ShrVisitSubmissionRequest {
+  patientUuid: string;
+  /**
+   * The facility submitting — scopes the visit search, resolves the facility
+   * identity for the bundle, and scopes consent-token resolution.
+   */
+  locationUuid: string;
+  /** Submit this specific closed visit instead of the latest one. */
+  visitUuid?: string;
+  /**
+   * Which bundle family to build. Omitted (or `auto`) the backend decides from
+   * the AMRS visit type — its visit-type family map, then its configured
+   * default (emergency). Pass `clinical` for routine non-emergency visits or
+   * `emergency` to force the emergency IG shape.
+   */
+  submissionFamily?: ShrVisitSubmissionFamilySelection;
+  /**
+   * Consent token when the caller still holds one (the X-Consent-Token header
+   * takes precedence on the backend); otherwise the backend resolves one from
+   * the recorded consent session.
+   */
+  consentToken?: string;
+  /** Build (+ pre-validate) the bundle but do not submit it. */
+  dryRun?: boolean;
+}
+
+/** One `OperationOutcome.issue` the SHA server reported during pre-validation. */
+export interface ShrValidationIssue {
+  severity: string;
+  diagnostics?: string;
+  location?: string[];
+  /**
+   * True when the issue matches the documented UAT ValueSet-expansion defect —
+   * the bundle is conformant; the server's ValueSets are broken (see
+   * hie-saf docs/shr-visit-submission.md, "Known UAT terminology defect").
+   */
+  knownTerminologyDefect?: boolean;
+}
+
+/**
+ * The four outcomes of a submission request. `skipped` (no closed visit) and
+ * `validated` (dry run) are both successes; only `failed` means something
+ * needs attention, and `errors` then says why.
+ */
+export type ShrVisitSubmissionStatus = 'submitted' | 'validated' | 'skipped' | 'failed';
+
+/** Response from `POST {hieBaseUrl}/shr/visit-submission`. */
+export interface ShrVisitSubmissionResponse {
+  status: ShrVisitSubmissionStatus;
+  patientUuid: string;
+  /** The closed visit that was mapped (absent on `skipped`). */
+  visitUuid?: string;
+  /** ISO datetime the visit was closed. */
+  visitClosedAt?: string;
+  /** The bundle family the backend built (and submitted). */
+  submissionFamily?: ShrVisitSubmissionFamily;
+  /** Resource count in the submitted bundle. */
+  entries?: number;
+  /** Where the consent token came from, when one was needed. */
+  consentTokenSource?: 'request' | 'active-consent';
+  /** DHA mediator's acknowledgement of the submitted bundle. */
+  mediatorId?: string;
+  mediatorMessage?: string;
+  mediatorStatus?: string;
+  /** Present when the backend pre-validated the bundle. */
+  validationIssues?: ShrValidationIssue[];
+  /** Non-fatal mapping notes, e.g. "acuity defaulted to unknown". */
+  warnings?: string[];
+  message?: string;
+  /** Present with status "failed". */
+  errors?: string[];
+}
+
 /** Discriminated error thrown by every SHR call, carrying the real HTTP status. */
 export class ShrApiError extends Error {
   status: number;
