@@ -252,6 +252,7 @@ export type ClaimVisitReponse = {
   visitStart: string;
   authorizationCode: string;
   authorizationGuid: string;
+  totalClaimAmount: string;
   visitResponse: ClaimsVisit;
   createdBy?: string | null;
   dateCreated?: string | null;
