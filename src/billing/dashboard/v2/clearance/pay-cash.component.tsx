@@ -18,8 +18,6 @@ import { closeWorkspace, showSnackbar } from '@openmrs/esm-framework';
 import { type PendingLineItem } from '../types';
 
 import styles from './pay-cash.scss';
-import { updateBillItemStatus } from '../../../api/billing.api';
-import { Snackbar } from '@openmrs/esm-styleguide/src/snackbars/snackbar.component';
 import { payBillItem } from '../../../billing-claims.resource';
 import { getCashPaymentModeUuid } from '../../../../shared/utils/get-base-url';
 

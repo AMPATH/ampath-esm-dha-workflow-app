@@ -426,3 +426,9 @@ export enum ClaimPayerStatus {
   Appealed = 'APPEALED',
   TimeBarred = 'TIME_BARRED'
 }
+export enum ClaimServiceType {
+  Capitation = 'CAPITATION',
+  Inpatient = 'INPATIENT',
+  OutPatient = 'OUTPATIENT',
+  Emergency = 'EMERGENCY'
+}

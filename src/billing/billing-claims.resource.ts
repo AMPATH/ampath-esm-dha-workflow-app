@@ -36,14 +36,13 @@ import {
   type AmrsVisitDiagnosisResponse,
   type BedOccupancy,
   type PayerPreviewResponse,
-  PayerPreviewResult,
-  ClaimVisit,
-  FetchClaimVisitDto,
+  type ClaimVisit,
+  type FetchClaimVisitDto,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { type VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
-import { ClaimsDashboardStatsData, ClaimsDashboardStatsDataResp, type PatientBillVisit } from './dashboard/v3/types';
+import { type ClaimsDashboardStatsData, type PatientBillVisit } from './dashboard/v3/types';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
