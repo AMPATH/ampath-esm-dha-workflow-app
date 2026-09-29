@@ -479,6 +479,9 @@ export interface PatientBill {
   visit_start_date: string;
   cr_id: string;
   claim_status: string;
+  payer_status: string;
+  total_claim_amount: string;
+  service_type: string;
 }
 
 export interface PendingLineItem {
