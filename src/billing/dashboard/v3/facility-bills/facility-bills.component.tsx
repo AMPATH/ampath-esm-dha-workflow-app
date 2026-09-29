@@ -25,9 +25,9 @@ import { type TagColor } from 'src/types/types';
 interface facilityBillsProps {
   billingDate: string;
   locationUuid: string;
-  onRefresh?: (value: string) => void;
+  onDateChange?: (value: string) => void;
 }
-const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUuid, onRefresh }) => {
+const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUuid, onDateChange }) => {
   const [facilityBills, setFacilityBills] = useState<PatientBill[]>([]);
   const [currentView, setCurrentView] = useState<BillingView>(BillingView.Bills);
   const [selectedPatientUuid, setSelectedPatientUuid] = useState<string>('');
@@ -179,7 +179,6 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
   }
   function handleRefresh(){
       getFacilityBills();
-      handleRefresh();
   }
 
   return (
