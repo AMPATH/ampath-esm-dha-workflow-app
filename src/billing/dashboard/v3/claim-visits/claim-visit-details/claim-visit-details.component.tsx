@@ -6,7 +6,7 @@ import ClaimInterventionDetails from '../claim-intervention-details/claim-interv
 import ClaimDiagnosisDetails from '../claim-diagnosis-details/claim-diagnosis-details.component';
 import { formatDate, launchWorkspace, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
-import { Button, InlineLoading, Tile } from '@carbon/react';
+import { Button, InlineLoading, Modal, TextInput, Tile } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
 import SubmitClaimModal from '../modal/submit-claim/submit-claim.modal';
 import { endVisit, useInvalidateProviderClaimPreview, usePayerClaimPreview } from '../../../../billing-claims.resource';
@@ -14,12 +14,13 @@ import ClaimDocuments from '../claim-documents/claim-documents';
 import ClaimDoctors from '../claim-doctors/claim-doctors';
 import AddClaimDoctorModal from '../modal/claim-doctors/add-claim-doctor/add-claim-doctor.modal';
 import { VisitTypeUuids } from '../../../../../shared/constants/visit-types';
-import { VisitType } from '../../../../../claims';
+import { type VisitType } from '../../../../../claims';
 import { canEditClaimContent } from '../../../v2/claim-statuses';
 import { interventionHasBlockingPreauth, usePreauthPreview } from '../../../../../claims/claims.resource';
 import PayerPreviewTile from '../payer-preview/payer-preview-tile.component';
 import { Renew } from '@carbon/react/icons';
 import { syncVisitToShr } from '../../../../../shr/shr-visit-sync';
+import SubmitEmergencyClaimModal from '../modal/submit-emergency-claim/submit-emergency-claim.component';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -44,6 +45,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   const [triggerEndVisit, setTriggerEndVisit] = useState<boolean>(false);
   const { t } = useTranslation();
   const { activeVisit } = useVisit(patientBillDetails?.patient_uuid);
+  const [showSubmitEmergencyModal, setshowSubmitEmergencyModal] = useState<boolean>(false);
 
   const invoiceNumber = useMemo(() => {
     if (patientBillDetails) {
@@ -115,7 +117,11 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   function handleCloseClaimModal() {
     setShowCloseClaimModal(false);
   }
-  function displayCloseSubmitClaimModal() {
+  async function displayCloseSubmitClaimModal() {
+    if (claimsVisit.service_type === 'EMERGENCY') {
+      setshowSubmitEmergencyModal(true);
+      return;
+    }
     setSubmitCloseClaimModal(true);
   }
   function handleCloseSubmitClaimModal() {
@@ -188,7 +194,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
 
   const handleRefresh = () => {
     invalidateProviderClaimPreview();
-  }
+  };
 
   return (
     <>
@@ -214,9 +220,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           </div>
         </div>
 
-        <Tile
-          id="provider-preview"
-        >
+        <Tile id="provider-preview">
           <div className={styles.tileHeader}>
             <dd>Provider preview</dd>
             <Button size="sm" kind="ghost" renderIcon={Renew} onClick={handleRefresh} disabled={claimRefreshing}>
@@ -351,6 +355,15 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           handleClose={handleCloseAddDoctorModal}
           claimDoctors={[]}
           consentToken={claimsVisit.authorization_code}
+        />
+      )}
+      {showSubmitEmergencyModal && (
+        <SubmitEmergencyClaimModal
+          consentToken={claimsVisit.authorization_code}
+          invoiceNumber={claimsVisit.invoices[0]?.invoice_number}
+          open={showSubmitEmergencyModal}
+          onClose={() => setshowSubmitEmergencyModal(false)}
+          locationUuid={locationUuid}
         />
       )}
     </>
