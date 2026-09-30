@@ -97,6 +97,9 @@ export type AmrsVisitDiagnosis = {
    * Diagnosis rank from encounter-diagnosis ETL (1 = primary / preferred for preauth).
    * Lower ranks are preferred when multiple diagnoses are present.
    */
+  diagnosis_type: string;
+  provider_name: string;
+  concept_name: string;
   dx_rank?: number | null;
   concept_source_name: string;
   hl7_code: string;
@@ -136,6 +139,9 @@ export type AmrsMaternityDiagnosis = {
   facility: string;
   concept_id: string;
   value_coded: string;
+  diagnosis_type: string | null;
+  concept_name: string | null;
+  provider_name: string | null;
 };
 
 export type AmrsMaternityDiagnosisDto = {
