@@ -33,6 +33,7 @@ import {
   Microscope,
   Renew,
   Report,
+  Send,
   Stethoscope,
   User,
 } from '@carbon/react/icons';
@@ -97,11 +98,15 @@ interface ShrViewerProps {
   syncedAt: string;
   isSyncing: boolean;
   isClosing: boolean;
+  /** Set while a "send visit to SHR" push is in flight. */
+  isSubmittingVisit?: boolean;
   /** Set when a close-visit attempt failed — shown here so the loaded records survive. */
   closeError: string;
   /** Set when a refresh failed — likewise shown here, leaving the records already loaded intact. */
   syncError: string;
   onSync: () => void;
+  /** Pushes the patient's latest closed AMRS visit into the SHR (outcome is reported by the parent). */
+  onSubmitVisit: () => void;
   /** Opens the closure confirmation — closing is never immediate on click. */
   onCloseVisit: () => void;
   /**
@@ -119,10 +124,12 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
   syncedAt,
   isSyncing,
   isClosing,
+  isSubmittingVisit,
   closeError,
   closePanel,
   syncError,
   onSync,
+  onSubmitVisit,
   onCloseVisit,
 }) => {
   const { t } = useTranslation();
@@ -166,6 +173,15 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
           </p>
         </div>
         <div className={styles.headerActions}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Send}
+            onClick={onSubmitVisit}
+            disabled={isSubmittingVisit || isSyncing || isClosing}
+          >
+            {isSubmittingVisit ? t('shrSendingVisitData', 'Sending…') : t('shrSendVisitData', 'Send visit to SHR')}
+          </Button>
           <Button kind="tertiary" size="sm" renderIcon={Renew} onClick={onSync} disabled={isSyncing || isClosing}>
             {isSyncing ? t('syncing', 'Syncing…') : t('syncNow', 'Sync now')}
           </Button>
