@@ -1,5 +1,6 @@
-import { openmrsFetch } from '@openmrs/esm-framework';
+import { openmrsFetch, showSnackbar } from '@openmrs/esm-framework';
 import { getEtlBaseUrl, getHieBaseUrl } from '../../shared/utils/get-base-url';
+import { type AddProtocalDto } from '../../billing/dashboard/v3/types';
 
 export const fetchEmergencyInterventions = async () => {
   const hieBaseUrl = await getHieBaseUrl();
@@ -145,39 +146,24 @@ export async function fetchEmergencyProtocals(interventionCode: string, location
   return data;
 }
 
-export async function addEmergencyProtocal(
-  consentToken: string,
-  protocalCode: string,
-  interventionCode: string,
-  unitPrice: number,
-  quantity: number,
-  locationUuid: string,
-): Promise<any> {
+export async function addEmergencyProtocal(addProtocalDto: AddProtocalDto): Promise<any> {
   const hieBaseUrl = await getHieBaseUrl();
 
-  const payload = {
-    consentToken: [consentToken],
-    protocalCode: protocalCode,
-    interventionCode: interventionCode,
-    unitPrice: unitPrice,
-    quantity: quantity,
-    locationUuid: locationUuid,
-  };
-  const url = `${hieBaseUrl}/emergency/claim/protocals`;
+  const url = `${hieBaseUrl}/emergency/claim/protocols`;
   const response = await openmrsFetch(url, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(addProtocalDto),
   });
 
   const data = await response.json();
 
   if (!response.ok) {
     const errorText = data.message || 'Failed to created claim protocal';
-    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+    return data;
   }
 
   return data;
@@ -249,18 +235,18 @@ export async function deleteEmergencyClaimDoctor(consentToken: string, locationU
 export async function submitEmergencyClaim(
   consentToken: string,
   invoiceNumber: string,
-  reasonForUnknown: string,
   locationUuid: string,
+  reasonForUnknownPatient?: string,
 ): Promise<any> {
   const hieBaseUrl = await getHieBaseUrl();
 
   const payload = {
-    consentToken: [consentToken],
-    invoiceNumber: invoiceNumber,
-    reasonForUnknown: reasonForUnknown,
-    locationUuid: locationUuid,
+    consentToken,
+    invoiceNumber,
+    ...(reasonForUnknownPatient !== undefined && { reasonForUnknownPatient }),
+    locationUuid,
   };
-  const url = `${hieBaseUrl}/emergency/claim/unidentified/submit`;
+  const url = `${hieBaseUrl}/claim/unidentified/submit`;
   const response = await openmrsFetch(url, {
     method: 'POST',
     headers: {
@@ -274,7 +260,7 @@ export async function submitEmergencyClaim(
 
   if (!response.ok) {
     const errorText = data.message || 'Failed to submit emergency claim';
-    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+    return data;
   }
 
   return data;

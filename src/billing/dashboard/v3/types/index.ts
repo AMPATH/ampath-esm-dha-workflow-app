@@ -58,6 +58,7 @@ export type PatientFacilityBillDetails = {
   requires_oncology_preauth?: boolean | number | string;
   requires_radiology_preauth?: boolean | number | string;
   requires_optical_preauth?: boolean | number | string;
+  protocal_code?: string;
 };
 
 export type PatientFacilityBillDetailsResponse = {
@@ -292,6 +293,17 @@ export type AddClaimLineDto = {
   preauthCode?: string;
 };
 
+export type AddProtocalDto = {
+  consentToken: string;
+  interventionCode: string;
+  unitPrice: number;
+  quantity: number;
+  locationUuid: string;
+  protocolCode: string;
+  /** Best-effort; hie-saf may not forward yet */
+  preauthCode?: string;
+};
+
 export type RemoveClaimLineDto = {
   consentToken: string;
   lineGuid: string;
@@ -394,7 +406,7 @@ export type PatientBillVisit = {
 
 export type ClaimsDashboardStatsDataResp = {
   result: ClaimsDashboardStatsData;
-}
+};
 
 export type ClaimsDashboardStatsData = {
   draft: number | null;
@@ -416,7 +428,7 @@ export enum ClaimProviderStatus {
   TimeBarred = 'TIME_BARRED',
   Closed = 'CLOSED',
   Submitted = 'SUBMITTED',
-  FailedToSubmit = 'FAILED_TO_SUBMIT'
+  FailedToSubmit = 'FAILED_TO_SUBMIT',
 }
 export enum ClaimPayerStatus {
   Paid = 'PAID',
@@ -424,11 +436,11 @@ export enum ClaimPayerStatus {
   Approved = 'APPROVED',
   SentForPaymentProcessing = 'SENT_FOR_PAYMENT_PROCESSING',
   Appealed = 'APPEALED',
-  TimeBarred = 'TIME_BARRED'
+  TimeBarred = 'TIME_BARRED',
 }
 export enum ClaimServiceType {
   Capitation = 'CAPITATION',
   Inpatient = 'INPATIENT',
   OutPatient = 'OUTPATIENT',
-  Emergency = 'EMERGENCY'
+  Emergency = 'EMERGENCY',
 }

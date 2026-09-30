@@ -545,7 +545,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
           elective_preauth: Boolean(interventionResult?.needsManualPreauthApproval && electivePreauth),
           patient_uuid: amrsPatient?.uuid,
           ...(details?.protocolCode && {
-            protocol_code: details.protocolCode,
+            protocal_code: details.protocolCode,
           }),
           ...(applicableDocumentTypes.length > 0 && {
             applicable_document_types: applicableDocumentTypes.join(','),
