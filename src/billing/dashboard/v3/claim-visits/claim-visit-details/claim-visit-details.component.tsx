@@ -5,6 +5,7 @@ import ClaimInvoiceDetails from '../claim-invoice-details/claim-invoice-details.
 import ClaimInterventionDetails from '../claim-intervention-details/claim-intervention-details.component';
 import ClaimDiagnosisDetails from '../claim-diagnosis-details/claim-diagnosis-details.component';
 import { formatDate, launchWorkspace, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
+import { useTranslation } from 'react-i18next';
 import { Button, InlineLoading, Tile } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
 import SubmitClaimModal from '../modal/submit-claim/submit-claim.modal';
@@ -18,6 +19,7 @@ import { canEditClaimContent } from '../../../v2/claim-statuses';
 import { interventionHasBlockingPreauth, usePreauthPreview } from '../../../../../claims/claims.resource';
 import PayerPreviewTile from '../payer-preview/payer-preview-tile.component';
 import { Renew } from '@carbon/react/icons';
+import { syncVisitToShr } from '../../../../../shr/shr-visit-sync';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -40,6 +42,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   const [showSubmitClaimModal, setSubmitCloseClaimModal] = useState<boolean>(false);
   const [showAddDoctorModal, setShowAddDoctorModal] = useState<boolean>(false);
   const [triggerEndVisit, setTriggerEndVisit] = useState<boolean>(false);
+  const { t } = useTranslation();
   const { activeVisit } = useVisit(patientBillDetails?.patient_uuid);
 
   const invoiceNumber = useMemo(() => {
@@ -59,13 +62,25 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   }, [triggerEndVisit, activeVisit]);
 
   function handleCloseVisit() {
-    endVisit(activeVisit?.uuid)
+    const visitUuid = activeVisit?.uuid;
+    endVisit(visitUuid)
       .then((v) => {
         showSnackbar({
           title: 'Success closing claim',
           kind: 'success',
           subtitle: 'Claim closed successfully',
         });
+        // Claim is in and the visit just closed — push it to the SHR too. Pinned
+        // to the visit just ended so the submission can't race onto a newer one;
+        // failure is reported by syncVisitToShr and must not fail the claim flow.
+        void syncVisitToShr(
+          {
+            patientUuid: patientBillDetails?.patient_uuid ?? '',
+            locationUuid,
+            ...(visitUuid ? { visitUuid } : {}),
+          },
+          t,
+        );
       })
       .catch((err) => {
         console.error(err);

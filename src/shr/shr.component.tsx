@@ -15,6 +15,7 @@ import {
   verifyConsentOtp,
 } from './shr.resource';
 import type { ShrConsentDeclined, ShrConsentGrant, ShrRecordSet } from './shr.types';
+import { syncVisitToShr } from './shr-visit-sync';
 import ShrCloseVisitForm from './shr-close-visit-form.component';
 import ShrViewer from './shr-viewer/shr-viewer.component';
 import { formatMoment } from './shr-viewer/shr-presentation';
@@ -81,6 +82,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
   const [syncError, setSyncError] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [isSubmittingVisit, setIsSubmittingVisit] = useState(false);
   const [closeError, setCloseError] = useState('');
   const [closedOn, setClosedOn] = useState('');
 
@@ -375,6 +377,26 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
     }
   }, [pendingClose, closeOtp, locationUuid, crId, settleAsClosed, t]);
 
+  /**
+   * Push this patient's latest closed AMRS visit into the SHR — the manual
+   * counterpart to the automatic push that rides along with claim submission,
+   * for when a visit closed outside this tab or a previous push failed. The
+   * backend picks the visit and resolves the consent token; the outcome is
+   * reported by `syncVisitToShr` (a patient with no closed visit yet is told
+   * so, not shown an error).
+   */
+  const handleSubmitVisitToShr = useCallback(async () => {
+    if (!patientUuid || !locationUuid) {
+      return;
+    }
+    setIsSubmittingVisit(true);
+    try {
+      await syncVisitToShr({ patientUuid, locationUuid }, t);
+    } finally {
+      setIsSubmittingVisit(false);
+    }
+  }, [patientUuid, locationUuid, t]);
+
   const handleStartNewRequest = useCallback(() => {
     setPhase('idle');
     setGrant(null);
@@ -517,9 +539,11 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
           syncedAt={syncedAt}
           isSyncing={isSyncing}
           isClosing={isClosing}
+          isSubmittingVisit={isSubmittingVisit}
           closeError={closeError}
           syncError={syncError}
           onSync={() => void loadRecords(grant, { isSync: true })}
+          onSubmitVisit={() => void handleSubmitVisitToShr()}
           onCloseVisit={openCloseForm}
           closePanel={closeVisitForm}
         />
