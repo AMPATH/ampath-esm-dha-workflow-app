@@ -1,0 +1,91 @@
+@use '@carbon/colors';
+@use '@carbon/layout';
+@use '@carbon/type';
+
+.container {
+  min-width: 0;
+  background-color: colors.$gray-10;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-05 layout.$spacing-05 0;
+  min-width: 0;
+}
+
+.title {
+  @include type.type-style('heading-04');
+  margin: 0;
+}
+
+.provenance {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+  margin: layout.$spacing-02 0 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: layout.$spacing-03;
+  flex-shrink: 0;
+}
+
+.iframeWrap {
+  padding: layout.$spacing-04 layout.$spacing-05 layout.$spacing-05;
+  min-width: 0;
+}
+
+// The consult fills the rest of the tab: the biometric modal caps its iframe at
+// a fixed 700px inside a drawer, but a full patient-chart tab can afford the
+// viewport height.
+.iframe {
+  display: block;
+  width: 100%;
+  height: calc(100vh - 13rem);
+  min-height: 30rem;
+  border: none;
+  background-color: colors.$gray-20;
+}
+
+.statusView {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: layout.$spacing-03;
+  padding: layout.$spacing-09 layout.$spacing-05;
+  min-width: 0;
+}
+
+.statusTitle {
+  @include type.type-style('heading-compact-02');
+  color: colors.$gray-100;
+  margin: layout.$spacing-03 0 0;
+}
+
+.statusText {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+  margin: 0;
+  max-width: 26rem;
+}
+
+.statusActions {
+  display: flex;
+  gap: layout.$spacing-03;
+  margin-top: layout.$spacing-03;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.iconMuted {
+  color: colors.$gray-70;
+}
+
+.iconDanger {
+  color: colors.$red-60;
+}
