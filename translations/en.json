@@ -98,7 +98,7 @@
   "shrNoCrNumber": "No Client Registry number",
   "shrNoCrNumberDetail": "This patient has no Client Registry number, so their national records cannot be requested. Register them with the Client Registry first.",
   "shrNoFurtherDetail": "No further detail was shared for this record.",
-  "shrNoRecordsDetail": "The SHR returned no records for this client for the requested categories. You can retry or close the visit.",
+  "shrNoRecordsDetail": "The SHR returned no records for this client for the requested categories. You can send their visit data to the SHR, retry, or close the visit.",
   "shrNoRecordsFound": "No shared records found",
   "shrNoRecordsInCategory": "No {{category}} in this shared record.",
   "shrPatientIncapableHelper": "Closes the visit immediately, with no OTP sent.",

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, FormLabel, InlineLoading, InlineNotification } from '@carbon/react';
-import { CheckmarkFilled, DocumentBlank, ErrorFilled, Security, WarningAltFilled } from '@carbon/react/icons';
+import { CheckmarkFilled, DocumentBlank, ErrorFilled, Security, Send, WarningAltFilled } from '@carbon/react/icons';
 import { launchWorkspace2, showSnackbar, useConfig, usePatient, useSession } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import type { ConfigObject } from '../config-schema';
@@ -425,6 +425,23 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
     />
   ) : null;
 
+  // The push is available in every state where a patient can meaningfully have
+  // visit data to send — not only once records are loaded: a patient with
+  // nothing in the SHR yet is exactly the one who needs it (the backend resolves
+  // the consent token from the recorded session, and if there is none the
+  // failure says so). No session location → nothing to scope the request to.
+  const sendVisitButton = (
+    <Button
+      kind="tertiary"
+      size="md"
+      renderIcon={Send}
+      onClick={() => void handleSubmitVisitToShr()}
+      disabled={isSubmittingVisit || !locationUuid}
+    >
+      {isSubmittingVisit ? t('shrSendingVisitData', 'Sending…') : t('shrSendVisitData', 'Send visit to SHR')}
+    </Button>
+  );
+
   if (isPatientLoading && !patientUuid) {
     return (
       <div className={styles.container}>
@@ -512,9 +529,12 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
             "Start a shared health record request to fetch this patient's national records for the current visit.",
           )}
           actions={
-            <Button kind="primary" size="md" renderIcon={Security} onClick={() => void startShrSession()}>
-              {t('initiateShrRequest', 'Initiate SHR request')}
-            </Button>
+            <>
+              <Button kind="primary" size="md" renderIcon={Security} onClick={() => void startShrSession()}>
+                {t('initiateShrRequest', 'Initiate SHR request')}
+              </Button>
+              {sendVisitButton}
+            </>
           }
         />
       )}
@@ -555,7 +575,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
           title={t('shrNoRecordsFound', 'No shared records found')}
           text={t(
             'shrNoRecordsDetail',
-            'The SHR returned no records for this client for the requested categories. You can retry or close the visit.',
+            'The SHR returned no records for this client for the requested categories. You can send their visit data to the SHR, retry, or close the visit.',
           )}
           notice={
             closeError && !isCloseFormOpen
@@ -573,6 +593,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
                 >
                   {t('retry', 'Retry')}
                 </Button>
+                {sendVisitButton}
                 <Button kind="tertiary" size="md" onClick={openCloseForm} disabled={isClosing}>
                   {isClosing ? t('closing', 'Closing…') : t('closeVisit', 'Close visit')}
                 </Button>
