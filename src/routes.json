@@ -333,6 +333,30 @@
       "offline": true
     },
     {
+      "name": "telemedicine-dashboard",
+      "slot": "patient-chart-dashboard-slot",
+      "component": "telemedicineDashboardLink",
+      "meta": {
+        "slot": "patient-chart-telemedicine-dashboard-slot",
+        "path": "telemedicine",
+        "layoutMode": "anchored"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "name": "telemedicine-details",
+      "slot": "patient-chart-telemedicine-dashboard-slot",
+      "component": "telemedicineDashboard",
+      "order": 1,
+      "meta": {
+        "title": "Telemedicine",
+        "view": "telemedicine"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
       "name": "emt-dashboard-link",
       "component": "emtDashboardLink",
       "slot": "homepage-dashboard-slot",
