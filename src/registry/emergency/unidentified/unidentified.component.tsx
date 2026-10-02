@@ -273,7 +273,7 @@ const UnIdentifiedEmergencyComponent: React.FC<UnidentifiedEmergencyComponentPro
           normal_preauth: Boolean(requiresPreauth),
           elective_preauth: false,
           patient_uuid: patientUuid,
-          ...(protocolCode && { protocol_code: protocolCode }),
+          ...(protocolCode && { protocal_code: protocolCode }),
           ...(applicableDocumentTypes.length > 0 && {
             applicable_document_types: Array.isArray(applicableDocumentTypes)
               ? applicableDocumentTypes.join(',')

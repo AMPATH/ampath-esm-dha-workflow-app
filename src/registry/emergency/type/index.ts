@@ -59,3 +59,19 @@ export type EmergencyProtocol = {
   status: string;
   intervention: Intervention[];
 };
+
+export type identifyUnknownPatientDto = {
+  interventionCodes: [string];
+  modeOfArrival: string;
+  broughtBy: string;
+  referenceNumber: string;
+  identificationNumber: string;
+  identificationType: string;
+  regulationBody: string;
+  notes: string;
+  beneficiaryCrId: string;
+  beneficiaryContactId?: string;
+  otp: string;
+  consentToken: string;
+  locationUuid: string;
+};

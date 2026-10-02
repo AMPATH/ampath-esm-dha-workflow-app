@@ -21,6 +21,7 @@ import PayerPreviewTile from '../payer-preview/payer-preview-tile.component';
 import { Renew } from '@carbon/react/icons';
 import { syncVisitToShr } from '../../../../../shr/shr-visit-sync';
 import SubmitEmergencyClaimModal from '../modal/submit-emergency-claim/submit-emergency-claim.component';
+import IdentifyEmergencyUnknownPatientModal from '../modal/identify-emergency-unknown-patient/identify-emergency-unknown-patient.component';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -46,6 +47,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   const { t } = useTranslation();
   const { activeVisit } = useVisit(patientBillDetails?.patient_uuid);
   const [showSubmitEmergencyModal, setshowSubmitEmergencyModal] = useState<boolean>(false);
+  const [identifyPatient, setIdentifyPatient] = useState<boolean>(false);
 
   const invoiceNumber = useMemo(() => {
     if (patientBillDetails) {
@@ -118,10 +120,6 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     setShowCloseClaimModal(false);
   }
   async function displayCloseSubmitClaimModal() {
-    if (claimsVisit.service_type === 'EMERGENCY') {
-      setshowSubmitEmergencyModal(true);
-      return;
-    }
     setSubmitCloseClaimModal(true);
   }
   function handleCloseSubmitClaimModal() {
@@ -196,6 +194,12 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     invalidateProviderClaimPreview();
   };
 
+  const isEmergencyPatient = claimsVisit.service_type === 'EMERGENCY';
+
+  const handleIdentifyUnknownPatient = () => {
+    setIdentifyPatient(true);
+  };
+
   return (
     <>
       <div className={styles.cvLayout}>
@@ -204,6 +208,11 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <h4>Claim Visit Details</h4>
           </div>
           <div className={styles.headerAction}>
+            {isEmergencyPatient && (
+              <Button kind="primary" onClick={handleIdentifyUnknownPatient}>
+                Identify Unknown Patient
+              </Button>
+            )}
             <Button kind="primary" onClick={displayCloseClaimModal} disabled={!canEditClaim}>
               Close Claim
             </Button>
@@ -364,6 +373,15 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           open={showSubmitEmergencyModal}
           onClose={() => setshowSubmitEmergencyModal(false)}
           locationUuid={locationUuid}
+        />
+      )}
+      {identifyPatient && (
+        <IdentifyEmergencyUnknownPatientModal
+          open={identifyPatient}
+          onClose={() => setIdentifyPatient(false)}
+          locationUuid={locationUuid}
+          claimsVisit={claimsVisit}
+          visitType={visitType}
         />
       )}
     </>
