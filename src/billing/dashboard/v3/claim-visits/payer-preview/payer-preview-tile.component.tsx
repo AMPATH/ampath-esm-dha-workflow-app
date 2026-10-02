@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { PayerPreviewResult } from "../../../../types";
 import { Button, InlineLoading, Tile } from "@carbon/react";
 import styles from "./index.scss";
-import { launchWorkspace } from "@openmrs/esm-framework";
+import { launchWorkspace2 } from "@openmrs/esm-framework";
 import { AccessibilityColor } from "@carbon/react/icons";
 
 interface PayerPreviewTileProps {
@@ -12,7 +12,7 @@ interface PayerPreviewTileProps {
 
 const PayerPreviewTile: React.FC<PayerPreviewTileProps> = ({ isLoadingPayerPreview, payerPreviewResult }) => {
     const handlePayerPreview = () => {
-        launchWorkspace('payer-preview-workspace', {
+        void launchWorkspace2('payer-preview-workspace', {
             payerPreviewResult
         });
     }

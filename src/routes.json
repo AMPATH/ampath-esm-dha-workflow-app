@@ -518,25 +518,6 @@
       "width": "wider"
     },
     {
-      "name": "send-to-queue-workspace",
-      "title": "Initiate SHA claim",
-      "component": "sendToQueueWorkspace",
-      "type": "send-to-queue",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "wider"
-    },
-    {
-      "name": "payer-preview-workspace",
-      "component": "payerPreviewWorkspace",
-      "title": "Payer preview details",
-      "type": "payer-preview",
-      "canMaximize": true,
-      "canHide": true,
-      "width": "wider",
-      "preferredWindowSize": "maximized"
-    },
-    {
       "name": "emt-handover-workspace",
       "component": "emtHandoverWorkspace",
       "title": "EMT Handover",
@@ -546,6 +527,16 @@
     }
   ],
   "workspaces2": [
+    {
+      "name": "send-to-queue-workspace",
+      "component": "sendToQueueWorkspace",
+      "window": "send-to-queue-workspace-window"
+    },
+    {
+      "name": "payer-preview-workspace",
+      "component": "payerPreviewWorkspace",
+      "window": "payer-preview-workspace-window"
+    },
     {
       "name": "create-order-bill-form-workspace",
       "component": "createOrderBillFormWorkspace",
@@ -568,6 +559,18 @@
     }
   ],
   "workspaceWindows2": [
+    {
+      "name": "send-to-queue-workspace-window",
+      "group": "send-to-queue-workspace-group",
+      "canMaximize": true,
+      "width": "wider"
+    },
+    {
+      "name": "payer-preview-workspace-window",
+      "group": "payer-preview-workspace-group",
+      "canMaximize": true,
+      "width": "wider"
+    },
     {
       "name": "create-order-bill-form-window",
       "group": "create-order-bill-form-group",
@@ -594,6 +597,16 @@
     }
   ],
   "workspaceGroups2": [
+    {
+      "name": "send-to-queue-workspace-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "payer-preview-workspace-group",
+      "persistence": "closable",
+      "overlay": false
+    },
     {
       "name": "create-order-bill-form-group",
       "persistence": "closable",

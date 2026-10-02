@@ -7,7 +7,7 @@ import {
     Tile,
     InlineNotification,
 } from '@carbon/react';
-import { type DefaultWorkspaceProps, formatDate, parseDate } from '@openmrs/esm-framework';
+import { formatDate, parseDate, Workspace2, type Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import styles from './index.scss';
 import { PayerPreviewResult } from '../../../../types';
 import PayerClaimDoctors from './tables/payer-claim-doctors.component';
@@ -16,7 +16,7 @@ import PayerClaimLines from './tables/payer-claim-lines.component';
 import PayerDiagnoses from './tables/payer-diagnoses.component';
 import PayerInterventions from './tables/payer-interventions.component';
 
-export interface ClaimDetailsWorkspaceProps extends DefaultWorkspaceProps {
+export interface ClaimDetailsWorkspaceProps {
     payerPreviewResult: PayerPreviewResult;
 }
 
@@ -43,8 +43,20 @@ function formatMoney(value: string) {
     return Number.isNaN(amount) ? value : amount.toLocaleString(undefined, { minimumFractionDigits: 2 });
 }
 
-const PayerPreviewWorkspace: React.FC<ClaimDetailsWorkspaceProps> = ({ payerPreviewResult, closeWorkspace }) => {
+const PayerPreviewWorkspace: React.FC<Workspace2DefinitionProps<ClaimDetailsWorkspaceProps>> = ({
+    closeWorkspace,
+    workspaceProps,
+}) => {
     const { t } = useTranslation();
+    const payerPreviewResult = workspaceProps?.payerPreviewResult;
+
+    if (!payerPreviewResult) {
+        return (
+            <Workspace2 title={t('payerPreviewDetails', 'Payer preview details')}>
+                <div>{t('loading', 'Loading...')}</div>
+            </Workspace2>
+        );
+    }
 
     const orderedTransitions = useMemo(
         () =>
@@ -55,6 +67,7 @@ const PayerPreviewWorkspace: React.FC<ClaimDetailsWorkspaceProps> = ({ payerPrev
     );
 
     return (
+        <Workspace2 title={t('payerPreviewDetails', 'Payer preview details')}>
         <div className={styles.workspaceContainer}>
             <div className={styles.tiles}>
                 <Tile className={styles.summaryTile}>
@@ -146,11 +159,12 @@ const PayerPreviewWorkspace: React.FC<ClaimDetailsWorkspaceProps> = ({ payerPrev
             </div>
 
             <ButtonSet className={styles.footer}>
-                <Button kind="secondary" onClick={() => closeWorkspace()} className={styles.footerButton}>
+                <Button kind="secondary" onClick={() => void closeWorkspace()} className={styles.footerButton}>
                     {t('close', 'Close')}
                 </Button>
             </ButtonSet>
         </div>
+        </Workspace2>
     );
 };
 

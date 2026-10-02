@@ -248,7 +248,7 @@ export const payCashWorkspace = getAsyncLifecycle(
 );
 
 export const sendToQueueWorkspace = getAsyncLifecycle(
-  () => import('./registry/modal/send-to-triage/send-to-queue.modal'),
+  () => import('./registry/modal/send-to-triage/send-to-queue.workspace'),
   options,
 );
 
