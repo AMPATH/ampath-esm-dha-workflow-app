@@ -71,6 +71,7 @@ export const SEND_TO_QUEUE_WORKSPACE = 'send-to-queue-workspace';
  * `closeWorkspace` and friends in itself, so a caller only ever provides the fields below.
  */
 export interface SendToQueueWorkspaceProps {
+  workspaceTitle?: string;
   patientUuid: string;
   visitUuid: string;
   visitTypeUuid: string;
