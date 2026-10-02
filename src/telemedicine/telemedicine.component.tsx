@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, InlineLoading } from '@carbon/react';
 import { DocumentBlank, ErrorFilled, Renew } from '@carbon/react/icons';
-import { usePatient, useSession } from '@openmrs/esm-framework';
+import { useSession } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { fetchTelemedicineSession, getPractitionerNationalId } from './telemedicine.resource';
 import styles from './telemedicine.scss';
 
 /**
- * Telemedicine tab for the patient chart.
+ * Telemedicine dashboard on the home page.
  *
  * Starts a video-consult session with the external telemedicine system and
  * renders it in an iframe — the biometrics modal's structure with none of its
@@ -33,10 +33,8 @@ type Phase = 'connecting' | 'in-session' | 'error' | 'no-national-id';
 
 const Telemedicine: React.FC = () => {
   const { t } = useTranslation();
-  const { patient, isLoading: isPatientLoading } = usePatient();
   const session = useSession();
 
-  const patientUuid = patient?.id ?? '';
   const locationUuid = session?.sessionLocation?.uuid ?? '';
   const providerUuid = session?.currentProvider?.uuid ?? '';
 
@@ -56,7 +54,7 @@ const Telemedicine: React.FC = () => {
   );
 
   const startSession = useCallback(async () => {
-    if (!patientUuid || !locationUuid || !providerUuid) {
+    if (!locationUuid || !providerUuid) {
       return;
     }
     setPhase('connecting');
@@ -87,35 +85,13 @@ const Telemedicine: React.FC = () => {
       setErrorDetail(err?.message ?? '');
       setPhase('error');
     }
-  }, [patientUuid, locationUuid, providerUuid]);
+  }, [locationUuid, providerUuid]);
 
   useEffect(() => {
     void startSession();
   }, [startSession]);
 
   const showIframe = (phase === 'in-session' || phase === 'connecting') && Boolean(redirectUrl);
-
-  if (isPatientLoading && !patientUuid) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.statusView}>
-          <InlineLoading description={t('loadingPatient', 'Loading patient…')} />
-        </div>
-      </div>
-    );
-  }
-
-  if (!patientUuid) {
-    return (
-      <div className={styles.container}>
-        <StatusCard
-          icon={<DocumentBlank size={32} className={styles.iconMuted} />}
-          title={t('noPatientSelected', 'No patient selected')}
-          text={t('telemedicineNeedsPatient', 'Open a patient chart to start a telemedicine session.')}
-        />
-      </div>
-    );
-  }
 
   if (!locationUuid) {
     return (

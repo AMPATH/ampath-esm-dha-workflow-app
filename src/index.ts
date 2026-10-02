@@ -271,10 +271,7 @@ export const shrDashboardLink = getSyncLifecycle(openMrsCreateDashboardLink(shrD
 
 export const sharedHealthRecord = getAsyncLifecycle(() => import('./shr/shr.component'), options);
 
-export const telemedicineDashboardLink = getSyncLifecycle(
-  openMrsCreateDashboardLink(telemedicineDashboardMeta as any),
-  options,
-);
+export const telemedicineDashboardLink = getSyncLifecycle(createDashboardLink(telemedicineDashboardMeta), options);
 
 export const telemedicineDashboard = getAsyncLifecycle(() => import('./telemedicine/telemedicine.component'), options);
 

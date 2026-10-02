@@ -1,9 +1,9 @@
 /**
- * Rendering tests for the telemedicine tab's state machine: the missing-provider
- * and missing-national-ID cards, the error card carrying the broker's message,
- * and the in-session iframe fed by the minted SSO URL. The SSO keys on the
- * practitioner's national ID, so the lookup goes to the session's provider, not
- * the patient. The broker call itself is covered in
+ * Rendering tests for the telemedicine dashboard's state machine: the
+ * missing-provider and missing-national-ID cards, the error card carrying the
+ * broker's message, and the in-session iframe fed by the minted SSO URL. The
+ * SSO keys on the practitioner's national ID, so the lookup goes to the
+ * session's provider, not the patient. The broker call itself is covered in
  * `telemedicine.resource.test.ts`.
  */
 import React from 'react';
@@ -11,13 +11,11 @@ import { render, screen } from '@testing-library/react';
 
 import Telemedicine from './telemedicine.component';
 
-const mockUsePatient = jest.fn();
 const mockUseSession = jest.fn();
 const mockGetNationalId = jest.fn();
 const mockFetchSession = jest.fn();
 
 jest.mock('@openmrs/esm-framework', () => ({
-  usePatient: () => mockUsePatient(),
   useSession: () => mockUseSession(),
 }));
 
@@ -26,20 +24,18 @@ jest.mock('./telemedicine.resource', () => ({
   fetchTelemedicineSession: (...args: unknown[]) => mockFetchSession(...args),
 }));
 
-const PATIENT_UUID = '0b355dd8-de45-4142-a9c5-496b923e6be4';
 const PROVIDER_UUID = 'e2bfaf3b-9bcb-4a20-9e9e-8db9dabc8f4e';
 const LOCATION_UUID = '18c343eb-b353-462a-9139-b16606e6b6c2';
 
 beforeEach(() => {
   jest.resetAllMocks();
-  mockUsePatient.mockReturnValue({ patient: { id: PATIENT_UUID }, isLoading: false });
   mockUseSession.mockReturnValue({
     sessionLocation: { uuid: LOCATION_UUID },
     currentProvider: { uuid: PROVIDER_UUID },
   });
 });
 
-describe('Telemedicine tab', () => {
+describe('Telemedicine dashboard', () => {
   it('renders the consult iframe from the minted SSO URL, with a reconnect action', async () => {
     mockGetNationalId.mockResolvedValueOnce('10000000003');
     mockFetchSession.mockResolvedValueOnce({

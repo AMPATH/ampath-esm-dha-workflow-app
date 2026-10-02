@@ -1,6 +1,6 @@
 export const telemedicineDashboardMeta = {
   path: 'telemedicine',
-  slot: 'patient-chart-telemedicine-dashboard-slot',
+  slot: 'telemedicine-dashboard-slot',
   title: 'Telemedicine',
-  icon: 'omrs-icon-view',
+  basePath: `${window.spaBase}/home`,
 };
