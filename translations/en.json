@@ -137,6 +137,7 @@
   "telemedicineNoNationalIdDetail": "A national ID must be recorded on your provider account before a telemedicine session can be started. Ask an administrator to add it.",
   "telemedicineNoProvider": "Couldn't identify the logged-in provider",
   "telemedicineNoProviderDetail": "Your session has no provider attached, so a telemedicine session cannot be started. Log in with a provider account.",
+  "telemedicineNoSessionUrl": "The telemedicine service did not return a session link.",
   "telemedicineReconnect": "Reconnect",
   "telemedicineReconnecting": "Reconnecting…",
   "telemedicineSessionActive": "Session active",

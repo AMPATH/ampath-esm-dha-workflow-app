@@ -72,7 +72,17 @@ const Telemedicine: React.FC = () => {
       if (cancelledRef.current) {
         return;
       }
-      setRedirectUrl(sso?.redirect_url ?? '');
+      const url = sso?.redirect_url ?? '';
+      // openmrsFetch swallows a 2xx body it cannot JSON-parse, so a gateway's
+      // HTML fallback page (e.g. a request that never reached the broker)
+      // resolves with no data — fail loudly instead of showing an empty
+      // in-session tab.
+      if (!url) {
+        setErrorDetail(t('telemedicineNoSessionUrl', 'The telemedicine service did not return a session link.'));
+        setPhase('error');
+        return;
+      }
+      setRedirectUrl(url);
       setExpiresIn(sso?.expires_in ?? 0);
       // A new key forces a clean iframe per session rather than navigating the
       // old one — the external app's own state starts from scratch.
@@ -85,7 +95,7 @@ const Telemedicine: React.FC = () => {
       setErrorDetail(err?.message ?? '');
       setPhase('error');
     }
-  }, [locationUuid, providerUuid]);
+  }, [t, locationUuid, providerUuid]);
 
   useEffect(() => {
     void startSession();

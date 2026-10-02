@@ -82,6 +82,19 @@ describe('Telemedicine dashboard', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 
+  it('fails loudly when the broker answers without a session link', async () => {
+    // A 2xx gateway fallback page parses to no data at all — the tab must
+    // not fall through to an empty "in-session" view.
+    mockGetNationalId.mockResolvedValueOnce('10000000003');
+    mockFetchSession.mockResolvedValueOnce(undefined);
+
+    render(<Telemedicine />);
+
+    expect(await screen.findByText('The telemedicine service did not return a session link.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByTitle('Telemedicine')).not.toBeInTheDocument();
+  });
+
   it('refuses to start without a login location', () => {
     mockUseSession.mockReturnValue({
       sessionLocation: undefined,
