@@ -24,10 +24,8 @@ interface AdmittedPatientsListProps {
 const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPatientsData, refresh }) => {
   const [showBedSwapModal, setShowBedSwapModal] = useState<boolean>(false);
   const [selectedLayout, setSelectedLayout] = useState<any>();
-  const { maternityDischargeFormUuid } = useConfig<ConfigObject>();
+  const { maternityDischargeFormUuid, formUuids, observationValueCodableConcepts } = useConfig<ConfigObject>();
   const generalDischargeFormUuid = 'b4218b80-22da-3299-af36-c865fdf07696';
-  const deathReportingFormUuid = 'b7750932-7fcb-3d1c-9561-faf6772d4d71';
-  const deceasedConceptUuid = 'a89335d6-1350-11df-a1f1-0026b9348838';
 
   const hasDeceasedOutcome = (encounter: any): boolean => {
     const pending = [...(encounter?.obs ?? [])];
@@ -47,7 +45,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
           : undefined;
 
       if (
-        codedUuid === deceasedConceptUuid ||
+        codedUuid === observationValueCodableConcepts.deceasedUuid ||
         (typeof codedDisplay === 'string' && codedDisplay.trim().toLowerCase() === 'deceased')
       ) {
         return true;
@@ -140,7 +138,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
           'admissions-form-entry',
           {
             workspaceTitle: 'Death Reporting Form',
-            formUuid: deathReportingFormUuid,
+            formUuid: formUuids.deathReportingFormUuid,
             patientUuid,
           },
           {

@@ -232,6 +232,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
                     onBillDetailsChange={() => invalidatePatientBillDetails()}
                     billingDate={billingDate}
                     onLoadingClaimVisit={onLoadingClaimVisit}
+                    patientUuid={patientUuid}
                   />
                 ) : (
                   <></>

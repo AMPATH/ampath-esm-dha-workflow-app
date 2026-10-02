@@ -288,3 +288,8 @@ export const criticalCareUnitDashboardLink = getAsyncLifecycle(
   () => import('./side-nav-menu/critical-care-nav-links'),
   options,
 );
+
+export const deathReportingFormButton = getAsyncLifecycle(
+  () => import('./death-reporting/death-reporting-form-button.component'),
+  options,
+);

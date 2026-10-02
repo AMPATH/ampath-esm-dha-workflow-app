@@ -6,7 +6,7 @@ import ClaimInterventionDetails from '../claim-intervention-details/claim-interv
 import ClaimDiagnosisDetails from '../claim-diagnosis-details/claim-diagnosis-details.component';
 import { formatDate, launchWorkspace, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
-import { Button, InlineLoading, Modal, TextInput, Tile } from '@carbon/react';
+import { Button, InlineLoading, InlineNotification, Tile } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
 import SubmitClaimModal from '../modal/submit-claim/submit-claim.modal';
 import { endVisit, useInvalidateProviderClaimPreview, usePayerClaimPreview } from '../../../../billing-claims.resource';
@@ -22,6 +22,7 @@ import { Renew } from '@carbon/react/icons';
 import { syncVisitToShr } from '../../../../../shr/shr-visit-sync';
 import SubmitEmergencyClaimModal from '../modal/submit-emergency-claim/submit-emergency-claim.component';
 import IdentifyEmergencyUnknownPatientModal from '../modal/identify-emergency-unknown-patient/identify-emergency-unknown-patient.component';
+import { useFormEncounters } from '../../../../../death-reporting/death-reporting-form-button.resource';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -31,6 +32,7 @@ interface claimVisitDetailsProps {
   /** True while claim preview is revalidating — stand down content edits. */
   claimRefreshing?: boolean;
   billingDate?: string;
+  patientUuid?: string;
 }
 const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   claimsVisit,
@@ -39,6 +41,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   onBillDetailsChange,
   claimRefreshing = false,
   billingDate,
+  patientUuid
 }) => {
   const [showCloseClaimModal, setShowCloseClaimModal] = useState<boolean>();
   const [showSubmitClaimModal, setSubmitCloseClaimModal] = useState<boolean>(false);
@@ -48,6 +51,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   const { activeVisit } = useVisit(patientBillDetails?.patient_uuid);
   const [showSubmitEmergencyModal, setshowSubmitEmergencyModal] = useState<boolean>(false);
   const [identifyPatient, setIdentifyPatient] = useState<boolean>(false);
+  const { hasDeathReportingFormEncounter, isLoading } = useFormEncounters(patientUuid);
 
   const invoiceNumber = useMemo(() => {
     if (patientBillDetails) {
@@ -229,7 +233,15 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           </div>
         </div>
 
-        <Tile id="provider-preview">
+        {
+          !isLoading && hasDeathReportingFormEncounter ?
+            <InlineNotification className={styles.deathNotificationTile} hideCloseButton lowContrast kind='error' title='Death Notification' subtitle='The patient has been reported as deceased. Attach a Death Notification when submitting the claim.' />
+            : <></>
+        }
+
+        <Tile
+          id="provider-preview"
+        >
           <div className={styles.tileHeader}>
             <dd>Provider preview</dd>
             <Button size="sm" kind="ghost" renderIcon={Renew} onClick={handleRefresh} disabled={claimRefreshing}>

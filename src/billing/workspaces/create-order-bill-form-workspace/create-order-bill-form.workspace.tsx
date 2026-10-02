@@ -14,6 +14,8 @@ import {
   useLayoutType,
   useSession,
   useVisit,
+  Workspace2,
+  type Workspace2DefinitionProps,
 } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import {
@@ -63,7 +65,7 @@ import EligibilityTags from '../../../registry/eligibility/eliigibility-tags/eli
 import SendToQueueModal from '../../../registry/modal/send-to-triage/send-to-queue.modal';
 
 interface CreateOrderBillFormProps {
-  closeWorkspace: () => void;
+  workspaceTitle?: string;
   quantity: number;
   order: Order;
   mutated: () => void;
@@ -71,13 +73,9 @@ interface CreateOrderBillFormProps {
   servicePointName?: string;
 }
 
-const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
+const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFormProps>> = ({
   closeWorkspace,
-  quantity,
-  order,
-  mutated,
-  serviceTypeUuid,
-  servicePointName,
+  workspaceProps: { workspaceTitle, quantity, order, mutated, serviceTypeUuid, servicePointName },
 }) => {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
@@ -442,7 +440,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     });
 
     mutated();
-    closeWorkspace();
+    void closeWorkspace({ discardUnsavedChanges: true });
   };
 
   useEffect(() => {
@@ -516,12 +514,12 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
       });
       setShowStartVisitModal(false);
       mutated();
-      closeWorkspace();
+      void closeWorkspace({ discardUnsavedChanges: true });
     }
   };
 
   return (
-    <>
+    <Workspace2 title={workspaceTitle ?? t('createOrderBill', 'Create order Bill')} hasUnsavedChanges={isDirty}>
       {!showStartVisitModal && (
         <Form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
           <div className={styles.formContainer}>
@@ -541,6 +539,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                       render={({ field }) => (
                         <TextInput
                           {...field}
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                           id="quantity"
                           labelText={t('quantity', 'Quantity *')}
                           placeholder={t('enterQuantity', 'Enter quantity')}
@@ -757,7 +757,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
           </div>
 
           <ButtonSet className={classNames(styles.buttonSet, { [styles.tablet]: isTablet })}>
-            <Button kind="secondary" onClick={closeWorkspace}>
+            <Button kind="secondary" onClick={() => void closeWorkspace()}>
               {t('cancel', 'Cancel')}
             </Button>
             <Button kind="primary" type="submit" disabled={isSubmitting || isSubmitPending || !isDirty || !isValid}>
@@ -784,7 +784,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
           initialUnitPriceUuid={watch('unitPrice')}
         />
       )}
-    </>
+    </Workspace2>
   );
 };
 

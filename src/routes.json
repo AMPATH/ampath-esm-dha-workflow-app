@@ -237,6 +237,11 @@
       "slot": "patient-banner-tags-slot"
     },
     {
+      "component": "deathReportingFormButton",
+      "name": "death-reporting-form-button",
+      "slot": "patient-banner-tags-slot"
+    },
+    {
       "name": "admissions-summary-dashboard",
       "slot": "patient-chart-dashboard-slot",
       "component": "patientChartAdmissionsLink",
@@ -443,12 +448,6 @@
   ],
   "workspaces": [
     {
-      "name": "create-order-bill-form-workspace",
-      "component": "createOrderBillFormWorkspace",
-      "title": "Create order Bill",
-      "type": "other-form"
-    },
-    {
       "name": "upload-intervention-attachments-workspace",
       "title": "Upload Attachments",
       "component": "uploadInterventionAttachmentsWorkspace",
@@ -548,6 +547,11 @@
   ],
   "workspaces2": [
     {
+      "name": "create-order-bill-form-workspace",
+      "component": "createOrderBillFormWorkspace",
+      "window": "create-order-bill-form-window"
+    },
+    {
       "name": "admissions-form-entry",
       "component": "formEntryWorkspace",
       "window": "admissions-form-window"
@@ -564,6 +568,12 @@
     }
   ],
   "workspaceWindows2": [
+    {
+      "name": "create-order-bill-form-window",
+      "group": "create-order-bill-form-group",
+      "canMaximize": false,
+      "width": "narrow"
+    },
     {
       "name": "admissions-form-window",
       "group": "admissions-form-group",
@@ -584,6 +594,11 @@
     }
   ],
   "workspaceGroups2": [
+    {
+      "name": "create-order-bill-form-group",
+      "persistence": "closable",
+      "overlay": false
+    },
     {
       "name": "admissions-form-group",
       "scopePattern": "/admissions-clinical-forms",
