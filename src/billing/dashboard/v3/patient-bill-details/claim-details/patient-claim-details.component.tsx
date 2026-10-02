@@ -14,6 +14,7 @@ interface patientClaimDetailsProps {
   onBillDetailsChange?: () => void;
   billingDate: string;
   onLoadingClaimVisit?: (claimVisit: ClaimsVisit) => void;
+  patientUuid?: string;
 }
 const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
   consentToken,
@@ -22,6 +23,7 @@ const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
   onBillDetailsChange,
   billingDate,
   onLoadingClaimVisit,
+  patientUuid
 }) => {
   const [patientBill, setPatientBill] = useState<PatientFacilityBillDetails>();
   const { claimVisit, isLoading, isValidating } = useProviderClaimPreview(consentToken, locationUuid);
@@ -59,6 +61,7 @@ const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
             onBillDetailsChange={onBillDetailsChange}
             claimRefreshing={isValidating}
             billingDate={billingDate}
+            patientUuid={patientUuid}
           />
         )}
       </div>

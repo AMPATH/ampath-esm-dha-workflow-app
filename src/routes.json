@@ -237,6 +237,11 @@
       "slot": "patient-banner-tags-slot"
     },
     {
+      "component": "deathReportingFormButton",
+      "name": "death-reporting-form-button",
+      "slot": "patient-banner-tags-slot"
+    },
+    {
       "name": "admissions-summary-dashboard",
       "slot": "patient-chart-dashboard-slot",
       "component": "patientChartAdmissionsLink",
