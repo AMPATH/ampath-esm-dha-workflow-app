@@ -627,7 +627,7 @@ export async function closeClaim(closeClaimDto: CloseClaimDto) {
 export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: string = 'INPATIENT') {
   const { hieBaseUrl } = await getHieBaseUrl();
   let claimUrl = `${hieBaseUrl}/claim-submission`;
-  if (visitType === 'INPATIENT') {
+  if (visitType === 'INPATIENT' || visitType === 'EMERGENCY') {
     submitClaimDto['dischargeDate'] = new Date().toISOString();
     claimUrl = `${hieBaseUrl}/claim-submission/inpatient`;
   }
@@ -815,9 +815,8 @@ export async function fetchPatientDiagnosesForBilling(
   const maternityRows: AmrsVisitDiagnosis[] =
     maternityResult.status === 'fulfilled'
       ? (maternityResult.value ?? [])
-        .filter((r) => r?.uuid != null)
-        .map(
-          (v): AmrsVisitDiagnosis => ({
+          .filter((r) => r?.uuid != null)
+          .map((v): AmrsVisitDiagnosis => ({
             patient_id: Number(v.patient_id) || 0,
             encounter_id: v.encounter_id,
             encounter_datetime: v.encounter_datetime,
@@ -840,8 +839,7 @@ export async function fetchPatientDiagnosesForBilling(
             practitioner_speciality: v.practitioner_speciality,
             practitioner_identifier_type: 'National ID',
             practitioner_body: v.practitioner_body,
-          }),
-        )
+          }))
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
@@ -961,8 +959,8 @@ export function usePatientBillDetails(visitUuid: string) {
 
   const { data, error, isLoading, isValidating } = useSWR<{
     data: {
-      results: Array<PatientFacilityBillDetails>
-    }
+      results: Array<PatientFacilityBillDetails>;
+    };
   }>(url, openmrsFetch);
 
   const results = data?.data?.results || [];
@@ -1044,7 +1042,9 @@ export async function fethClaimVisits(fetchClaimVisitDto: FetchClaimVisitDto): P
 }
 
 export const useBill = (billUuid: string) => {
-  const url = billUuid ? `${restBaseUrl}/billing/bill/${billUuid}?v=custom:(uuid,patient:(uuid),lineItems,status)` : null;
+  const url = billUuid
+    ? `${restBaseUrl}/billing/bill/${billUuid}?v=custom:(uuid,patient:(uuid),lineItems,status)`
+    : null;
 
   const {
     data,
@@ -1054,13 +1054,13 @@ export const useBill = (billUuid: string) => {
     mutate: mutated,
   } = useSWR<{
     data: {
-      uuid: string,
+      uuid: string;
       patient: {
-        uuid: string
-      },
-      lineItems: Array<any>,
-      status: string
-    }
+        uuid: string;
+      };
+      lineItems: Array<any>;
+      status: string;
+    };
   }>(url, openmrsFetch, {
     errorRetryCount: 2,
   });

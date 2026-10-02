@@ -1,6 +1,7 @@
 import { openmrsFetch, showSnackbar } from '@openmrs/esm-framework';
 import { getEtlBaseUrl, getHieBaseUrl } from '../../shared/utils/get-base-url';
 import { type AddProtocalDto } from '../../billing/dashboard/v3/types';
+import { type identifyUnknownPatientDto } from './type';
 
 export const fetchEmergencyInterventions = async () => {
   const hieBaseUrl = await getHieBaseUrl();
@@ -254,6 +255,29 @@ export async function submitEmergencyClaim(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorText = data.message || 'Failed to submit emergency claim';
+    return data;
+  }
+
+  return data;
+}
+
+export async function identifyUnidentifiedPatient(unIdentifiedPatientDto: identifyUnknownPatientDto): Promise<any> {
+  const hieBaseUrl = await getHieBaseUrl();
+
+  const url = `${hieBaseUrl}/claim/unidentified/identified`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(unIdentifiedPatientDto),
   });
 
   const data = await response.json();
