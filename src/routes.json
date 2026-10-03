@@ -446,87 +446,52 @@
       ]
     }
   ],
-  "workspaces": [
+  "workspaces2": [
     {
       "name": "upload-intervention-attachments-workspace",
-      "title": "Upload Attachments",
       "component": "uploadInterventionAttachmentsWorkspace",
-      "type": "upload-intervention-attachments",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "narrow"
+      "window": "upload-intervention-attachments-window"
     },
     {
       "name": "generate-intervention-attachments-workspace",
-      "title": "GenerateAttachments",
       "component": "generateInterventionAttachmentsWorkspace",
-      "type": "generate-intervention-attachments",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "narrow"
+      "window": "generate-intervention-attachments-window"
     },
     {
       "name": "bill-item-payment-workspace",
-      "title": "Bill item payment",
       "component": "billItemPaymentWorkspace",
-      "type": "bill-item-payment",
-      "canHide": true,
-      "width": "narrow"
+      "window": "bill-item-payment-window"
     },
     {
       "name": "add-claim-line-workspace",
-      "title": "Add claim line",
       "component": "addClaimLineWorkspace",
-      "type": "add-claim-line",
-      "canHide": true,
-      "width": "narrow"
+      "window": "add-claim-line-window"
     },
     {
       "name": "switch-intervention-workspace",
-      "title": "Switch Intervention",
       "component": "switchInterventionWorkspace",
-      "type": "switch-intervention",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "narrow"
+      "window": "switch-intervention-window"
     },
     {
       "name": "preauth-form-workspace",
-      "title": "Raise Preauth",
       "component": "preauthFormWorkspace",
-      "type": "preauth-form",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "wider"
+      "window": "preauth-form-window"
     },
     {
       "name": "pay-cash-workspace",
-      "title": "Pay Cash",
       "component": "payCashWorkspace",
-      "type": "workspace",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "narrow"
+      "window": "pay-cash-window"
     },
     {
       "name": "record-details-workspace",
-      "title": "Details",
       "component": "recordDetailsWorkspace",
-      "type": "record-details",
-      "canHide": true,
-      "canMaximize": true,
-      "width": "wider"
+      "window": "record-details-window"
     },
     {
       "name": "emt-handover-workspace",
       "component": "emtHandoverWorkspace",
-      "title": "EMT Handover",
-      "type": "emt-handover",
-      "canHide": true,
-      "width": "narrow"
-    }
-  ],
-  "workspaces2": [
+      "window": "emt-handover-window"
+    },
     {
       "name": "send-to-queue-workspace",
       "component": "sendToQueueWorkspace",
@@ -559,6 +524,60 @@
     }
   ],
   "workspaceWindows2": [
+    {
+      "name": "upload-intervention-attachments-window",
+      "group": "upload-intervention-attachments-group",
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "generate-intervention-attachments-window",
+      "group": "generate-intervention-attachments-group",
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "bill-item-payment-window",
+      "group": "bill-item-payment-group",
+      "canMaximize": false,
+      "width": "narrow"
+    },
+    {
+      "name": "add-claim-line-window",
+      "group": "add-claim-line-group",
+      "canMaximize": false,
+      "width": "narrow"
+    },
+    {
+      "name": "switch-intervention-window",
+      "group": "switch-intervention-group",
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "preauth-form-window",
+      "group": "preauth-form-group",
+      "canMaximize": true,
+      "width": "wider"
+    },
+    {
+      "name": "pay-cash-window",
+      "group": "pay-cash-group",
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "record-details-window",
+      "group": "record-details-group",
+      "canMaximize": true,
+      "width": "wider"
+    },
+    {
+      "name": "emt-handover-window",
+      "group": "emt-handover-group",
+      "canMaximize": false,
+      "width": "narrow"
+    },
     {
       "name": "send-to-queue-workspace-window",
       "group": "send-to-queue-workspace-group",
@@ -597,6 +616,51 @@
     }
   ],
   "workspaceGroups2": [
+    {
+      "name": "upload-intervention-attachments-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "generate-intervention-attachments-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "bill-item-payment-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "add-claim-line-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "switch-intervention-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "preauth-form-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "pay-cash-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "record-details-group",
+      "persistence": "closable",
+      "overlay": false
+    },
+    {
+      "name": "emt-handover-group",
+      "persistence": "closable",
+      "overlay": false
+    },
     {
       "name": "send-to-queue-workspace-group",
       "persistence": "closable",

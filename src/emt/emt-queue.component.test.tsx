@@ -21,7 +21,7 @@ const mockUseSession = jest.fn(() => ({ sessionLocation: { uuid: 'location-uuid-
 jest.mock('@openmrs/esm-framework', () => ({
   navigate: (...args: unknown[]) => mockNavigate(...args),
   showSnackbar: (...args: unknown[]) => mockShowSnackbar(...args),
-  launchWorkspace: (...args: unknown[]) => mockLaunchWorkspace(...args),
+  launchWorkspace2: (...args: unknown[]) => mockLaunchWorkspace(...args),
   useSession: () => mockUseSession(),
 }));
 

@@ -38,7 +38,7 @@ import {
   type ClaimResult,
 } from './index';
 import { addIntervention, checkInterventionExists } from './interventions.resource';
-import { launchWorkspace, showSnackbar, useConfig, useSession, useVisit, Visit } from '@openmrs/esm-framework';
+import { launchWorkspace2, showSnackbar, useConfig, useSession, useVisit, Visit } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { useProviderClaimPreview } from '../billing/billing-claims.resource';
 import { getConsentToken as getVisitConsentToken } from '../shared/services/claims.resource';
@@ -291,7 +291,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
       return;
     }
 
-    launchWorkspace('preauth-form-workspace', {
+    launchWorkspace2('preauth-form-workspace', {
       consentToken: token || '',
       patientUuid,
       locationUuid: sessionLocation?.uuid,

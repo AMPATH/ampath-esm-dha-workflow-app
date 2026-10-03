@@ -1,5 +1,5 @@
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
-import { closeWorkspace, launchWorkspace, useSession } from '@openmrs/esm-framework';
+import { launchWorkspace2, useSession } from '@openmrs/esm-framework';
 import React, { useEffect, useState } from 'react';
 import { type PendingBillLineItems, type ActiveCashVisit } from '../types';
 import { getActiveCashVisits, getFacilityBillLineItems } from '../../../billing-claims.resource';
@@ -62,7 +62,7 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     cashModeUuid: string,
   ) => {
     if ('line_item_date' in visit) {
-      launchWorkspace('pay-cash-workspace', {
+      launchWorkspace2('pay-cash-workspace', {
         lineItems: (visit as PendingBillLineItems).pending_line_items,
         billUuid: billUuid,
         cashModeUuid: cashModeUuid,

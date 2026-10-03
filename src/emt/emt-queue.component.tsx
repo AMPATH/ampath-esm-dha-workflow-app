@@ -14,7 +14,7 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { launchWorkspace, navigate, showSnackbar, useSession } from '@openmrs/esm-framework';
+import { launchWorkspace2, navigate, showSnackbar, useSession } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
@@ -271,7 +271,7 @@ const EmtQueue: React.FC = () => {
       showSnackbar({ kind: 'error', title: 'No default location selected', subtitle: '' });
       return;
     }
-    launchWorkspace(EMT_HANDOVER_WORKSPACE, {
+    launchWorkspace2(EMT_HANDOVER_WORKSPACE, {
       workspaceTitle: 'EMT Handover',
       referral: target,
       locationUuid,

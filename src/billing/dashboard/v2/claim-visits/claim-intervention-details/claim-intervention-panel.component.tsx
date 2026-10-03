@@ -1,10 +1,8 @@
 import React from 'react';
 import { Button, Tag } from '@carbon/react';
-import { closeWorkspace } from '@openmrs/esm-framework';
 import { type VisitIntervention } from '../../types';
 import { asBool } from '../../preauth/preauth.resource';
 import InterventionAttachments, { type InterventionAttachmentsProps } from './intervention-attachments.component';
-import { RECORD_DETAILS_WORKSPACE } from '../shared/record-details.workspace';
 import styles from './claim-intervention-panel.component.scss';
 
 /** What the claim page states above this panel, so the panel doesn't restate it. */
@@ -24,6 +22,7 @@ interface ClaimInterventionPanelProps {
   onRaisePreauth?: () => void;
   /** Why Raise preauth is unavailable, when it is. */
   raisePreauthReason?: string;
+  onClose?: () => void;
 }
 
 const money = (n: number | string) => {
@@ -68,6 +67,7 @@ const ClaimInterventionPanel: React.FC<ClaimInterventionPanelProps> = ({
   onSwitch,
   onRaisePreauth,
   raisePreauthReason,
+  onClose,
 }) => {
   const perDiemAmount = Number(intervention.accrued_per_diem_amount ?? 0);
   const perDiemDays = Number(intervention.accrued_per_diem_days ?? 0);
@@ -153,7 +153,7 @@ const ClaimInterventionPanel: React.FC<ClaimInterventionPanelProps> = ({
           rather than as a child of the workspace, so it has no closeWorkspace prop to
           call — it dismisses the panel by name instead. */}
       <div className={styles.footer}>
-        <Button kind="secondary" size="sm" onClick={() => closeWorkspace(RECORD_DETAILS_WORKSPACE)}>
+        <Button kind="secondary" size="sm" onClick={onClose}>
           Close
         </Button>
         {showActions ? (

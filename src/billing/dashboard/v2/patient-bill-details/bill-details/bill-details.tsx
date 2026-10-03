@@ -13,7 +13,7 @@ import {
   Tag,
 } from '@carbon/react';
 import { Add, Money } from '@carbon/react/icons';
-import { formatDate, launchWorkspace, parseDate } from '@openmrs/esm-framework';
+import { formatDate, launchWorkspace2, parseDate } from '@openmrs/esm-framework';
 import { type AmrsVisitDiagnosis } from '../../../../types';
 import AddClaimDiagnosisModal from '../modals/add-claim-diagnosis/add-claim-diagnosis.modal';
 import { addClaimDiagnosis, useInvalidateProviderClaimPreview, useProviderClaimPreview } from '../../../../billing-claims.resource';
@@ -197,7 +197,7 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
       if (!isClaimDraft) {
         return;
       }
-      launchWorkspace('bill-item-payment-workspace', {
+      launchWorkspace2('bill-item-payment-workspace', {
         billItem: patientBillDetail,
         onPay: invalidateProviderClaimPreview,
       });
@@ -206,7 +206,7 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
     if (!isClaimDraft) {
       return;
     }
-    launchWorkspace('add-claim-line-workspace', {
+    launchWorkspace2('add-claim-line-workspace', {
       billItem: patientBillDetail,
       locationUuid,
       consentToken: consentToken || patientBillDetail.consent_token || '',

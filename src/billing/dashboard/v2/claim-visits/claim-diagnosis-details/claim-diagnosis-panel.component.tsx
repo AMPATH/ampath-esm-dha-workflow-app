@@ -1,8 +1,7 @@
 import React from 'react';
 import { Button, Tag } from '@carbon/react';
-import { closeWorkspace, formatDate, parseDate } from '@openmrs/esm-framework';
+import { formatDate, parseDate } from '@openmrs/esm-framework';
 import { type VisitDiagnosis } from '../../types';
-import { RECORD_DETAILS_WORKSPACE } from '../shared/record-details.workspace';
 import styles from './claim-diagnosis-panel.component.scss';
 
 /** What the claim page states above this panel, so the panel doesn't restate it. */
@@ -14,6 +13,7 @@ export interface DiagnosisClaimFacts {
 interface ClaimDiagnosisPanelProps {
   diagnosis: VisitDiagnosis;
   claimFacts?: DiagnosisClaimFacts;
+  onClose?: () => void;
 }
 
 const sameValue = (a?: string | null, b?: string | null): boolean =>
@@ -39,7 +39,7 @@ const asDate = (value?: string | null): string => {
  * stating when it differs from the diagnosis' own. What it adds is the flag — whether the
  * payer has marked this diagnosis for attention — which the card never surfaced at all.
  */
-const ClaimDiagnosisPanel: React.FC<ClaimDiagnosisPanelProps> = ({ diagnosis, claimFacts }) => {
+const ClaimDiagnosisPanel: React.FC<ClaimDiagnosisPanelProps> = ({ diagnosis, claimFacts, onClose }) => {
   const recorded = asDate(diagnosis.recorded_on);
 
   const facts = [
@@ -79,7 +79,7 @@ const ClaimDiagnosisPanel: React.FC<ClaimDiagnosisPanelProps> = ({ diagnosis, cl
           rather than as a child of the workspace, so it has no closeWorkspace prop to
           call — it dismisses the panel by name instead. */}
       <div className={styles.footer}>
-        <Button kind="secondary" size="sm" onClick={() => closeWorkspace(RECORD_DETAILS_WORKSPACE)}>
+        <Button kind="secondary" size="sm" onClick={onClose}>
           Close
         </Button>
       </div>

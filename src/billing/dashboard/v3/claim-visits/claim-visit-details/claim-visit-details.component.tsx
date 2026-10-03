@@ -4,7 +4,7 @@ import { type PatientFacilityBillDetails, type ClaimsVisit, ApplicableDocumentTy
 import ClaimInvoiceDetails from '../claim-invoice-details/claim-invoice-details.component';
 import ClaimInterventionDetails from '../claim-intervention-details/claim-intervention-details.component';
 import ClaimDiagnosisDetails from '../claim-diagnosis-details/claim-diagnosis-details.component';
-import { formatDate, launchWorkspace, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
+import { formatDate, launchWorkspace2, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { Button, InlineLoading, InlineNotification, Tile } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
@@ -146,7 +146,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   }
 
   const handleAddAttachment = () => {
-    launchWorkspace('upload-intervention-attachments-workspace', {
+    launchWorkspace2('upload-intervention-attachments-workspace', {
       consentToken: claimsVisit.authorization_code,
       patientUuid: '10',
       claimInterventions: claimsVisit.interventions,
@@ -155,7 +155,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   };
 
   const handleGenerateAttachment = () => {
-    launchWorkspace('generate-intervention-attachments-workspace', {
+    launchWorkspace2('generate-intervention-attachments-workspace', {
       consentToken: claimsVisit.authorization_code,
       patientUuid: '10',
       claimInterventions: claimsVisit.interventions,
@@ -180,7 +180,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     if (!canSwitchIntervention || !hasSwitchableIntervention) {
       return;
     }
-    launchWorkspace('switch-intervention-workspace', {
+    launchWorkspace2('switch-intervention-workspace', {
       consentToken: claimsVisit.authorization_code,
       currentInterventions: claimsVisit.interventions,
       patientId: patientBillDetails?.cr_no ?? claimsVisit.patient_number,
