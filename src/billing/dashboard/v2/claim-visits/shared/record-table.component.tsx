@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 import { DocumentBlank, View, WarningFilled } from '@carbon/react/icons';
-import { launchWorkspace } from '@openmrs/esm-framework';
+import { launchWorkspace2 } from '@openmrs/esm-framework';
 import { type RecordCardModel } from './record-cards.component';
 import { RECORD_DETAILS_WORKSPACE } from './record-details.workspace';
 import styles from './record-table.component.scss';
@@ -95,7 +95,7 @@ const RecordTable: React.FC<RecordTableProps> = ({
   const showIndex = Boolean(numbered) && records.length > 1;
 
   const openRecord = (record: RecordCardModel) =>
-    launchWorkspace(RECORD_DETAILS_WORKSPACE, {
+    launchWorkspace2(RECORD_DETAILS_WORKSPACE, {
       record,
       // Named after the record it is showing, rather than the registration's generic
       // "Details", so the panel header says which invoice or intervention is open.

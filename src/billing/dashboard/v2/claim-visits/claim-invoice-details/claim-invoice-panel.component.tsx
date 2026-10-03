@@ -1,14 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, Modal, Tag } from '@carbon/react';
 import { DocumentPdf } from '@carbon/react/icons';
-import { closeWorkspace, formatDate, parseDate, showSnackbar, useSession } from '@openmrs/esm-framework';
+import { formatDate, parseDate, showSnackbar, useSession } from '@openmrs/esm-framework';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { type ClaimVisitInvoince } from '../../types';
 import { claimStatusTagType as stateTagType } from '../../claim-statuses';
 import ClaimInvoiceLineDetails from '../claim-invoice-line-details/claim-invoice-line-details.component';
 import ClaimInvoiceDocument from './claim-invoice-document.component';
-import { RECORD_DETAILS_WORKSPACE } from '../shared/record-details.workspace';
 import styles from './claim-invoice-panel.component.scss';
 
 /**
@@ -35,6 +34,7 @@ interface ClaimInvoicePanelProps {
   /** Follows the claim's content window — see ../../claim-statuses. */
   canEditLines?: boolean;
   claimFacts?: ClaimFactsShownAbove;
+  onClose?: () => void;
 }
 
 const money = (n: number | string) =>
@@ -80,6 +80,7 @@ const ClaimInvoicePanel: React.FC<ClaimInvoicePanelProps> = ({
   consentToken,
   canEditLines,
   claimFacts,
+  onClose,
 }) => {
   const amount = Number(invoice.total_inv_amount ?? 0);
   const net = Number(invoice.total_inv_net_amount ?? 0);
@@ -253,7 +254,7 @@ const ClaimInvoicePanel: React.FC<ClaimInvoicePanelProps> = ({
           as a child of the workspace, so it has no closeWorkspace prop to call — it
           dismisses the panel by name instead. */}
       <div className={styles.footer}>
-        <Button kind="secondary" size="sm" onClick={() => closeWorkspace(RECORD_DETAILS_WORKSPACE)}>
+        <Button kind="secondary" size="sm" onClick={onClose}>
           Close
         </Button>
         {/* Plain text while it builds rather than an InlineLoading, whose own line height

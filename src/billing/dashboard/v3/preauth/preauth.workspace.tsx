@@ -16,7 +16,13 @@ import {
   TextArea,
   TextInput,
 } from '@carbon/react';
-import { showSnackbar, useConfig, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import {
+  showSnackbar,
+  useConfig,
+  useSession,
+  Workspace2,
+  type Workspace2DefinitionProps,
+} from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import {
@@ -158,7 +164,7 @@ const RENAL_FORM_KEYS: PreauthFormFieldKey[] = [
   'coInsuranceDetails',
 ];
 
-interface PreauthWorkspaceProps extends DefaultWorkspaceProps {
+interface PreauthWorkspaceProps {
   consentToken: string;
   patientUuid?: string;
   locationUuid: string;
@@ -233,9 +239,10 @@ const normalizeRegulationBody = (value?: string | null): RegulationBody => {
   return 'KMPDC';
 };
 
-const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
+type PreauthFormProps = PreauthWorkspaceProps & Pick<Workspace2DefinitionProps, 'closeWorkspace'>;
+
+const PreauthForm: React.FC<PreauthFormProps> = ({
   closeWorkspace,
-  promptBeforeClosing,
   consentToken: consentTokenProp,
   patientUuid,
   locationUuid,
@@ -429,7 +436,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           'A preexisting visit claim token is required to raise preauth.',
         ),
       });
-      closeWorkspace?.();
+      void closeWorkspace();
     }
   }, [consentTokenProp, isElective, closeWorkspace, t]);
 
@@ -569,13 +576,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed once from SHA; avoid re-loop on doc state
   }, [billItem.cr_no, billItem.intervention_code, intervention.code, locationUuid]);
-
-  useEffect(() => {
-    promptBeforeClosing?.(() => {
-      if (allowCloseWithoutPromptRef.current) return false;
-      return dirty || submitting || polling;
-    });
-  }, [dirty, submitting, polling, promptBeforeClosing]);
 
   useEffect(() => () => {
     abortRef.current?.abort();
@@ -1553,7 +1553,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       setDirty(false);
       setSubmitting(false);
       setPolling(false);
-      closeWorkspace?.({ discardUnsavedChanges: true } as any);
+      void closeWorkspace({ discardUnsavedChanges: true });
     } catch (e: any) {
       showSnackbar({
         kind: 'error',
@@ -1573,7 +1573,11 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   }
 
   return (
-    <Form className={styles.form}>
+    <Workspace2
+      title={t('raisePreauth', 'Raise preauth')}
+      hasUnsavedChanges={!allowCloseWithoutPromptRef.current && (dirty || submitting || polling)}
+    >
+      <Form className={styles.form}>
       <div className={styles.body}>
         <div className={styles.header}>
           <div>
@@ -2425,12 +2429,30 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           )}
         </Button>
       </ButtonSet>
-    </Form>
+      </Form>
+    </Workspace2>
   );
 };
 
-const PreauthWorkspace: React.FC<PreauthWorkspaceProps> = (props) => (
-  <PreauthForm key={`${props.consentToken}::${props.intervention?.code ?? ''}`} {...props} />
-);
+const PreauthWorkspace: React.FC<Workspace2DefinitionProps<PreauthWorkspaceProps>> = ({
+  workspaceProps,
+  closeWorkspace,
+}) => {
+  if (!workspaceProps) {
+    return (
+      <Workspace2 title="Raise Preauth">
+        <div />
+      </Workspace2>
+    );
+  }
+  const props = workspaceProps ?? ({} as PreauthWorkspaceProps);
+  return (
+    <PreauthForm
+      key={`${props.consentToken}::${props.intervention?.code ?? ''}`}
+      {...props}
+      closeWorkspace={closeWorkspace}
+    />
+  );
+};
 
 export default PreauthWorkspace;

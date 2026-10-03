@@ -11,7 +11,7 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { launchWorkspace, showSnackbar, useSession } from '@openmrs/esm-framework';
+import { launchWorkspace2, showSnackbar, useSession } from '@openmrs/esm-framework';
 
 import { invalidatePreauthPreview, parseDocTypes, readSpecialtyFlags } from '../../../v2/preauth/preauth.resource';
 import { resolvePatientUuidFromCr } from '../../preauth/preauth.resource';
@@ -54,7 +54,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   }
 
   const handleAddAttachment = (ci: any) => {
-    launchWorkspace('upload-intervention-attachments-workspace', {
+    launchWorkspace2('upload-intervention-attachments-workspace', {
       consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
@@ -62,7 +62,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   };
 
   const handleGenerateAttachment = (ci: any) => {
-    launchWorkspace('generate-intervention-attachments-workspace', {
+    launchWorkspace2('generate-intervention-attachments-workspace', {
       consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
@@ -97,7 +97,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     if (!canSwitchFor(intervention)) {
       return;
     }
-    launchWorkspace('switch-intervention-workspace', {
+    launchWorkspace2('switch-intervention-workspace', {
       consentToken: consentToken,
       currentInterventions: [intervention],
       patientId: patientBillDetails?.cr_no,
@@ -161,7 +161,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     }
 
     // Fresh raise and failure-state resubmit both reopen the same preauth form.
-    launchWorkspace('preauth-form-workspace', {
+    launchWorkspace2('preauth-form-workspace', {
       consentToken,
       patientUuid,
       locationUuid,

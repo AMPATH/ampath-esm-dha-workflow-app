@@ -11,7 +11,7 @@ import {
   Tag,
 } from '@carbon/react';
 import { Renew } from '@carbon/react/icons';
-import { launchWorkspace, showSnackbar } from '@openmrs/esm-framework';
+import { launchWorkspace2, showSnackbar } from '@openmrs/esm-framework';
 import {
   checkPreauthStatus,
   getPreauthPreview,
@@ -164,7 +164,7 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
     }
 
     const flags = interventionFlagsFromBillItem(item);
-    launchWorkspace('preauth-form-workspace', {
+    launchWorkspace2('preauth-form-workspace', {
       consentToken: token,
       patientUuid: item.patient_uuid,
       locationUuid,

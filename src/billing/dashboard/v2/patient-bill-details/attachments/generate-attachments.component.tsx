@@ -1,6 +1,11 @@
 import React, { useRef, useState } from 'react';
 
-import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import {
+  showSnackbar,
+  useSession,
+  Workspace2,
+  type Workspace2DefinitionProps,
+} from '@openmrs/esm-framework';
 import { ApplicableDocumentType, type VisitIntervention } from '../../types';
 
 import styles from './attachments.scss';
@@ -21,7 +26,7 @@ import LabOrdersComponent from '../../../v3/patient-bill-details/attachments/lab
 import ProformaInvoiceComponent from '../../../v3/patient-bill-details/attachments/proforma-invoice/proforma-invoice.component';
 import UltrasoundReport from '../../../v3/patient-bill-details/attachments/ultrasound-report/utlrasound-report.component';
 
-interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
+interface GenerateAttachmentsProps {
   claimInterventions: VisitIntervention;
   bill: any;
   consentToken: string;
@@ -29,15 +34,12 @@ interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   billingDate: string;
 }
 
-const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
+const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachmentsProps>> = ({
   closeWorkspace,
-  promptBeforeClosing,
-  claimInterventions,
-  bill,
-  consentToken,
-  patientUuid,
-  billingDate,
+  workspaceProps,
 }) => {
+  const { claimInterventions, bill, consentToken, patientUuid, billingDate } =
+    workspaceProps ?? ({} as GenerateAttachmentsProps);
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -263,7 +265,8 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
 
   const generatedCount = documents.filter((d) => d.generated).length;
   return (
-    <>
+    <Workspace2 title={t('generateAttachments', 'Generate Attachments')}>
+      <>
       <Form className={styles.form}>
         <div className={styles.formContent}>
           <div
@@ -390,7 +393,8 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
         <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
       </div>
-    </>
+      </>
+    </Workspace2>
   );
 };
 
