@@ -94,13 +94,13 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     }
 
     setDocuments((previous) =>
-      previous.some((document) => document.name.trim().toUpperCase() === ApplicableDocumentType.DEATH_NOTIFICATION)
+      previous.some((document) => document.name.trim().toUpperCase() === ApplicableDocumentType.DEATH_NOTICE)
         ? previous
         : [
             ...previous,
             {
               id: crypto.randomUUID(),
-              name: ApplicableDocumentType.DEATH_NOTIFICATION,
+              name: ApplicableDocumentType.DEATH_NOTICE,
               generated: false,
               uploaded: false,
             },
@@ -254,7 +254,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         element = ultrasoundReportRef.current;
         break;
 
-      case ApplicableDocumentType.DEATH_NOTIFICATION:
+      case ApplicableDocumentType.DEATH_NOTICE:
         element = deathNotificationRef.current;
         break;
 
@@ -343,11 +343,11 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
                   onClick={() => generateDocument(document)}
                   disabled={
                     generatingDocumentId !== null ||
-                    (document.name === ApplicableDocumentType.DEATH_NOTIFICATION &&
+                    (document.name === ApplicableDocumentType.DEATH_NOTICE &&
                       (isLoadingDeathNotification || !deathNotificationPatient || !deathNotificationEncounter))
                   }
                 >
-                  {isLoadingDeathNotification && document.name === ApplicableDocumentType.DEATH_NOTIFICATION ? (
+                  {isLoadingDeathNotification && document.name === ApplicableDocumentType.DEATH_NOTICE ? (
                     <InlineLoading description="Loading form…" />
                   ) : generatingDocumentId === document.id ? (
                     <InlineLoading description="Generating…" />
