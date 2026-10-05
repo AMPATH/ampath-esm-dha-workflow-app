@@ -1,0 +1,88 @@
+.dnRoot {
+  box-sizing: border-box;
+  width: 760px;
+  padding: 40px;
+  color: #161616;
+  background: #ffffff;
+  font-family: Arial, sans-serif;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: inherit;
+  }
+}
+
+.dnHeader {
+  border-bottom: 3px solid #da1e28;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+}
+
+.dnEyebrow {
+  color: #da1e28;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.dnTitle {
+  font-size: 28px;
+  margin: 8px 0;
+}
+
+.dnSubtitle {
+  color: #525252;
+  font-size: 14px;
+}
+
+.dnSection {
+  margin-bottom: 28px;
+}
+
+.dnSectionTitle {
+  font-size: 18px;
+  margin-bottom: 14px;
+}
+
+.dnTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin-top: 12px;
+
+  th,
+  td {
+    border: 1px solid #d1d1d1;
+    padding: 9px;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    width: 20%;
+    background: #f4f4f4;
+    font-weight: 600;
+  }
+}
+
+.dnPatientTable {
+  margin-top: 0;
+}
+
+.dnEmptyMessage {
+  color: #525252;
+  font-size: 14px;
+}
+
+.dnFooter {
+  border-top: 1px solid #a8a8a8;
+  color: #525252;
+  font-size: 12px;
+  padding-top: 12px;
+}
+
+.dnSystemGenerated {
+  font-weight: 700;
+  font-style: italic;
+}

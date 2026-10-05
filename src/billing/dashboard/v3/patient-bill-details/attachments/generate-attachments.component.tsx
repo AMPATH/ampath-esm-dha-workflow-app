@@ -1,7 +1,12 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import {
+  showSnackbar,
+  useSession,
+  type DefaultWorkspaceProps,
+} from '@openmrs/esm-framework';
 import { ApplicableDocumentType, type VisitIntervention } from '../../types';
+import { useDeathNotification } from '../../../v2/patient-bill-details/attachments/death-notification.resource';
 
 import styles from './attachments.scss';
 import { Button, Form, InlineLoading, Modal, Tag } from '@carbon/react';
@@ -20,6 +25,7 @@ import GeneralDischargeSummary from './general-discharge-summary/general-dischar
 import LabOrdersComponent from './lab-results/lab-orders.component';
 import ProformaInvoiceComponent from './proforma-invoice/proforma-invoice.component';
 import UltrasoundReport from './ultrasound-report/utlrasound-report.component';
+import DeathNotification from '../../../v2/patient-bill-details/attachments/death-notification.component';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
@@ -39,6 +45,11 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   billingDate,
 }) => {
   const { t } = useTranslation();
+  const {
+    patient: deathNotificationPatient,
+    encounter: deathNotificationEncounter,
+    isLoading: isLoadingDeathNotification,
+  } = useDeathNotification(patientUuid, true);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatingDocumentId, setGeneratingDocumentId] = useState<string | null>(null);
@@ -75,6 +86,27 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const labResultsRef = useRef<HTMLDivElement>(null);
   const proformaInvoiceRef = useRef<HTMLDivElement>(null);
   const ultrasoundReportRef = useRef<HTMLDivElement>(null);
+  const deathNotificationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!deathNotificationEncounter) {
+      return;
+    }
+
+    setDocuments((previous) =>
+      previous.some((document) => document.name.trim().toUpperCase() === ApplicableDocumentType.DEATH_NOTIFICATION)
+        ? previous
+        : [
+            ...previous,
+            {
+              id: crypto.randomUUID(),
+              name: ApplicableDocumentType.DEATH_NOTIFICATION,
+              generated: false,
+              uploaded: false,
+            },
+          ],
+    );
+  }, [deathNotificationEncounter]);
 
   if (!claimInterventions) return null;
 
@@ -222,6 +254,10 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         element = ultrasoundReportRef.current;
         break;
 
+      case ApplicableDocumentType.DEATH_NOTIFICATION:
+        element = deathNotificationRef.current;
+        break;
+
       default:
         console.warn(`${document.name} cannot be generated. Kindly upload it instead using the upload button.`);
         showSnackbar({
@@ -305,9 +341,19 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
                   kind="ghost"
                   size="sm"
                   onClick={() => generateDocument(document)}
-                  disabled={generatingDocumentId !== null}
+                  disabled={
+                    generatingDocumentId !== null ||
+                    (document.name === ApplicableDocumentType.DEATH_NOTIFICATION &&
+                      (isLoadingDeathNotification || !deathNotificationPatient || !deathNotificationEncounter))
+                  }
                 >
-                  {generatingDocumentId === document.id ? <InlineLoading description="Generating…" /> : 'Generate'}
+                  {isLoadingDeathNotification && document.name === ApplicableDocumentType.DEATH_NOTIFICATION ? (
+                    <InlineLoading description="Loading form…" />
+                  ) : generatingDocumentId === document.id ? (
+                    <InlineLoading description="Generating…" />
+                  ) : (
+                    'Generate'
+                  )}
                 </Button>
               ) : (
                 <div
@@ -389,6 +435,13 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
         <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
         <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
+        {deathNotificationPatient && deathNotificationEncounter && (
+          <DeathNotification
+            ref={deathNotificationRef}
+            patient={deathNotificationPatient}
+            encounter={deathNotificationEncounter}
+          />
+        )}
       </div>
     </>
   );

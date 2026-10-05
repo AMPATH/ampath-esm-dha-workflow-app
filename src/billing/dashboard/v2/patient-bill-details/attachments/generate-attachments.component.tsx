@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import {
   showSnackbar,
@@ -7,6 +7,7 @@ import {
   type Workspace2DefinitionProps,
 } from '@openmrs/esm-framework';
 import { ApplicableDocumentType, type VisitIntervention } from '../../types';
+import { useDeathNotification } from './death-notification.resource';
 
 import styles from './attachments.scss';
 import { Button, Form, InlineLoading, Modal, Tag } from '@carbon/react';
@@ -25,6 +26,7 @@ import GeneralDischargeSummary from '../../../v3/patient-bill-details/attachment
 import LabOrdersComponent from '../../../v3/patient-bill-details/attachments/lab-results/lab-orders.component';
 import ProformaInvoiceComponent from '../../../v3/patient-bill-details/attachments/proforma-invoice/proforma-invoice.component';
 import UltrasoundReport from '../../../v3/patient-bill-details/attachments/ultrasound-report/utlrasound-report.component';
+import DeathNotification from './death-notification.component';
 
 interface GenerateAttachmentsProps {
   claimInterventions: VisitIntervention;
@@ -41,10 +43,14 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
   const { claimInterventions, bill, consentToken, patientUuid, billingDate } =
     workspaceProps ?? ({} as GenerateAttachmentsProps);
   const { t } = useTranslation();
+  const {
+    patient: deathNotificationPatient,
+    encounter: deathNotificationEncounter,
+    isLoading: isLoadingDeathNotification,
+  } = useDeathNotification(patientUuid);
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatingDocumentId, setGeneratingDocumentId] = useState<string | null>(null);
-
   const [documents, setDocuments] = useState<GeneratedDocument[]>(() => {
     const uploadOnlyDocumentTypes = new Set([
       ApplicableDocumentType.CLAIM_FORM,
@@ -53,7 +59,8 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
     const uniqueDocumentTypes = [
       ...new Set(
         (claimInterventions?.applicable_document_types ?? []).filter(
-          (documentType) => !uploadOnlyDocumentTypes.has(documentType.trim().toUpperCase() as ApplicableDocumentType),
+          (documentType) =>
+            !uploadOnlyDocumentTypes.has(documentType.trim().toUpperCase() as ApplicableDocumentType),
         ),
       ),
     ];
@@ -77,6 +84,27 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
   const labResultsRef = useRef<HTMLDivElement>(null);
   const proformaInvoiceRef = useRef<HTMLDivElement>(null);
   const ultrasoundReportRef = useRef<HTMLDivElement>(null);
+  const deathNotificationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!deathNotificationEncounter) {
+      return;
+    }
+
+    setDocuments((previous) =>
+      previous.some((document) => document.name.trim().toUpperCase() === ApplicableDocumentType.DEATH_NOTIFICATION)
+        ? previous
+        : [
+          ...previous,
+          {
+            id: crypto.randomUUID(),
+            name: ApplicableDocumentType.DEATH_NOTIFICATION,
+            generated: false,
+            uploaded: false,
+          },
+        ],
+    );
+  }, [deathNotificationEncounter]);
 
   if (!claimInterventions) return null;
 
@@ -149,9 +177,9 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
         prev.map((d) =>
           d.id === document.id
             ? {
-                ...d,
-                uploaded: true,
-              }
+              ...d,
+              uploaded: true,
+            }
             : d,
         ),
       );
@@ -224,6 +252,10 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
         element = ultrasoundReportRef.current;
         break;
 
+      case ApplicableDocumentType.DEATH_NOTIFICATION:
+        element = deathNotificationRef.current;
+        break;
+
       default:
         console.warn(`${document.name} cannot be generated. Kindly upload it instead using the upload button.`);
         showSnackbar({
@@ -251,12 +283,12 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
       prev.map((d) =>
         d.id === document.id
           ? {
-              ...d,
-              generated: true,
-              uploaded: false,
-              file,
-              url,
-            }
+            ...d,
+            generated: true,
+            uploaded: false,
+            file,
+            url,
+          }
           : d,
       ),
     );
@@ -267,132 +299,149 @@ const GenerateAttachments: React.FC<Workspace2DefinitionProps<GenerateAttachment
   return (
     <Workspace2 title={t('generateAttachments', 'Generate Attachments')}>
       <>
-      <Form className={styles.form}>
-        <div className={styles.formContent}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              margin: '1rem',
-              justifyContent: 'center',
-            }}
-          >
-            <div className={styles.interventionSection}>
-              <span>Intervention name</span>
-              <Tag type="blue">{claimInterventions.intervention_name}</Tag>
-            </div>
-            <div className={styles.interventionSection}>
-              <span>Intervention code</span>
-              <Tag type="blue">{claimInterventions.intervention_code}</Tag>
+        <Form className={styles.form}>
+          <div className={styles.formContent}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                margin: '1rem',
+                justifyContent: 'center',
+              }}
+            >
+              <div className={styles.interventionSection}>
+                <span>Intervention name</span>
+                <Tag type="blue">{claimInterventions.intervention_name}</Tag>
+              </div>
+              <div className={styles.interventionSection}>
+                <span>Intervention code</span>
+                <Tag type="blue">{claimInterventions.intervention_code}</Tag>
+              </div>
             </div>
           </div>
-        </div>
-        <div className={styles.fileList}>
-          {documents.map((document) => (
-            <div key={document.id} className={styles.fileItem}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  flex: 1,
-                }}
-              >
-                <DocumentPdf size={20} />
-                <span>{document.name}</span>
-              </div>
-
-              {!document.generated ? (
-                <Button
-                  kind="ghost"
-                  size="sm"
-                  onClick={() => generateDocument(document)}
-                  disabled={generatingDocumentId !== null}
-                >
-                  {generatingDocumentId === document.id ? <InlineLoading description="Generating…" /> : 'Generate'}
-                </Button>
-              ) : (
+          <div className={styles.fileList}>
+            {documents.map((document) => (
+              <div key={document.id} className={styles.fileItem}>
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
+                    gap: '0.75rem',
+                    flex: 1,
                   }}
                 >
+                  <DocumentPdf size={20} />
+                  <span>{document.name}</span>
+                </div>
+
+                {!document.generated ? (
                   <Button
                     kind="ghost"
                     size="sm"
-                    renderIcon={View}
-                    onClick={() => {
-                      setPreviewUrl(document.url);
-                      setPreviewOpen(true);
+                    onClick={() => generateDocument(document)}
+                    disabled={
+                      generatingDocumentId !== null ||
+                      (document.name === ApplicableDocumentType.DEATH_NOTIFICATION &&
+                        (isLoadingDeathNotification || !deathNotificationPatient || !deathNotificationEncounter))
+                    }
+                  >
+                    {isLoadingDeathNotification && document.name === ApplicableDocumentType.DEATH_NOTIFICATION ? (
+                      <InlineLoading description="Loading form…" />
+                    ) : generatingDocumentId === document.id ? (
+                      <InlineLoading description="Generating…" />
+                    ) : (
+                      'Generate'
+                    )}
+                  </Button>
+                ) : (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
                     }}
                   >
-                    Preview
-                  </Button>
-
-                  {!document.uploaded && (
-                    <Button kind="primary" size="sm" onClick={() => handleSubmit(document)}>
-                      Upload
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      renderIcon={View}
+                      onClick={() => {
+                        setPreviewUrl(document.url);
+                        setPreviewOpen(true);
+                      }}
+                    >
+                      Preview
                     </Button>
-                  )}
 
-                  <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => deleteDocument(document.id)}>
-                    Delete
-                  </Button>
-                </div>
-              )}
-            </div>
-          ))}
+                    {!document.uploaded && (
+                      <Button kind="primary" size="sm" onClick={() => handleSubmit(document)}>
+                        Upload
+                      </Button>
+                    )}
+
+                    <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => deleteDocument(document.id)}>
+                      Delete
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className={styles.closeButton}>
+            <Button kind="secondary" onClick={handleDiscard}>
+              {t('close', 'Close')}
+            </Button>
+          </div>
+        </Form>
+        <Modal
+          open={previewOpen}
+          passiveModal
+          modalHeading="Document Preview"
+          onRequestClose={() => setPreviewOpen(false)}
+          size="lg"
+        >
+          {previewUrl && (
+            <iframe
+              src={previewUrl}
+              title="Preview"
+              style={{
+                width: '100%',
+                height: '80vh',
+                border: 'none',
+              }}
+            />
+          )}
+        </Modal>
+        <div
+          style={{
+            position: 'fixed',
+            left: '-9999px',
+            top: 0,
+            opacity: 0,
+            pointerEvents: 'none',
+            zIndex: -1,
+          }}
+        >
+          <InvoiceComponent ref={invoiceRef} bill={bill} patientUuid={patientUuid} />
+
+          <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
+
+          <FinalBillComponent ref={finalBillRef} bill={bill} />
+          <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
+          <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
+          <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
+          <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
+          <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
+          <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
+          {deathNotificationPatient && deathNotificationEncounter && (
+            <DeathNotification
+              ref={deathNotificationRef}
+              patient={deathNotificationPatient}
+              encounter={deathNotificationEncounter}
+            />
+          )}
         </div>
-        <div className={styles.closeButton}>
-          <Button kind="secondary" onClick={handleDiscard}>
-            {t('close', 'Close')}
-          </Button>
-        </div>
-      </Form>
-      <Modal
-        open={previewOpen}
-        passiveModal
-        modalHeading="Document Preview"
-        onRequestClose={() => setPreviewOpen(false)}
-        size="lg"
-      >
-        {previewUrl && (
-          <iframe
-            src={previewUrl}
-            title="Preview"
-            style={{
-              width: '100%',
-              height: '80vh',
-              border: 'none',
-            }}
-          />
-        )}
-      </Modal>
-      <div
-        style={{
-          position: 'fixed',
-          left: '-9999px',
-          top: 0,
-          opacity: 0,
-          pointerEvents: 'none',
-          zIndex: -1,
-        }}
-      >
-        <InvoiceComponent ref={invoiceRef} bill={bill} patientUuid={patientUuid} />
-
-        <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
-
-        <FinalBillComponent ref={finalBillRef} bill={bill} />
-        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
-        <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
-        <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
-        <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
-        <ProformaInvoiceComponent ref={proformaInvoiceRef} patientUuid={patientUuid} />
-        <UltrasoundReport ref={ultrasoundReportRef} patientUuid={patientUuid} />
-      </div>
       </>
     </Workspace2>
   );
