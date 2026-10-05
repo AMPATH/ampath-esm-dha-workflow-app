@@ -47,6 +47,10 @@ describe('Telemedicine dashboard', () => {
 
     const iframe = await screen.findByTitle('Telemedicine');
     expect(iframe).toHaveAttribute('src', 'https://md-uat.liviaapp.net/#/sso?token=t0k3n');
+    // A video consult is useless without camera/mic — the iframe must ask the
+    // browser to delegate them to the framed app.
+    expect(iframe).toHaveAttribute('allow', 'camera; microphone; display-capture; fullscreen');
+    expect(iframe).toHaveAttribute('referrerpolicy', 'strict-origin');
     expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument();
     // The broker got the practitioner's national ID and the facility — the
     // session is the health worker's, scoped to where they logged in.

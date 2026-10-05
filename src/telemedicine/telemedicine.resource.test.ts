@@ -24,7 +24,11 @@ jest.mock('@openmrs/esm-framework', () => ({
 
 import { openmrsFetch } from '@openmrs/esm-framework';
 import { getHieBaseUrl } from '../shared/utils/get-base-url';
-import { fetchTelemedicineSession, getPractitionerNationalId } from './telemedicine.resource';
+import {
+  fetchPatientTelemedicineSession,
+  fetchTelemedicineSession,
+  getPractitionerNationalId,
+} from './telemedicine.resource';
 
 const mockOpenmrsFetch = jest.mocked(openmrsFetch);
 const mockGetHieBaseUrl = jest.mocked(getHieBaseUrl);
@@ -120,5 +124,48 @@ describe('fetchTelemedicineSession', () => {
       status: 502,
       message: 'No telemedicine facility is configured for this location.',
     });
+  });
+});
+
+describe('fetchPatientTelemedicineSession', () => {
+  it('POSTs both national IDs and the consent token to the patient broker path', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { expires_in: 600, redirect_url: 'https://md-uat.liviaapp.net/#/sso?token=p4713n7' },
+    } as any);
+
+    const session = await fetchPatientTelemedicineSession({
+      doctorNationalId: '10000000003',
+      patientNationalId: '87654321',
+      locationUuid: LOCATION_UUID,
+      consentToken: 'abc123',
+    });
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(`${BASE_URL}/telemedicine/sso/patient-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: {
+        doctorNationalId: '10000000003',
+        patientNationalId: '87654321',
+        locationUuid: LOCATION_UUID,
+        consentToken: 'abc123',
+      },
+    });
+    expect(session.redirect_url).toBe('https://md-uat.liviaapp.net/#/sso?token=p4713n7');
+  });
+
+  it('omits the consent token entirely when there is none', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { expires_in: 600, redirect_url: 'https://md-uat.liviaapp.net/#/sso?token=p4713n7' },
+    } as any);
+
+    await fetchPatientTelemedicineSession({
+      doctorNationalId: '10000000003',
+      patientNationalId: '87654321',
+      locationUuid: LOCATION_UUID,
+    });
+
+    const body = mockOpenmrsFetch.mock.calls[0][1]?.body as Record<string, unknown>;
+    // undefined drops out of the JSON body — the broker must not see an empty token.
+    expect(JSON.parse(JSON.stringify(body))).not.toHaveProperty('consentToken');
   });
 });
