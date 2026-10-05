@@ -352,6 +352,7 @@ export enum DischargeReasonType {
   RECOVERED = 'RECOVERED',
   REFERRED = 'REFERRED',
   ABSCONDED = 'ABSCONDED',
+  DECEASED = 'DECEASED',
   OTHER = 'OTHER',
 }
 
