@@ -328,6 +328,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
                     onBillDetailsChange?.();
                   }}
                   billingDate={billingDate}
+                  hasDeathReportingFormEncounter={hasDeathReportingFormEncounter}
                 />
               )}
             </div>

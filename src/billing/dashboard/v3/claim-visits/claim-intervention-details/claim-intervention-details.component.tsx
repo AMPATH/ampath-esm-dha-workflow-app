@@ -31,6 +31,7 @@ interface claimInterventionDetailsProps {
   canSwitchIntervention?: boolean;
   onSwitchSuccess?: () => void;
   billingDate: string;
+  hasDeathReportingFormEncounter?: boolean;
 }
 
 const isActiveIntervention = (iv: VisitIntervention) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE';
@@ -44,6 +45,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   canSwitchIntervention = false,
   onSwitchSuccess,
   billingDate,
+  hasDeathReportingFormEncounter
 }) => {
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
@@ -211,7 +213,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
             claimInterventions.map((ci) => {
               const canSwitch = canSwitchFor(ci);
               const canRaise = canRaisePreauthFor(ci);
-              const hasAttachments = (ci.applicable_document_types ?? []).length > 0;
+              const hasAttachments = (ci.applicable_document_types ?? []).length > 0 || hasDeathReportingFormEncounter;
               return (
                 <TableRow key={ci.id}>
                   <TableCell>{ci.intervention_code}</TableCell>
