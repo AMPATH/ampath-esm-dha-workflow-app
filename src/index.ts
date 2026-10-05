@@ -18,6 +18,7 @@ import { emtDashboardMeta } from './dashboard-meta/emt-dashboard.meta';
 import { electivePreauthMeta } from './dashboard-meta/elective-preauth.meta';
 import { shrDashboardMeta } from './dashboard-meta/shr-dashboard.meta';
 import { telemedicineDashboardMeta } from './dashboard-meta/telemedicine-dashboard.meta';
+import { telemedicinePatientChartMeta } from './dashboard-meta/telemedicine-patient-chart.meta';
 import { claimsAdminDashboardMeta } from './dashboard-meta/claims-admin.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
@@ -274,6 +275,16 @@ export const sharedHealthRecord = getAsyncLifecycle(() => import('./shr/shr.comp
 export const telemedicineDashboardLink = getSyncLifecycle(createDashboardLink(telemedicineDashboardMeta), options);
 
 export const telemedicineDashboard = getAsyncLifecycle(() => import('./telemedicine/telemedicine.component'), options);
+
+export const telemedicinePatientChartLink = getSyncLifecycle(
+  openMrsCreateDashboardLink(telemedicinePatientChartMeta as any),
+  options,
+);
+
+export const telemedicinePatientChart = getAsyncLifecycle(
+  () => import('./telemedicine/telemedicine-patient-chart.component'),
+  options,
+);
 
 export const shrConsentWorkspace = getAsyncLifecycle(
   () => import('./shr/workspaces/shr-consent-workspace/shr-consent.workspace'),

@@ -17,6 +17,7 @@ import { normalizeError } from '../shr/shr.resource';
  */
 
 const TELEMEDICINE_SSO_PATH = '/telemedicine/sso/token';
+const TELEMEDICINE_PATIENT_SSO_PATH = '/telemedicine/sso/patient-token';
 
 /** Body for `POST {hieBaseUrl}/telemedicine/sso/token`. */
 export interface TelemedicineSessionRequest {
@@ -76,6 +77,43 @@ export async function fetchTelemedicineSession(payload: TelemedicineSessionReque
   try {
     const hieBaseUrl = await getHieBaseUrl();
     const response = await openmrsFetch<TelemedicineSession>(`${hieBaseUrl}${TELEMEDICINE_SSO_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+    return response?.data;
+  } catch (err) {
+    throw normalizeError(err);
+  }
+}
+
+/** Body for `POST {hieBaseUrl}/telemedicine/sso/patient-token`. */
+export interface PatientTelemedicineSessionRequest {
+  /** The consulting practitioner's national ID — the same identity the practitioner flow keys on. */
+  doctorNationalId: string;
+  /** The patient's national ID — identifies who the consult session is for. */
+  patientNationalId: string;
+  /** Session facility — how the backend picks the Livia credentials/facility code. */
+  locationUuid: string;
+  /**
+   * The visit's claim consent token, when there is one — Livia ties the
+   * patient's session to the consent they gave for this visit. Optional:
+   * callers without a claim visit simply omit it.
+   */
+  consentToken?: string;
+}
+
+/**
+ * Ask the HIE middleware to mint a patient-scoped Livia SSO session — the
+ * patient-chart variant of {@link fetchTelemedicineSession}. Same answer
+ * shape (`{expires_in, redirect_url}`), same short-lived token rules.
+ */
+export async function fetchPatientTelemedicineSession(
+  payload: PatientTelemedicineSessionRequest,
+): Promise<TelemedicineSession> {
+  try {
+    const hieBaseUrl = await getHieBaseUrl();
+    const response = await openmrsFetch<TelemedicineSession>(`${hieBaseUrl}${TELEMEDICINE_PATIENT_SSO_PATH}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload,
