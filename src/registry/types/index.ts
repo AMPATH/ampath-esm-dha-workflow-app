@@ -348,6 +348,14 @@ export type HieClientEligibility = {
   fullName: string;
   schemes: Scheme[];
   statusDesc: string;
+  dateOfBirth: string;
+  gender: string;
+  age: number;
+  isAlive: boolean;
+  whitelistedForOTP: boolean;
+  facilityBiometricsEnforced: boolean;
+  facilityContracts: any;
+  statusCode: string;
 };
 
 export type Scheme = {
