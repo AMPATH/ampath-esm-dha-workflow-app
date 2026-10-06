@@ -834,6 +834,13 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                                     {maskExceptFirstAndLast(dependant.first_name)}{' '}
                                     {maskExceptFirstAndLast(dependant.middle_name)}{' '}
                                     {maskExceptFirstAndLast(dependant.last_name)}
+                                    
+                                  </span>
+                                  <span className={styles.optionName}>
+                                    {
+                                      dependant?.date_of_birth && <>({dependant?.date_of_birth ?? ''})</>
+                                    }
+                                      
                                   </span>
                                   <Tag type="teal" size="sm">
                                     {relationship || 'Dependant'}
