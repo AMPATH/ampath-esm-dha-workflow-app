@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Modal, ModalBody, Row, Select, SelectItem, TextInput } from '@carbon/react';
 import { submitClaim } from '../../../../../billing-claims.resource';
-import { Patient, showModal, showSnackbar } from '@openmrs/esm-framework';
+import { showSnackbar, type Patient } from '@openmrs/esm-framework';
 import { DischargeReasonType, type ClaimsVisit, type SubmitClaimDto } from '../../../types';
 import { type HieClient, HieIdentificationType } from '../../../../../../registry/types';
-import { Intervention, VisitType } from '../../../../../../claims';
+import type { Intervention, VisitType } from '../../../../../../claims';
 import { searchPatientByCrNumber } from '../../../../../../resources/patient-search.resource';
 import { IdentifierTypesUuids } from '../../../../../../resources/identifier-types';
 import ClaimsConsentExtension from '../../../../../../registry/modal/otp-verification-modal/extension/claims-consent.extension';
+import { useFormEncounters } from '../../../../../../death-reporting/death-reporting-form-button.resource';
 
 interface submitClaimModalProps {
     open: boolean;
@@ -25,28 +26,70 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
     const [authGuid, setAuthGuid] = useState("");
     const [dischargeReason, setDischargeReason] = useState<DischargeReasonType>();
     const [notes, setNotes] = useState("");
+    const [deathNotificationSerialNumber, setDeathNotificationSerialNumber] = useState('');
     const DischargeReasonTypes = Object.values(DischargeReasonType);
     const [patient, setPatient] = useState<Patient>();
+    const [isLoadingPatient, setIsLoadingPatient] = useState(false);
+    const { hasDeathReportingFormEncounter, isLoading: isLoadingDeathReportingStatus } = useFormEncounters(
+        patient?.uuid ?? '',
+    );
+    const isDeathReportingEncounter = Boolean(patient && hasDeathReportingFormEncounter);
+    const isDeathStatusReady = Boolean(patient) && !isLoadingPatient && !isLoadingDeathReportingStatus;
+    const dateOfDeath = patient?.person?.deathDate?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? '';
+
+    useEffect(() => {
+        if (!isDeathStatusReady) {
+            return;
+        }
+
+        if (isDeathReportingEncounter) {
+            setDischargeReason(DischargeReasonType.DECEASED);
+            setOtp('');
+            setAuthGuid('');
+        } else {
+            setDeathNotificationSerialNumber('');
+        }
+    }, [isDeathReportingEncounter, isDeathStatusReady]);
 
     useEffect(() => {
         const fn = async () => {
-            const response = await searchPatientByCrNumber(claimsVisit.member_number);
-            if (response.results.length) {
+            setIsLoadingPatient(true);
+            try {
+                const response = await searchPatientByCrNumber(claimsVisit.member_number);
                 setPatient(response.results[0]);
+            } finally {
+                setIsLoadingPatient(false);
             }
         }
 
         if (claimsVisit) {
+            setPatient(undefined);
             fn();
         }
     }, [claimsVisit]);
 
     const consentComplete = useMemo(() => {
+        if (!isDeathStatusReady) {
+            return false;
+        }
+        if (isDeathReportingEncounter) {
+            return Boolean(
+                dischargeReason === DischargeReasonType.DECEASED && deathNotificationSerialNumber.trim() && dateOfDeath,
+            );
+        }
         if (otp || authGuid) {
             return true;
         }
         return false;
-    }, [otp, authGuid]);
+    }, [
+        isDeathReportingEncounter,
+        isDeathStatusReady,
+        dischargeReason,
+        deathNotificationSerialNumber,
+        dateOfDeath,
+        otp,
+        authGuid,
+    ]);
 
     const invalidValues = useMemo(() => {
         if (invoiceNumber && claimsVisit) {
@@ -67,7 +110,9 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
     const nationalId = useMemo(() => {
         if (patient) {
             const identifiers = patient.identifiers;
-            return identifiers.find(i => i.identifierType.uuid === IdentifierTypesUuids.NATIONAL_ID_UUID).identifier ?? "";
+            return identifiers
+                ?.find((i) => i.identifierType?.uuid === IdentifierTypesUuids.NATIONAL_ID_UUID)
+                ?.identifier ?? "";
         }
     }, [patient]);
 
@@ -124,12 +169,16 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
         }
     }
     function getSubmitClaimPayload(): SubmitClaimDto {
-        let payload = {
+        const payload = {
             consentToken: claimsVisit.authorization_code,
             invoiceNumber,
             locationUuid,
-            dischargeReason
-        };
+            dischargeReason,
+        } as SubmitClaimDto & Record<string, unknown>;
+        if (isDeathReportingEncounter) {
+            payload['deathNotificationSerialNumber'] = deathNotificationSerialNumber.trim();
+            payload['dateOfDeath'] = dateOfDeath;
+        }
         if (otp) {
             payload["otp"] = otp;
         }
@@ -152,7 +201,7 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
                 size="md"
                 onSecondarySubmit={onClose}
                 onRequestClose={onClose}
-                onRequestSubmit={!invalidValues ? (loading ? holderFunction : (consentComplete ? () => setConfirmOpen(true) : null)) : null}
+                onRequestSubmit={!invalidValues ? (loading ? holderFunction : (consentComplete ? () => setConfirmOpen(true) : undefined)) : undefined}
                 primaryButtonText={!invalidValues ? (loading ? 'Submitting claim...' : (consentComplete ? 'Submit claim' : null)) : null}
                 secondaryButtonText="Close"
             >
@@ -161,6 +210,8 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
                         <Select
                             id="discharge-reason"
                             labelText="Discharge reason"
+                            value={dischargeReason ?? ''}
+                            disabled={isDeathReportingEncounter}
                             onChange={($event) => setDischargeReason($event.target.value as DischargeReasonType)}
                         >
                             <SelectItem value="" text="Select" />;
@@ -169,6 +220,31 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
                             })}
                         </Select>
                     </Row>
+                    {isDeathReportingEncounter && (
+                        <>
+                            <Row>
+                                <TextInput
+                                    id="death-notification-serial-number"
+                                    labelText="Death notification serial number"
+                                    value={deathNotificationSerialNumber}
+                                    required
+                                    onChange={($event) => setDeathNotificationSerialNumber($event.target.value)}
+                                />
+                            </Row>
+                            <Row>
+                                <TextInput
+                                    id="date-of-death"
+                                    type="date"
+                                    labelText="Date of death"
+                                    value={dateOfDeath}
+                                    required
+                                    readOnly
+                                    invalid={!dateOfDeath}
+                                    invalidText="No date of death is recorded for this patient. Update the patient record before submitting."
+                                />
+                            </Row>
+                        </>
+                    )}
                     <Row>
                         <TextInput
                             id="notes"
@@ -177,8 +253,8 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
                         />
                     </Row>
                     {
-                        (dischargeReason && notes) &&
-                        <ClaimsConsentExtension patient={consentPatient} intervention={getIntervention()} crIdentifierId={claimsVisit.member_number} visitType={visitType} onClientConsent={onClientConsent} consentToken={claimsVisit.authorization_code} isDischarge={true}/>
+                        (isDeathStatusReady && !isDeathReportingEncounter && dischargeReason && notes && getIntervention()) &&
+                        <ClaimsConsentExtension patient={consentPatient} intervention={getIntervention()!} crIdentifierId={claimsVisit.member_number} visitType={visitType} onClientConsent={onClientConsent} consentToken={claimsVisit.authorization_code} isDischarge={true}/>
                     }
                 </ModalBody>
             </Modal>

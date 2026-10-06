@@ -627,8 +627,9 @@ export async function closeClaim(closeClaimDto: CloseClaimDto) {
 export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: string = 'INPATIENT') {
   const { hieBaseUrl } = await getHieBaseUrl();
   let claimUrl = `${hieBaseUrl}/claim-submission`;
+  const submitClaimPayload = submitClaimDto as SubmitClaimDto & Record<string, string | undefined>;
   if (visitType === 'INPATIENT' || visitType === 'EMERGENCY') {
-    submitClaimDto['dischargeDate'] = new Date().toISOString();
+    submitClaimPayload['dischargeDate'] = new Date().toISOString();
     claimUrl = `${hieBaseUrl}/claim-submission/inpatient`;
   }
   const response = await openmrsFetch(claimUrl, {
@@ -636,7 +637,7 @@ export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: str
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(submitClaimDto),
+    body: JSON.stringify(submitClaimPayload),
   });
   const data = (await response.json()) as ClaimVisitReponse;
   return data ?? null;
