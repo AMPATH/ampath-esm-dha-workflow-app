@@ -194,7 +194,6 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
         if (isDeathReportingEncounter) {
             payload['deathNotificationSerialNumber'] = deathNotificationSerialNumber.trim();
             payload['dateOfDeath'] = dateOfDeath;
-            payload['dischargeDate'] = dateOfDeath;
         }
         if (otp) {
             payload["otp"] = otp;

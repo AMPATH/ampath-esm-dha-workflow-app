@@ -629,7 +629,7 @@ export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: str
   let claimUrl = `${hieBaseUrl}/claim-submission`;
   const submitClaimPayload = submitClaimDto as SubmitClaimDto & Record<string, string | undefined>;
   if (visitType === 'INPATIENT' || visitType === 'EMERGENCY') {
-    submitClaimPayload['dischargeDate'] = submitClaimPayload['dischargeDate'] ?? new Date().toISOString();
+    submitClaimPayload['dischargeDate'] = new Date().toISOString();
     claimUrl = `${hieBaseUrl}/claim-submission/inpatient`;
   }
   const response = await openmrsFetch(claimUrl, {
