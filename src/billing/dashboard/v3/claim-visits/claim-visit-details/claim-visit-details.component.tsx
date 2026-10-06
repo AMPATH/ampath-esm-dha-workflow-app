@@ -221,9 +221,12 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
      if(clientId){
         const resp = await fetchClientEligibilityData(clientId,'ClientRegistry ID',locationUuid);
         if(resp){
-            const principalContributor = resp?.schemes[0]?.principalContributor;
-            principalContributorId = principalContributor.idNumber ?? '';
-            await getPrincipalContributor(principalContributorId);
+          if(resp?.schemes && resp?.schemes.length > 0){
+              const principalContributor = resp?.schemes && resp?.schemes[0]?.principalContributor;
+              principalContributorId = principalContributor.idNumber ?? '';
+              await getPrincipalContributor(principalContributorId);
+          }
+           
             
         }
        await getClaimPatient(clientId);
