@@ -337,6 +337,7 @@ export type SubmitClaimDto = {
   consentToken: string;
   invoiceNumber: string;
   locationUuid: string;
+  dischargeReason?: string;
 };
 
 export enum ClaimCloseReasonType {

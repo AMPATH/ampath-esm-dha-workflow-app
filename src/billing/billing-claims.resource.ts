@@ -42,7 +42,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { type VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
-import { type ClaimsDashboardStatsData, type PatientBillVisit } from './dashboard/v3/types';
+import { DischargeReasonType, type ClaimsDashboardStatsData, type PatientBillVisit } from './dashboard/v3/types';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -628,7 +628,7 @@ export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: str
   const { hieBaseUrl } = await getHieBaseUrl();
   let claimUrl = `${hieBaseUrl}/claim-submission`;
   const submitClaimPayload = submitClaimDto as SubmitClaimDto & Record<string, string | undefined>;
-  if (visitType === 'INPATIENT' || visitType === 'EMERGENCY') {
+  if (visitType === 'INPATIENT' || visitType === 'EMERGENCY' || submitClaimDto["dischargeReason"] == DischargeReasonType.DECEASED) {
     submitClaimPayload['dischargeDate'] = new Date().toISOString();
     claimUrl = `${hieBaseUrl}/claim-submission/inpatient`;
   }
@@ -816,31 +816,31 @@ export async function fetchPatientDiagnosesForBilling(
   const maternityRows: AmrsVisitDiagnosis[] =
     maternityResult.status === 'fulfilled'
       ? (maternityResult.value ?? [])
-          .filter((r) => r?.uuid != null)
-          .map((v): AmrsVisitDiagnosis => ({
-            patient_id: Number(v.patient_id) || 0,
-            encounter_id: v.encounter_id,
-            encounter_datetime: v.encounter_datetime,
-            facility: v.facility ?? '',
-            encounter_type: v.encounter_type,
-            concept_id: v.concept_id != null ? Number(v.concept_id) : null,
-            value_coded: v.value_coded != null ? Number(v.value_coded) : null,
-            dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
-            concept_name: v?.concept_name ?? '',
-            diagnosis_type: v?.diagnosis_type ?? '',
-            provider_name: v?.provider_name ?? '',
-            concept_source_name: v.concept_source_name,
-            hl7_code: v.hl7_code,
-            icd11_code: v.icd11_code,
-            provider_id: '',
-            national_id: v.practioner_nat_id ?? '',
-            speciality: v.practitioner_speciality ?? null,
-            uuid: v.uuid,
-            practioner_nat_id: v.practioner_nat_id,
-            practitioner_speciality: v.practitioner_speciality,
-            practitioner_identifier_type: 'National ID',
-            practitioner_body: v.practitioner_body,
-          }))
+        .filter((r) => r?.uuid != null)
+        .map((v): AmrsVisitDiagnosis => ({
+          patient_id: Number(v.patient_id) || 0,
+          encounter_id: v.encounter_id,
+          encounter_datetime: v.encounter_datetime,
+          facility: v.facility ?? '',
+          encounter_type: v.encounter_type,
+          concept_id: v.concept_id != null ? Number(v.concept_id) : null,
+          value_coded: v.value_coded != null ? Number(v.value_coded) : null,
+          dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
+          concept_name: v?.concept_name ?? '',
+          diagnosis_type: v?.diagnosis_type ?? '',
+          provider_name: v?.provider_name ?? '',
+          concept_source_name: v.concept_source_name,
+          hl7_code: v.hl7_code,
+          icd11_code: v.icd11_code,
+          provider_id: '',
+          national_id: v.practioner_nat_id ?? '',
+          speciality: v.practitioner_speciality ?? null,
+          uuid: v.uuid,
+          practioner_nat_id: v.practioner_nat_id,
+          practitioner_speciality: v.practitioner_speciality,
+          practitioner_identifier_type: 'National ID',
+          practitioner_body: v.practitioner_body,
+        }))
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
