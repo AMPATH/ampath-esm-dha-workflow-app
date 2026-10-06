@@ -1,5 +1,5 @@
 import React from 'react';
-import { type PatientFacilityBillDetails, type VisitIntervention } from '../../types';
+import { ApplicableDocumentType, type PatientFacilityBillDetails, type VisitIntervention } from '../../types';
 import {
   MenuButton,
   MenuItem,
@@ -190,6 +190,18 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       },
     });
   };
+  function formatDocuments(documentTypes: ApplicableDocumentType[]){
+    if(!documentTypes || documentTypes.length === 0){
+       return;
+    }
+       return <>
+         <ul>
+            { documentTypes?.map((d)=>{
+          return <li>{d}</li>
+       })}
+         </ul>
+       </>  
+  }
 
   return (
     <>
@@ -204,6 +216,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
             <TableHeader>State</TableHeader>
             <TableHeader>Sub Benefit Code</TableHeader>
             <TableHeader>Fund</TableHeader>
+            <TableHeader>Applicable Documents</TableHeader>
             <TableHeader>Attachments</TableHeader>
             <TableHeader>Actions</TableHeader>
           </TableRow>
@@ -224,6 +237,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
                   <TableCell>{ci.workflow_state}</TableCell>
                   <TableCell>{ci.sub_benefit_code}</TableCell>
                   <TableCell>{ci.intervention_fund}</TableCell>
+                  <TableCell>{formatDocuments(ci.applicable_document_types)}</TableCell>
                   <TableCell>
                     {hasAttachments ? (
                       <MenuButton label="Attachments" kind="ghost" size="sm">
