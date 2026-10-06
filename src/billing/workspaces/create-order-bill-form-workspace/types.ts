@@ -34,3 +34,16 @@ export interface DrugBatch {
     uom: Uom;
     lots: Lot[];
 }
+
+export interface DrugFormulation {
+    uuid: string;
+    display: string;
+    dosageForm: {
+        uuid: string;
+        display: string;
+    },
+    concept: {
+        uuid: string;
+        display: string;
+    }
+}

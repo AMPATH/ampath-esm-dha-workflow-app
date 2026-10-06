@@ -35,6 +35,7 @@ import {
   Layer,
   Tile,
   FormLabel,
+  Toggle,
 } from '@carbon/react';
 import styles from './create-order-bill-form.scss';
 import React from 'react';
@@ -48,6 +49,7 @@ import {
   useActiveVisitBills,
   useBillableItems,
   useCashPoint,
+  useDrugFormulations,
   useInventoryBatches,
   useLocationAttributes,
   useOrderBillableItems,
@@ -85,13 +87,15 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
   const { identifiers } = usePatientIdentifiers(order?.patient?.uuid);
   const { cashPoints } = useCashPoint();
   const sessionLocation = useSession();
-  const drugUuid = order?.drug?.uuid;
+  const [drugUuid, setDrugUuid] = useState(order?.drug?.uuid);
   const isDrug = servicePointName === 'PHARMACY' && Boolean(drugUuid);
+  const { isLoadingDrugFormulations, drugFormulations } = useDrugFormulations(order?.drug?.display, isDrug);
   const { lineItems, isLoading: isLoadingOrderBillItems } = useOrderBillableItems(
     sessionLocation?.sessionLocation?.uuid,
     drugUuid,
   );
   const { drugBatches, isLoadingBatches } = useInventoryBatches(drugUuid, sessionLocation?.sessionLocation?.uuid);
+  const [switchDrug, setSwitchDrug] = useState(false);
   const { claimVisit, isLoading: isLoadingClaimVisits } = useProviderClaimPreview(
     getConsentToken(activeVisit),
     sessionLocation?.sessionLocation?.uuid,
@@ -138,14 +142,18 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
     return false;
   }, [locationAttributes]);
 
+  const schemaRef = useRef(createValidationSchema({ isDrug, switchDrug }));
+  schemaRef.current = createValidationSchema({ isDrug, switchDrug });
+
   const {
     control,
     watch,
     handleSubmit,
     setValue,
+    trigger,
     formState: { errors, isDirty, isSubmitting, isValid },
   } = useForm<CreateOrderBillFormSchema>({
-    resolver: zodResolver(createValidationSchema(isDrug)),
+    resolver: (values, ctx, options) => zodResolver(schemaRef.current)(values, ctx, options),
     mode: 'onChange',
     defaultValues: {
       quantity: quantity ?? 1,
@@ -154,6 +162,32 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
 
   const selectedServicePrice = watch('unitPrice');
   const selectedBatchNumber = watch('batchNumber');
+  const selectedSwitchedDrug = watch('switchedDrug');
+
+  const hasAppliedDefaultBillableItem = useRef(false);
+  const previousDrugUuid = useRef(order?.drug?.uuid);
+
+  useEffect(() => {
+    const nextDrugUuid = switchDrug && selectedSwitchedDrug ? selectedSwitchedDrug : order?.drug?.uuid;
+    if (previousDrugUuid.current !== nextDrugUuid) {
+      previousDrugUuid.current = nextDrugUuid;
+      hasAppliedDefaultBillableItem.current = false;
+      setValue('batchNumber', '');
+      setValue('billableItem', '');
+      setValue('unitPrice', '');
+    }
+    setDrugUuid(nextDrugUuid);
+  }, [selectedSwitchedDrug, switchDrug, order, setValue]);
+
+  useEffect(() => {
+    if (!switchDrug) {
+      setValue('switchedDrug', '');
+    }
+  }, [switchDrug, setValue]);
+
+  useEffect(() => {
+    void trigger();
+  }, [switchDrug, isDrug, drugUuid, trigger]);
 
   const selectedServicePriceUuid = useMemo(() => {
     if (selectedServicePrice) {
@@ -206,8 +240,6 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
     }
     return undefined;
   }, [conceptUuid, lineItems, drugUuid, isDrug]);
-
-  const hasAppliedDefaultBillableItem = useRef(false);
 
   useEffect(() => {
     if (defaultBillableItemUuid && !hasAppliedDefaultBillableItem.current) {
@@ -530,6 +562,12 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
                 <EligibilityTags crId={crIdentifierId} locationUuid={sessionLocation?.sessionLocation?.uuid ?? ''} />
               </div>
 
+              {isDrug &&
+                (<div>
+                  <Toggle id="switch-drug" defaultToggled={switchDrug} labelText='Switch drug' onToggle={setSwitchDrug} />
+                </div>)
+              }
+
               <ResponsiveWrapper>
                 <FormGroup legendText="">
                   <Column>
@@ -553,6 +591,37 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
                 </FormGroup>
               </ResponsiveWrapper>
 
+              {(isDrug && switchDrug) && (
+                <Column>
+                  <Controller
+                    control={control}
+                    name="switchedDrug"
+                    render={({ field }) => {
+                      if (isLoadingDrugFormulations) {
+                        return <InlineLoading description={t('loadingDrugs', 'Loading drugs...')} />;
+                      }
+                      return (
+                        <Select
+                          id="switchedDrug"
+                          labelText={t('selectDrug', 'Select drug *')}
+                          invalid={!!errors.switchedDrug}
+                          invalidText={errors.switchedDrug?.message}
+                          value={field.value ?? ''}
+                          onChange={(e) => {
+                            field.onChange(e.target.value);
+                          }}
+                        >
+                          <SelectItem value="" text="Select drug" />
+                          {drugFormulations?.map((drug) => {
+                            return <SelectItem key={drug?.uuid} value={drug?.uuid} text={drug?.concept?.display} />;
+                          })}
+                        </Select>
+                      );
+                    }}
+                  />
+                </Column>
+              )}
+
               {isDrug && (
                 <Column>
                   <Controller
@@ -561,12 +630,15 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
                     render={({ field }) => {
                       return (
                         <>
-                          {drugBatches ? (
+                          {isLoadingBatches ? (
+                            <InlineLoading description={t('loadingBatches', 'Loading batches...')} />
+                          ) : drugBatches?.lots?.length ? (
                             <Select
                               id="batchNumber"
                               labelText={t('selectBatch', 'Select batch *')}
                               invalid={!!errors.batchNumber}
                               invalidText={errors.batchNumber?.message}
+                              value={field.value ?? ''}
                               onChange={(e) => {
                                 field.onChange(e.target.value);
                               }}
@@ -575,11 +647,16 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
                               {drugBatches?.lots?.map((lot) => {
                                 const expirationDate = lot?.expiration_date ?? t('notSet', 'Not set');
                                 const text = `Batch: ${lot?.name} | Qty: ${lot?.quantity} | Expires: ${expirationDate}`;
-                                return <SelectItem value={lot?.name} text={text} />;
+                                return <SelectItem key={lot?.name} value={lot?.name} text={text} />;
                               })}
                             </Select>
                           ) : (
-                            <></>
+                            <InlineNotification
+                              kind="warning"
+                              title={t('noBatchFound', 'No batch found for this drug.')}
+                              lowContrast
+                              hideCloseButton
+                            />
                           )}
                         </>
                       );
@@ -742,9 +819,9 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
                         isNewVisit: false,
                         triggerAddIntervention,
                         order,
-                        onSelectChange: () => {},
+                        onSelectChange: () => { },
                         onAddIntervention,
-                        hasPreExistingInterventions: () => {},
+                        hasPreExistingInterventions: () => { },
                         onError,
                       }}
                     />
@@ -760,7 +837,13 @@ const CreateOrderBillForm: React.FC<Workspace2DefinitionProps<CreateOrderBillFor
             <Button kind="secondary" onClick={() => void closeWorkspace()}>
               {t('cancel', 'Cancel')}
             </Button>
-            <Button kind="primary" type="submit" disabled={isSubmitting || isSubmitPending || !isDirty || !isValid}>
+            <Button
+              kind="primary"
+              type="submit"
+              disabled={
+                isSubmitting || isSubmitPending || !isDirty || !isValid || (isDrug && switchDrug && !selectedSwitchedDrug)
+              }
+            >
               {isSubmitting || isSubmitPending ? (
                 <InlineLoading description={t('submitting', 'Submitting...')} />
               ) : isSHAPaymentMode && canStartClaimVisit && !consentToken ? (
