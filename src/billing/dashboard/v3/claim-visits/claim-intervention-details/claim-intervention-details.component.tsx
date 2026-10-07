@@ -208,6 +208,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       <Table size="sm">
         <TableHead>
           <TableRow>
+            <TableHeader>No</TableHeader>
             <TableHeader>Code</TableHeader>
             <TableHeader>Payment Mechanism</TableHeader>
             <TableHeader>Name</TableHeader>
@@ -223,12 +224,13 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
         </TableHead>
         <TableBody>
           {claimInterventions &&
-            claimInterventions.map((ci) => {
+            claimInterventions.map((ci,index) => {
               const canSwitch = canSwitchFor(ci);
               const canRaise = canRaisePreauthFor(ci);
               const hasAttachments = (ci.applicable_document_types ?? []).length > 0 || hasDeathReportingFormEncounter;
               return (
                 <TableRow key={ci.id}>
+                  <TableCell>{index + 1}</TableCell>
                   <TableCell>{ci.intervention_code}</TableCell>
                   <TableCell>{ci.intervention_payment_mechanism}</TableCell>
                   <TableCell>{ci.intervention_name}</TableCell>
