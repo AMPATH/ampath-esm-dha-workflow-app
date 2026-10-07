@@ -193,6 +193,13 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     return <InlineLoading description="Refreshing bill details ..." />;
   }
 
+  function formatVisitDate(visitDateTime: string){
+      if(!visitDateTime){
+         return '';
+      }
+      return new Date(visitDateTime).toISOString().slice(0, 16).replace('T', ' ') ?? '';
+  }
+
   return (
     <>
       <div className={styles.visitDetailsLayout}>
@@ -200,7 +207,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
           {patientVisits &&
             patientVisits?.map((v) => {
               return (
-                <RadioButton id={v.visit_uuid} labelText={`${v.visit_type}: ${v.date_started}`} value={v.visit_uuid} />
+                <RadioButton id={v.visit_uuid} labelText={`${v.visit_type}: ${formatVisitDate(v.date_started)}`} value={v.visit_uuid} />
               );
             })}
         </RadioButtonGroup>
