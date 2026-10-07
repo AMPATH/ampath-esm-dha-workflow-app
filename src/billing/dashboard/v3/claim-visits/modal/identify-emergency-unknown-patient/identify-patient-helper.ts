@@ -1,7 +1,7 @@
-import { showSnackbar } from '@openmrs/esm-framework';
+import { type Patient, showSnackbar } from '@openmrs/esm-framework';
 import dayjs from 'dayjs';
 
-import { type ClientRegistrySearchRequest } from '../../../../../../registry/types';
+import { type HieClient, type ClientRegistrySearchRequest } from '../../../../../../registry/types';
 import { type Intervention } from '../../../../../../claims';
 import { type ClaimsVisit } from '../../../types';
 
@@ -46,14 +46,15 @@ export const isValidSeatchClientPayload = (payload: ClientRegistrySearchRequest)
   return true;
 };
 
-export function isPatientMinor(patient: any): boolean {
-  const age = patient?.person?.age;
+export function isPatientMinor(patient: Patient | HieClient): boolean {
+  const person = 'person' in patient ? patient.person : undefined;
+  const age = person?.age;
 
   if (typeof age === 'number') {
     return age < 18;
   }
 
-  const birthdate = patient?.person?.birthdate;
+  const birthdate = person?.birthdate ?? ('date_of_birth' in patient ? patient.date_of_birth : undefined);
 
   if (!birthdate) {
     return false;

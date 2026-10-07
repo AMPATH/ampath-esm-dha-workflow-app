@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { type PatientPayment, type PatientFacilityBillDetails, type ClaimsVisit } from '../../types';
 import styles from './bill-details.scss';
 import {
@@ -15,7 +15,7 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { formatDate, parseDate } from '@openmrs/esm-framework';
+import { formatDate, parseDate, showSnackbar } from '@openmrs/esm-framework';
 import BillItemPaymentModal from '../modals/bill-item-payment/bill-item-payment.modal';
 import AddClaimLineModal from '../modals/add-claim-line/add-claim-line.modal';
 import { type AmrsVisitDiagnosis } from '../../../../types';
@@ -24,6 +24,11 @@ import {
   useInvalidatePatientBillDetails,
   useInvalidateProviderClaimPreview,
 } from '../../../../billing-claims.resource';
+import { setEffectiveCoverage, type PomsfCoveragePayload } from '../../../../../registry/drawer/pomsf-balance.util';
+import { getClientEligibityStatus } from '../../../../../shared/services/eligibility.resource';
+import { type Scheme } from '../../../../../registry/types';
+import { fetchPomsfBalance } from '../../../../../claims/claims.resource';
+import SetEffectivePomsfCoverageModal from '../modals/pomsf/set-effective-pomsf-coverage.component';
 
 interface billDetailsProps {
   patientBillDetails: PatientFacilityBillDetails[];
@@ -45,20 +50,107 @@ const BillDetails: React.FC<billDetailsProps> = ({
 }) => {
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
+  const [showEffectiveCoverageModal, setShowEffectiveCoverageModal] = useState<boolean>(false);
   const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
   const setDiagnosisInterventionCode = useMemo(() => getConsultationBillIntervantionCode(), [patientBillDetails]);
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
   const invalidatePatientBillDetails = useInvalidatePatientBillDetails();
+  const [schemes, setSchemes] = useState<Scheme[]>([]);
 
   const scopedBillDetails = patientBillDetails;
   const scopedPayments = patientPayments;
   const scopedDiagnosis = amrsVisitDiagnosis;
+  const activePomsfSchemes = schemes.filter(
+    (scheme) => /^(pomsf(?:[-\s].*)?|usalama|tsc)$/i.test(scheme.schemeName.trim()) && scheme.coverage?.status === '1',
+  );
+  const defaultPolicyNumber = activePomsfSchemes[0]?.policy?.number ?? '';
+  const setCoverage = useCallback(
+    async (principalCrId: string, policyNumber: string) => {
+      try {
+        const response = await fetchPomsfBalance(principalCrId, locationUuid);
+        if (response) {
+          const payload: PomsfCoveragePayload = {
+            principalCrId,
+            consentToken,
+            policyNumber,
+            locationUuid,
+          };
+          const result = await setEffectiveCoverage(payload);
+          if (result.success) {
+            showSnackbar({
+              kind: 'success',
+              title: 'Effective coverage set successfully',
+            });
+          } else {
+            showSnackbar({
+              kind: 'error',
+              title: 'Error setting effective coverage',
+              subtitle: result.message || 'An error occurred while setting effective coverage.',
+            });
+          }
+        } else {
+          showSnackbar({
+            kind: 'success',
+            title: 'Effective coverage set successfully',
+          });
+        }
+      } catch (error: any) {
+        showSnackbar({
+          kind: 'error',
+          title: 'Error setting effective coverage',
+          subtitle: error.message || 'An error occurred while setting effective coverage.',
+        });
+      }
+    },
+    [consentToken, locationUuid],
+  );
+
+  useEffect(() => {
+    if (!claimsVisit?.member_number || !locationUuid) {
+      return;
+    }
+
+    let active = true;
+    getClientEligibityStatus({
+      requestIdNumber: claimsVisit.member_number,
+      requestIdType: '3',
+      locationUuid,
+    })
+      .then((eligibility) => {
+        if (!active) {
+          return;
+        }
+
+        setSchemes(eligibility?.schemes ?? []);
+
+        const confirmedActiveSchemes = (eligibility?.schemes ?? []).filter(
+          (scheme) =>
+            /^(pomsf(?:[-\s].*)?|usalama|tsc)$/i.test(scheme.schemeName.trim()) && scheme.coverage?.status === '1',
+        );
+        const policyNumber = confirmedActiveSchemes[0]?.policy?.number ?? '';
+
+        if (confirmedActiveSchemes.length === 1 && policyNumber) {
+          void setCoverage(claimsVisit.member_number, policyNumber);
+        } else if (confirmedActiveSchemes.length > 1) {
+          setShowEffectiveCoverageModal(true);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSchemes([]);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [claimsVisit?.member_number, locationUuid, setCoverage]);
 
   if (!patientBillDetails && !patientPayments) {
     return <>No Data</>;
   }
+
   function handleBillItemPayment(patientBillDetail: PatientFacilityBillDetails) {
-    console.log('ACTION PAY BILL: ', patientBillDetail);
     setSelectedBillItem(patientBillDetail);
     setShowPaymentModal(true);
   }
@@ -80,6 +172,12 @@ const BillDetails: React.FC<billDetailsProps> = ({
   }
   function handleCloseAddClaimItemModal() {
     setShowAddClaimLineModal(false);
+  }
+  function handleCloseEffectiveCoverageModal() {
+    setShowEffectiveCoverageModal(false);
+  }
+  function handleEffectiveCoverageSuccess(selectedPolicyNumber: string) {
+    void setCoverage(claimsVisit?.member_number, selectedPolicyNumber);
   }
   function getConsultationBillIntervantionCode() {
     if (!patientBillDetails || patientBillDetails.length === 0) {
@@ -259,6 +357,18 @@ const BillDetails: React.FC<billDetailsProps> = ({
           onSuccess={onSuccess}
           locationUuid={locationUuid}
           consentToken={consentToken}
+        />
+      )}
+      {showEffectiveCoverageModal && (
+        <SetEffectivePomsfCoverageModal
+          open={showEffectiveCoverageModal}
+          onClose={handleCloseEffectiveCoverageModal}
+          onSuccess={handleEffectiveCoverageSuccess}
+          locationUuid={locationUuid}
+          consentToken={consentToken}
+          memberNumber={claimsVisit.member_number}
+          policyNumber={defaultPolicyNumber}
+          schemes={activePomsfSchemes}
         />
       )}
     </>
