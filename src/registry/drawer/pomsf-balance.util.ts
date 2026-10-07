@@ -1,5 +1,7 @@
 import { type Scheme } from '../types';
 import { type PomsfBalance } from '../../claims';
+import { getHieBaseUrl } from '../../claims/utils';
+import { openmrsFetch } from '@openmrs/esm-framework';
 
 // POMSF's balance is split across two benefit lines by care setting: PMF-07 is
 // Inpatient Services, PMF-12 is Outpatient Services. The registration form only
@@ -11,7 +13,7 @@ const POMSF_BENEFIT_CODE_BY_VISIT_TYPE: Record<string, string> = {
 };
 
 export function isPomsfActive(schemes: Scheme[]): boolean {
-  const pomsfScheme = schemes.find((s) => /pomsf/i.test(s.schemeName));
+  const pomsfScheme = schemes.find((s) => /^(pomsf(?:[-\s].*)?|usalama|tsc)$/i.test(s.schemeName.trim()));
   return !!pomsfScheme && pomsfScheme.coverage?.status === '1';
 }
 
@@ -76,4 +78,39 @@ export function getAllPomsfBenefitBalances(pomsfBalance: PomsfBalance | null | u
     }
   }
   return Array.from(byCode.values());
+}
+
+export type PomsfCoveragePayload = {
+  principalCrId: string;
+  consentToken: string;
+  policyNumber: string;
+  locationUuid: string;
+};
+
+export async function setEffectiveCoverage(payload: PomsfCoveragePayload): Promise<any> {
+  const hieBaseUrl = await getHieBaseUrl();
+
+  const url = `${hieBaseUrl}/pomsf/set-effective-coverage`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorText = data.message || 'Failed to set effective coverage';
+
+    return {
+      success: false,
+      status: response.status,
+      message: errorText,
+    };
+  }
+
+  return data;
 }
