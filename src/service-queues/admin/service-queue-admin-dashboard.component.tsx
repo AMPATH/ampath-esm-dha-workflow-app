@@ -6,6 +6,7 @@ import QueueRoomList from './queue-room/queue-room-list/queue-room-list';
 import QueueEntryList from './queue-entry/queue-entry-list.component';
 interface ServiceQueueAdminDashboardProps {}
 const ServiceQueueAdminDashboard: React.FC<ServiceQueueAdminDashboardProps> = () => {
+  console.log('service queue admin...');
   return (
     <>
       <div className={styles.queueDashboardLayout}>
