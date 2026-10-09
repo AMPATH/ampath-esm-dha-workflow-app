@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './claim-visit-details.component.scss';
-import { type PatientFacilityBillDetails, type ClaimsVisit, ApplicableDocumentType } from '../../types';
+import {
+  type PatientFacilityBillDetails,
+  type ClaimsVisit,
+  ApplicableDocumentType,
+  type ClaimVisitReponse,
+  type ClaimVisitsDto,
+} from '../../types';
 import ClaimInvoiceDetails from '../claim-invoice-details/claim-invoice-details.component';
 import ClaimInterventionDetails from '../claim-intervention-details/claim-intervention-details.component';
 import ClaimDiagnosisDetails from '../claim-diagnosis-details/claim-diagnosis-details.component';
@@ -9,7 +15,12 @@ import { useTranslation } from 'react-i18next';
 import { Button, InlineLoading, InlineNotification, Tile } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
 import SubmitClaimModal from '../modal/submit-claim/submit-claim.modal';
-import { endVisit, useInvalidateProviderClaimPreview, usePayerClaimPreview } from '../../../../billing-claims.resource';
+import {
+  endVisit,
+  fetchFacilityClaimVisits,
+  useInvalidateProviderClaimPreview,
+  usePayerClaimPreview,
+} from '../../../../billing-claims.resource';
 import ClaimDocuments from '../claim-documents/claim-documents';
 import ClaimDoctors from '../claim-doctors/claim-doctors';
 import AddClaimDoctorModal from '../modal/claim-doctors/add-claim-doctor/add-claim-doctor.modal';
@@ -44,7 +55,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   onBillDetailsChange,
   claimRefreshing = false,
   billingDate,
-  patientUuid
+  patientUuid,
 }) => {
   const [showCloseClaimModal, setShowCloseClaimModal] = useState<boolean>();
   const [showSubmitClaimModal, setSubmitCloseClaimModal] = useState<boolean>(false);
@@ -55,8 +66,37 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   const [showSubmitEmergencyModal, setshowSubmitEmergencyModal] = useState<boolean>(false);
   const [identifyPatient, setIdentifyPatient] = useState<boolean>(false);
   const { hasDeathReportingFormEncounter, isLoading } = useFormEncounters(patientUuid ?? '');
-  const [principalContributor,setPrincipalContributor] = useState<HieClient | null>(null);
-  const [claimPatient,setClaimPatient] = useState<HieClient | null>(null);
+  const [principalContributor, setPrincipalContributor] = useState<HieClient | null>(null);
+  const [claimPatient, setClaimPatient] = useState<HieClient | null>(null);
+  const [claimVisits, setClaimVisits] = useState<ClaimVisitReponse[]>();
+  const [loading, setLoading] = useState<boolean>(false);
+
+  async function getFacilityClaimVisits() {
+    setLoading(true);
+    const facilityClaimsVisitsPayload = generateClaimsVisitPayload();
+    try {
+      const data = await fetchFacilityClaimVisits(facilityClaimsVisitsPayload);
+      if (data) {
+        setClaimVisits(data);
+      }
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error fetching facility bills',
+        subtitle: 'An error occurred while fetehcing facility bills, please reload or contact support',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function generateClaimsVisitPayload(): ClaimVisitsDto {
+    return {
+      consentToken: claimsVisit?.authorization_code ?? '',
+    };
+  }
+
+  const detailedClaimVisit = claimVisits?.find((visit) => visit.authorizationCode === claimsVisit.authorization_code);
 
   const invoiceNumber = useMemo(() => {
     if (patientBillDetails) {
@@ -74,11 +114,12 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerEndVisit, activeVisit]);
 
-  useEffect(()=>{
-     if(claimsVisit){
-         fetchClientContactDetails();
-     }
-  },[claimsVisit]);
+  useEffect(() => {
+    if (claimsVisit) {
+      fetchClientContactDetails();
+      getFacilityClaimVisits();
+    }
+  }, [claimsVisit]);
 
   function handleCloseVisit() {
     const visitUuid = activeVisit?.uuid;
@@ -215,47 +256,44 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     setIdentifyPatient(true);
   };
 
-  async function fetchClientContactDetails(){
-     const clientId = claimsVisit?.member_number ?? '';
-     let principalContributorId = null;
-     if(clientId){
-        const resp = await fetchClientEligibilityData(clientId,'ClientRegistry ID',locationUuid);
-        if(resp){
-          if(resp?.schemes && resp?.schemes.length > 0){
-              const principalContributor = resp?.schemes && resp?.schemes[0]?.principalContributor;
-              principalContributorId = principalContributor.idNumber ?? '';
-              await getPrincipalContributor(principalContributorId);
-          }
-           
-            
+  async function fetchClientContactDetails() {
+    const clientId = claimsVisit?.member_number ?? '';
+    let principalContributorId = null;
+    if (clientId) {
+      const resp = await fetchClientEligibilityData(clientId, 'ClientRegistry ID', locationUuid);
+      if (resp) {
+        if (resp?.schemes && resp?.schemes.length > 0) {
+          const principalContributor = resp?.schemes && resp?.schemes[0]?.principalContributor;
+          principalContributorId = principalContributor.idNumber ?? '';
+          await getPrincipalContributor(principalContributorId);
         }
-       await getClaimPatient(clientId);
-     }
-     
+      }
+      await getClaimPatient(clientId);
+    }
   }
 
-  async function getClaimPatient(clientId:string) {
-     const patient = await fetchClientRegistryData({
-              identificationNumber: clientId,
-              identificationType: 'ClientRegistry ID',
-              locationUuid: locationUuid
-        });
-        if(patient){
-          setClaimPatient(patient[0] ?? null)
-        }
+  async function getClaimPatient(clientId: string) {
+    const patient = await fetchClientRegistryData({
+      identificationNumber: clientId,
+      identificationType: 'ClientRegistry ID',
+      locationUuid: locationUuid,
+    });
+    if (patient) {
+      setClaimPatient(patient[0] ?? null);
+    }
   }
 
   async function getPrincipalContributor(principalContributorId: string) {
-    if(principalContributorId){
-           const resp = await fetchClientRegistryData({
-              identificationNumber: principalContributorId,
-              identificationType: 'National ID',
-              locationUuid: locationUuid
-           });
-           if(resp){
-              setPrincipalContributor(resp[0] ?? null);
-           }
-     }
+    if (principalContributorId) {
+      const resp = await fetchClientRegistryData({
+        identificationNumber: principalContributorId,
+        identificationType: 'National ID',
+        locationUuid: locationUuid,
+      });
+      if (resp) {
+        setPrincipalContributor(resp[0] ?? null);
+      }
+    }
   }
 
   return (
@@ -266,7 +304,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <h4>Claim Visit Details</h4>
           </div>
           <div className={styles.headerAction}>
-            {isEmergencyPatient && (
+            {isEmergencyPatient && claimsVisit?.member_number === 'SHANULL' && (
               <Button kind="primary" onClick={handleIdentifyUnknownPatient}>
                 Identify Unknown Patient
               </Button>
@@ -287,15 +325,20 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           </div>
         </div>
 
-        {
-          !isLoading && hasDeathReportingFormEncounter ?
-            <InlineNotification className={styles.deathNotificationTile} hideCloseButton lowContrast kind='error' title='Death Notification' subtitle='The patient has been reported as deceased. Attach a Death Notification when submitting the claim.' />
-            : <></>
-        }
+        {!isLoading && hasDeathReportingFormEncounter ? (
+          <InlineNotification
+            className={styles.deathNotificationTile}
+            hideCloseButton
+            lowContrast
+            kind="error"
+            title="Death Notification"
+            subtitle="The patient has been reported as deceased. Attach a Death Notification when submitting the claim."
+          />
+        ) : (
+          <></>
+        )}
 
-        <Tile
-          id="provider-preview"
-        >
+        <Tile id="provider-preview">
           <div className={styles.tileHeader}>
             <dd>Provider preview</dd>
             <Button size="sm" kind="ghost" renderIcon={Renew} onClick={handleRefresh} disabled={claimRefreshing}>
@@ -339,21 +382,23 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             </div>
             <div className={styles.detailRow}>
               <dt>Phone No</dt>
-              {
-                claimsVisit.member_number === principalContributor?.id ? (<>
-                 <dd>{principalContributor?.phone ?? ''}</dd>
-                </>): (<>
-                 <dd>{claimPatient?.phone ?? ''}</dd>
-                </>)
-              }
+              {claimsVisit.member_number === principalContributor?.id ? (
+                <>
+                  <dd>{principalContributor?.phone ?? ''}</dd>
+                </>
+              ) : (
+                <>
+                  <dd>{claimPatient?.phone ?? ''}</dd>
+                </>
+              )}
             </div>
-            {
-              principalContributor && <div className={styles.detailRow}>
-              <dt>Principal Contributor Phone No</dt>
-              <dd>{principalContributor?.phone ?? ''}</dd>
-            </div>
-            }
-            
+            {principalContributor && (
+              <div className={styles.detailRow}>
+                <dt>Principal Contributor Phone No</dt>
+                <dd>{principalContributor?.phone ?? ''}</dd>
+              </div>
+            )}
+
             <div className={styles.detailRow}>
               <dt>Visit Start</dt>
               <dd>{formatDate(parseDate(claimsVisit.visit_start))}</dd>
@@ -368,9 +413,9 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             </div>
           </dl>
         </Tile>
-       {
-         payerPreviewResult && <PayerPreviewTile isLoadingPayerPreview={isLoadingPayerPreview} payerPreviewResult={payerPreviewResult} />
-       }
+        {payerPreviewResult && (
+          <PayerPreviewTile isLoadingPayerPreview={isLoadingPayerPreview} payerPreviewResult={payerPreviewResult} />
+        )}
         <div className={styles.cvContentSection}>
           <section className={styles.section}>
             <h6>Invoices</h6>
@@ -464,7 +509,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           open={identifyPatient}
           onClose={() => setIdentifyPatient(false)}
           locationUuid={locationUuid}
-          claimsVisit={claimsVisit}
+          claimsVisit={detailedClaimVisit?.visitResponse}
           visitType={visitType}
         />
       )}

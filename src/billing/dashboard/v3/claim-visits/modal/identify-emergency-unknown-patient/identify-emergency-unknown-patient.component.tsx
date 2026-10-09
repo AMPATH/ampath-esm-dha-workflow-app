@@ -1,6 +1,6 @@
 import { Button, Dropdown, Loading, Modal, RadioButton, Search, Tag, TextInput } from '@carbon/react';
 import { Close, Identification, SearchLocate, WarningAltFilled } from '@carbon/react/icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   type ClientRegistrySearchRequest,
   type HieClient,
@@ -16,9 +16,9 @@ import { maskCrNumber, maskExceptFirstAndLast } from '../../../../../../registry
 import { type ClaimsVisit } from '../../../types';
 import ClaimsConsentExtension from '../../../../../../registry/modal/otp-verification-modal/extension/claims-consent.extension';
 import { type VisitType, type Intervention } from '../../../../../../claims';
-import { type Patient } from '@openmrs/esm-framework';
-import { identifyUnidentifiedPatient } from '../../../../../../registry/emergency/emergency.resource';
-import { type identifyUnknownPatientDto } from '../../../../../../registry/emergency/type';
+import { showSnackbar, type Patient } from '@openmrs/esm-framework';
+import { fetchProviders, identifyUnidentifiedPatient } from '../../../../../../registry/emergency/emergency.resource';
+import { type Provider, type identifyUnknownPatientDto } from '../../../../../../registry/emergency/type';
 
 interface IdentifyEmergencyUnknownPatientModal {
   open: boolean;
@@ -47,6 +47,23 @@ const IdentifyEmergencyUnknownPatientModal: React.FC<IdentifyEmergencyUnknownPat
   const [patient, setPatient] = useState<Patient>();
   const [otp, setOtp] = useState('');
   const [authGuid, setAuthGuid] = useState('');
+  const [broughtBy, setBroughtBy] = useState<string>();
+  const BROUGHT_BY = ['RELATIVE', 'UNKNOWN', 'SAMARITAN', 'PARAMEDICS'];
+  const [errors, setErrors] = useState({
+    broughtBy: false,
+    provider: false,
+  });
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<Provider>();
+
+  const getProviders = async () => {
+    const res = await fetchProviders();
+    setProviders(res?.results ?? []);
+  };
+
+  useEffect(() => {
+    getProviders();
+  }, []);
 
   const handleClearIdentifier = () => {
     setIdentifierValue('');
@@ -159,24 +176,61 @@ const IdentifyEmergencyUnknownPatientModal: React.FC<IdentifyEmergencyUnknownPat
 
   const handleSubmit = async () => {
     const unIdentifiedPatientDto = getIdentifyUnidentifiedPatientDto();
-    const res = await identifyUnidentifiedPatient(unIdentifiedPatientDto);
+
+    try {
+      const res = await identifyUnidentifiedPatient(unIdentifiedPatientDto);
+      if (res?.error) {
+        showSnackbar({
+          kind: 'error',
+          title: res.error ?? 'Error Identifying patient',
+          subtitle: res.message ?? 'An error occurred while identifying the patient, please reload or contact support',
+        });
+      } else {
+        showSnackbar({
+          kind: 'success',
+          title: 'Patient Identified Successfully',
+          subtitle: 'The patient was identified successfully',
+        });
+      }
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error Identifying patient',
+        subtitle: 'An error occurred while identifying the patient, please reload or contact support',
+      });
+    } finally {
+      setLoading(false);
+    }
+    onClose();
   };
 
   const getIdentifyUnidentifiedPatientDto = (): identifyUnknownPatientDto => {
     return {
       interventionCodes: [consentIntervention.code],
-      modeOfArrival: '',
-      broughtBy: '',
-      referenceNumber: claimsVisit.invoice_number,
-      identificationNumber: identifierValue.trim(),
-      identificationType: identifierType,
-      regulationBody: 'N/A',
-      notes: 'N/A',
+      modeOfArrival: claimsVisit?.mode_of_arrival || '',
+      broughtBy: broughtBy || '',
+      referenceNumber: claimsVisit?.reference_number,
+      identificationNumber: selectedProvider?.provider_national_id || '',
+      identificationType: 'National ID',
+      regulationBody: selectedProvider?.licensing_body || '',
+      notes: claimsVisit?.notes || 'notes',
       beneficiaryCrId: confirmedPatient?.id ?? '',
       otp,
-      consentToken: claimsVisit.authorization_code,
+      consentToken: claimsVisit?.authorization_code,
       locationUuid,
     };
+  };
+
+  const handleBroughtByChange = (item: any) => {
+    if (item) {
+      setBroughtBy(item.selectedItem);
+    }
+  };
+
+  const handleProviderChange = (item: any) => {
+    if (item) {
+      setSelectedProvider(item.selectedItem);
+    }
   };
 
   return (
@@ -415,16 +469,51 @@ const IdentifyEmergencyUnknownPatientModal: React.FC<IdentifyEmergencyUnknownPat
           </div>
         )}
         {confirmedPatient && (
-          <ClaimsConsentExtension
-            patient={confirmedPatient}
-            intervention={consentIntervention}
-            crIdentifierId={confirmedPatient.id}
-            visitType={visitType}
-            onClientConsent={onClientConsent}
-            consentToken={claimsVisit.authorization_code}
-            isDischarge={false}
-            isMinor={isMinor}
-          />
+          <>
+            <div className={styles.dropDownContainer}>
+              <div className={styles.dropDown} />
+              <Dropdown
+                autoAlign
+                direction="top"
+                id="brought-by"
+                invalidText="Kindly select brought by"
+                items={BROUGHT_BY}
+                label=""
+                onChange={handleBroughtByChange}
+                size="md"
+                titleText="Brought By"
+                type="default"
+                invalid={errors.broughtBy}
+              />
+            </div>
+            <div className={styles.dropDownContainer}>
+              <div className={styles.dropDown} />
+              <Dropdown
+                autoAlign
+                direction="top"
+                id="provider"
+                invalidText="Kindly select a provider"
+                items={providers}
+                itemToString={(item) => item?.display ?? ''}
+                label=""
+                onChange={handleProviderChange}
+                size="md"
+                titleText="Provider"
+                type="default"
+                invalid={errors.provider}
+              />
+            </div>
+            <ClaimsConsentExtension
+              patient={confirmedPatient}
+              intervention={consentIntervention}
+              crIdentifierId={confirmedPatient.id}
+              visitType={visitType}
+              onClientConsent={onClientConsent}
+              consentToken={claimsVisit.authorization_code}
+              isDischarge={false}
+              isMinor={isMinor}
+            />
+          </>
         )}
       </Modal>
     </>

@@ -88,7 +88,7 @@ export type PomsfCoveragePayload = {
 };
 
 export async function setEffectiveCoverage(payload: PomsfCoveragePayload): Promise<any> {
-  const hieBaseUrl = await getHieBaseUrl();
+  const { hieBaseUrl } = await getHieBaseUrl();
 
   const url = `${hieBaseUrl}/pomsf/set-effective-coverage`;
   const response = await openmrsFetch(url, {

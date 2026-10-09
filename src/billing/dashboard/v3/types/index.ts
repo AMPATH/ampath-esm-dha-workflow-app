@@ -218,6 +218,8 @@ export type ClaimsVisit = {
   created_by_name: string;
   updated_by_name: string;
   notes: string;
+  reference_number: string;
+  mode_of_arrival: string;
 };
 
 export type ClaimVisitReponse = {

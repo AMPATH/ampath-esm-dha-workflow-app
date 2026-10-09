@@ -270,7 +270,7 @@ export async function submitEmergencyClaim(
 export async function identifyUnidentifiedPatient(unIdentifiedPatientDto: identifyUnknownPatientDto): Promise<any> {
   const hieBaseUrl = await getHieBaseUrl();
 
-  const url = `${hieBaseUrl}/claim/unidentified/identified`;
+  const url = `${hieBaseUrl}/emergency/claim/unidentified/identified`;
   const response = await openmrsFetch(url, {
     method: 'POST',
     headers: {
