@@ -232,42 +232,6 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     }
   };
 
-  // const initiateEmergencyClaim = async () => {
-  //   const validationErrors = {
-  //     modeOfArrival: !modeOfArrival,
-  //     broughtBy: !broughtBy,
-  //     intervention: !selectedIntervention?.code,
-  //     provider: !selectedProvider,
-  //     notes: !notes.trim(),
-  //   };
-
-  //   setErrors(validationErrors);
-
-  //   const hasErrors = Object.values(validationErrors).some(Boolean);
-
-  //   if (hasErrors) {
-  //     return;
-  //   }
-
-  //   try {
-  //     const res = await sendEmergencyClaimIdentified(
-  //       modeOfArrival,
-  //       broughtBy,
-  //       locationUuid,
-  //       selectedIntervention?.code,
-  //       generateReferenceNumber(),
-  //       client?.id,
-  //       selectedProvider?.provider_national_id,
-  //       'National ID',
-  //       getAbbreviation(selectedProvider?.licensing_body),
-  //       notes.trim(),
-  //       otp,
-  //     );
-  //   } catch (error) {
-  //     console.error('Error initiating emergency claim:', error);
-  //   }
-  // };
-
   const getProviders = async () => {
     const res = await fetchProviders();
     setProviders(res?.results ?? []);

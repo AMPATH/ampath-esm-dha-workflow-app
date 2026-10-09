@@ -46,15 +46,15 @@ export const isValidSeatchClientPayload = (payload: ClientRegistrySearchRequest)
   return true;
 };
 
-export function isPatientMinor(patient: Patient | HieClient): boolean {
-  const person = 'person' in patient ? patient.person : undefined;
+export function isPatientMinor(patient: Patient | HieClient | undefined): boolean {
+  const person = patient && 'person' in patient ? patient.person : undefined;
   const age = person?.age;
 
   if (typeof age === 'number') {
     return age < 18;
   }
 
-  const birthdate = person?.birthdate ?? ('date_of_birth' in patient ? patient.date_of_birth : undefined);
+  const birthdate = person?.birthdate ?? (patient && 'date_of_birth' in patient ? patient.date_of_birth : undefined);
 
   if (!birthdate) {
     return false;
