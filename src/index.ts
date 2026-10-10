@@ -8,7 +8,6 @@ import { pharmacyDashboardMeta } from './dashboard-meta/pharmacy-dashboard.meta'
 import { triageDashboardMeta } from './dashboard-meta/triage-dashboard.meta';
 import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboard.meta';
 import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
-import { accountingDashboardMeta } from './dashboard-meta/accounting-dashboard.meta';
 import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
@@ -105,9 +104,6 @@ export const dhaWorkflowDashboardLink = getSyncLifecycle(createDashboardLink(dha
 
 export const dhaWorkflowDashboard = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
 
-export const accountingDashboardLink = getSyncLifecycle(createDashboardLink(accountingDashboardMeta), options);
-
-export const accountingDashboard = getAsyncLifecycle(() => import('./accounting/accounting.component'), options);
 
 export const bookingsDashboardLink = getSyncLifecycle(createDashboardLink(bookingsDashboardMeta), options);
 
@@ -302,5 +298,10 @@ export const criticalCareUnitDashboardLink = getAsyncLifecycle(
 
 export const deathReportingFormButton = getAsyncLifecycle(
   () => import('./death-reporting/death-reporting-form-button.component'),
+  options,
+);
+
+export const accountingDashboardLink = getAsyncLifecycle(
+  () => import('./side-nav-menu/accounting-nav-links'),
   options,
 );

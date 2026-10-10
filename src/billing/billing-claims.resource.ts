@@ -38,6 +38,9 @@ import {
   type PayerPreviewResponse,
   type ClaimVisit,
   type FetchClaimVisitDto,
+  type ClaimsReportSummaryDto,
+  type ClaimSummary,
+  type ClaimsReportSummaryListDto,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
@@ -1076,3 +1079,34 @@ export const useBill = (billUuid: string) => {
     mutated,
   };
 };
+
+export async function fethClaimSummaryReport(claimsReportSummaryDto: ClaimsReportSummaryDto): Promise<ClaimSummary[]> {
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const url = `${hieBaseUrl}/claims-report/summary`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(claimsReportSummaryDto),
+  });
+
+  const data = await response.json() as ClaimSummary[];
+
+  return data ?? [];
+}
+export async function fethClaimSummaryReportList(claimsReportSummaryListDto: ClaimsReportSummaryListDto): Promise<ClaimVisit[]>{
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const url = `${hieBaseUrl}/claims-report/claims-list`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(claimsReportSummaryListDto),
+  });
+
+  const data = await response.json();
+
+  return data ?? [];
+}
