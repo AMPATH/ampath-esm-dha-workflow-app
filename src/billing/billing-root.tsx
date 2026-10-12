@@ -6,6 +6,7 @@ import ClaimWorkspace from './dashboard/v2/claim-workspace/claim-workspace.compo
 import ClaimDetailsPage from './dashboard/v2/claim-visits/claim-visit-details/claim-details-page.component';
 import BillDetailsPage from './dashboard/v2/patient-bill-details/bill-details-page.component';
 import { useBillingDashboardReset } from './billing-dashboard-reset';
+import BillingClaimsReportsDashboard from './reports/billing-and-claims-reports-dashboard';
 
 const BillingRoot: React.FC = () => {
   // Re-clicking "Accounting" in the side nav remounts the dashboard, which drops the
@@ -24,16 +25,10 @@ const BillingRoot: React.FC = () => {
   useEffect(() => () => resetBillingDateFilter(), []);
 
   return (
-    <BrowserRouter basename={`${window.spaBase}/home/billing`}>
+    <BrowserRouter basename={`${window.spaBase}/home/accounting`}>
       <Routes>
         <Route path="" element={<BillingClaimsDashboard key={resetKey} />} />
-        <Route path="/claim/new" element={<ClaimWorkspace />} />
-        {/* Ranked below /claim/new — react-router prefers the static segment. */}
-        <Route path="/claim/:claimId" element={<ClaimDetailsPage />} />
-        {/* A bill on its own page, the same move the claim route made — reachable by URL,
-            and Back returns to the list rather than out of billing. */}
-        <Route path="/bill/:patientUuid" element={<BillDetailsPage />} />
-        <Route path="/patient/:patientUuid/:billUuid" element={<Invoice />} />
+        <Route path="billing-claims-reports" element={<BillingClaimsReportsDashboard />} />
       </Routes>
     </BrowserRouter>
   );

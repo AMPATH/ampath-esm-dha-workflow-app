@@ -1,0 +1,24 @@
+.claimSummaryLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    .claimSummary{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 10px;
+    }
+    .claimSummaryList{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 10px;
+    }
+}
+.claimSummaryVal{
+    color: blue;
+}
+.claimSummaryVal:hover{
+    cursor: pointer;
+}

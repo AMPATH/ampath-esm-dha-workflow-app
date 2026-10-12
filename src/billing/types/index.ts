@@ -391,3 +391,21 @@ export type FetchClaimVisitDto = {
   payerStatus?: string;
   payerAuthStatus?: string;
 }
+export type ClaimsReportSummaryDto = {
+  startDate: string;
+  endDate: string;
+  locationUuid: string;
+};
+export type ClaimSummary = {
+    provider_status: string;
+    payer_status: string;
+    total: string;
+    total_claim_amount: string;
+};
+export type ClaimsReportSummaryListDto = {
+  startDate: string;
+  endDate: string;
+  locationUuid: string;
+  providerStatus?: string;
+  payerStatus?: string;
+};
