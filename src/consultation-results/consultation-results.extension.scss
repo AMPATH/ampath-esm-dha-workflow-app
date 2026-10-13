@@ -1,0 +1,169 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-05;
+  margin-bottom: layout.$spacing-05;
+  background-color: colors.$white;
+  border: 1px solid colors.$gray-20;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  @include type.type-style('heading-compact-02');
+}
+
+.consultation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-04;
+  background-color: colors.$gray-10;
+}
+
+.consultationDetails {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-02;
+}
+
+.consultationName {
+  @include type.type-style('heading-compact-01');
+}
+
+.helper {
+  @include type.type-style('helper-text-01');
+  color: colors.$gray-70;
+}
+
+.result {
+  white-space: normal;
+}
+
+.awaitingNotice {
+  max-width: 100%;
+
+  // Carbon stacks the text and the action button; keep them on one row with the action on the right.
+  :global(.cds--actionable-notification__focus-wrapper) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: layout.$spacing-03;
+    width: 100%;
+  }
+
+  :global(.cds--actionable-notification__details) {
+    flex: 1 1 20rem;
+  }
+
+  // Title on its own line, the pending tests underneath.
+  :global(.cds--actionable-notification__content) {
+    flex-direction: column;
+    gap: layout.$spacing-02;
+  }
+
+  :global(.cds--inline-notification__text-wrapper) {
+    flex-direction: column;
+    gap: layout.$spacing-02;
+  }
+
+  :global(.cds--actionable-notification__button-wrapper) {
+    margin: 0 layout.$spacing-03 0 auto;
+  }
+}
+
+.awaitingDetails {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-02;
+}
+
+.modalBody {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-05;
+}
+
+.modalIntro {
+  @include type.type-style('body-01');
+}
+
+.pendingSection {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+}
+
+.pendingSectionTitle {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+}
+
+.pendingList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid colors.$gray-20;
+}
+
+.pendingItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: layout.$spacing-03;
+  padding: layout.$spacing-03 0;
+  border-bottom: 1px solid colors.$gray-20;
+}
+
+.pendingTest {
+  @include type.type-style('heading-compact-01');
+}
+
+.pendingMeta {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+}
+
+.modalNotice {
+  max-width: 100%;
+  margin: 0;
+}
+
+.diagnosisRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: layout.$spacing-03;
+}
+
+.diagnosisLabel {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+
+  &::after {
+    content: ':';
+  }
+}
+
+.diagnosisValue {
+  @include type.type-style('heading-compact-01');
+}
+
+.diagnosisTag {
+  margin: 0;
+  font-weight: 600;
+}

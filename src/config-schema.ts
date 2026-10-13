@@ -382,6 +382,13 @@ export interface ConfigObject {
     encounterRoleUuid: string;
     plannedServiceObsConceptUuid: string;
   };
+  consultationResults: {
+    consultationEncounterTypeUuid: string;
+    consultationFormUuids: Array<string>;
+    consultationFormName: string;
+    primaryDiagnosisRank: number;
+    testOrderTypeUuid: string;
+  };
   emergencyConceptUuid: string;
   formEncounterTypes: {
     clinicalEncounterTypeUuid: Type.UUID;
