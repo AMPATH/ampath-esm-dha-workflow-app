@@ -167,6 +167,8 @@ export const consultationResults = getAsyncLifecycle(
   options,
 );
 
+export const hivTestingFlag = getAsyncLifecycle(() => import('./hiv-testing-flag/hiv-testing-flag.extension'), options);
+
 export const electivePreauthLink = getSyncLifecycle(
   openMrsCreateDashboardLink(electivePreauthMeta as any),
   options,
