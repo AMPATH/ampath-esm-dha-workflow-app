@@ -2,7 +2,7 @@ name: AMPATH Package Publishing
 
 on:
   push:
-    branches: [main, claim-workflows]
+    branches: [main, claim-workflows, hiv-forms-staging]
   release:
     types:
       - created
@@ -43,11 +43,13 @@ jobs:
     if: >
       github.event_name == 'push' &&
       github.repository_owner == 'AMPATH' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claim-workflows')
+      (github.ref == 'refs/heads/main' ||
+       github.ref == 'refs/heads/claim-workflows' ||
+       github.ref == 'refs/heads/hiv-forms-staging')
 
     env:
-      NPM_DIST_TAG: ${{ github.ref == 'refs/heads/main' && 'next' || 'claim-workflows' }}
-      VERSION_SUFFIX: ${{ github.ref == 'refs/heads/main' && 'next' || 'claim-workflows' }}
+      NPM_DIST_TAG: ${{ github.ref == 'refs/heads/main' && 'next' || github.ref_name }}
+      VERSION_SUFFIX: ${{ github.ref == 'refs/heads/main' && 'next' || github.ref_name }}
 
     steps:
       - name: 📥 Checkout repository
