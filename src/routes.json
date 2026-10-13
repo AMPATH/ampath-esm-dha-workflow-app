@@ -277,6 +277,17 @@
       "offline": false
     },
     {
+      "name": "hiv-testing-flag-notice",
+      "slot": "general-opd-consultation-dashboard-slot",
+      "component": "hivTestingFlag",
+      "order": 0,
+      "meta": {
+        "fullWidth": true
+      },
+      "online": true,
+      "offline": false
+    },
+    {
       "name": "case-summary-dashboard",
       "slot": "patient-chart-dashboard-slot",
       "component": "caseSummaryLink",

@@ -285,6 +285,18 @@ export const configSchema = {
       _default: '53eb4768-1359-11df-a1f1-0026b9348838',
     },
   },
+  hivTestingFlag: {
+    eligibleForTestingConceptUuid: {
+      _type: Type.ConceptUuid,
+      _description: 'Triage question "Client eligible for HIV testing"',
+      _default: 'e01da5a1-c3e7-4b7f-98d0-05b4bae023fb',
+    },
+    yesConceptUuid: {
+      _type: Type.ConceptUuid,
+      _description: 'Answer that flags the patient as eligible (Yes)',
+      _default: 'a899b35c-1350-11df-a1f1-0026b9348838',
+    },
+  },
   formEncounterTypes: {
     clinicalEncounterTypeUuid: {
       _type: Type.UUID,
@@ -422,6 +434,10 @@ export interface ConfigObject {
     testOrderTypeUuid: string;
   };
   emergencyConceptUuid: string;
+  hivTestingFlag: {
+    eligibleForTestingConceptUuid: string;
+    yesConceptUuid: string;
+  };
   formEncounterTypes: {
     clinicalEncounterTypeUuid: Type.UUID;
     inpatientDischargeEncounterTypeUuid: Type.UUID;

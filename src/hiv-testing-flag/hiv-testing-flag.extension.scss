@@ -1,0 +1,16 @@
+@use '@carbon/layout';
+
+.container {
+  margin-bottom: layout.$spacing-05;
+}
+
+.notice {
+  max-width: 100%;
+  margin: 0;
+
+  // Title on its own line, the details underneath.
+  :global(.cds--inline-notification__text-wrapper) {
+    flex-direction: column;
+    gap: layout.$spacing-02;
+  }
+}
