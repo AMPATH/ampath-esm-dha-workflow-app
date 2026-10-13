@@ -18,6 +18,7 @@ import { showSnackbar, Workspace2, type Workspace2DefinitionProps } from '@openm
 import { type PendingLineItem } from '../types';
 
 import styles from './pay-cash.scss';
+import { updateBillItemStatus } from '../../../api/billing.api';
 import { payBillItem } from '../../../billing-claims.resource';
 import { getCashPaymentModeUuid } from '../../../../shared/utils/get-base-url';
 

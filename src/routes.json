@@ -266,6 +266,17 @@
       "offline": true
     },
     {
+      "name": "consultation-results-widget",
+      "slot": "patient-chart-summary-dashboard-slot",
+      "component": "consultationResults",
+      "order": 0,
+      "meta": {
+        "fullWidth": true
+      },
+      "online": true,
+      "offline": false
+    },
+    {
       "name": "case-summary-dashboard",
       "slot": "patient-chart-dashboard-slot",
       "component": "caseSummaryLink",

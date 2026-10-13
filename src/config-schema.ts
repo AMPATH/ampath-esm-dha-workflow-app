@@ -253,6 +253,38 @@ export const configSchema = {
       _default: '',
     },
   },
+  consultationResults: {
+    consultationEncounterTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Encounter type of the clinical consultation form (AMPATH POC Clinical Encounter)',
+      _default: '81166f83-1ee6-486e-8f56-aca528fc0fc0',
+    },
+    consultationFormUuids: {
+      _type: Type.Array,
+      _description:
+        "Forms counted as today's consultation. The first one is opened when no consultation has been saved today.",
+      _default: ['771b3bdf-16da-387e-8684-fd5a30b65b6c'],
+      _elements: {
+        _type: Type.UUID,
+      },
+    },
+    consultationFormName: {
+      _type: Type.String,
+      _description: 'Title shown on the form workspace when starting a new consultation',
+      _default: 'POC Clinical Encounter Form v1.3',
+    },
+    primaryDiagnosisRank: {
+      _type: Type.Number,
+      _description:
+        'Diagnosis rank the consultation form saves the primary (final) diagnosis with. The impression is saved with rank 1.',
+      _default: 2,
+    },
+    testOrderTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Order type of lab test orders',
+      _default: '53eb4768-1359-11df-a1f1-0026b9348838',
+    },
+  },
   formEncounterTypes: {
     clinicalEncounterTypeUuid: {
       _type: Type.UUID,
@@ -381,6 +413,13 @@ export interface ConfigObject {
     clientRegistryIdentifierTypeUuid: string;
     encounterRoleUuid: string;
     plannedServiceObsConceptUuid: string;
+  };
+  consultationResults: {
+    consultationEncounterTypeUuid: string;
+    consultationFormUuids: Array<string>;
+    consultationFormName: string;
+    primaryDiagnosisRank: number;
+    testOrderTypeUuid: string;
   };
   emergencyConceptUuid: string;
   formEncounterTypes: {

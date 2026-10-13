@@ -205,7 +205,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
 
   const claimTileValue = (bucketKey: string) => (claimCountsReady ? (claimCounts[bucketKey] ?? 0) : 0);
 
-const claimSummaryDefaults = useMemo(
+  const claimSummaryDefaults = useMemo(
     () => ({
       draft: null,
       submitted: null,

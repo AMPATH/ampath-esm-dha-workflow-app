@@ -162,6 +162,11 @@ export const emtHandoverWorkspace = getAsyncLifecycle(
 
 export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
 
+export const consultationResults = getAsyncLifecycle(
+  () => import('./consultation-results/consultation-results.extension'),
+  options,
+);
+
 export const electivePreauthLink = getSyncLifecycle(
   openMrsCreateDashboardLink(electivePreauthMeta as any),
   options,
