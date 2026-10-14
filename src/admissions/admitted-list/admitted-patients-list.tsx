@@ -12,7 +12,7 @@ import {
 } from '@carbon/react';
 import { type BedLayout } from '../types';
 import BedSwapModal from '../modal/bed-swap/bed-swap.modal';
-import { launchWorkspace2, useConfig } from '@openmrs/esm-framework';
+import { launchWorkspace2, openmrsFetch, restBaseUrl, useConfig } from '@openmrs/esm-framework';
 import { type ConfigObject } from '../../config-schema';
 import { getPatientByUuid } from '../admissions.resource';
 
@@ -24,8 +24,38 @@ interface AdmittedPatientsListProps {
 const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPatientsData, refresh }) => {
   const [showBedSwapModal, setShowBedSwapModal] = useState<boolean>(false);
   const [selectedLayout, setSelectedLayout] = useState<any>();
-  const { maternityDischargeFormUuid } = useConfig<ConfigObject>();
+  const { maternityDischargeFormUuid, formUuids, observationValueCodableConcepts } = useConfig<ConfigObject>();
   const generalDischargeFormUuid = 'b4218b80-22da-3299-af36-c865fdf07696';
+
+  const hasDeceasedOutcome = (encounter: any): boolean => {
+    const pending = [...(encounter?.obs ?? [])];
+
+    while (pending.length) {
+      const observation = pending.pop();
+      if (!observation || observation.voided) {
+        continue;
+      }
+
+      const value = observation.value;
+      const codedValue = observation.valueCoded ?? (typeof value === 'object' ? value : undefined);
+      const codedUuid = typeof codedValue === 'string' ? codedValue : codedValue?.uuid;
+      const codedDisplay =
+        typeof codedValue === 'object'
+          ? codedValue?.display ?? observation.valueCodedName?.name ?? observation.valueCodedName?.display
+          : undefined;
+
+      if (
+        codedUuid === observationValueCodableConcepts.deceasedUuid ||
+        (typeof codedDisplay === 'string' && codedDisplay.trim().toLowerCase() === 'deceased')
+      ) {
+        return true;
+      }
+
+      pending.push(...(observation.groupMembers ?? []), ...(observation.obs ?? []));
+    }
+
+    return false;
+  };
 
   if (!admittedPatientsData) {
     return <>No data to display</>;
@@ -53,7 +83,6 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
 
     try {
       const patientData = await getPatientByUuid(patientUuid);
-
       await launchWorkspace2(
         'admissions-form-entry',
         {
@@ -87,12 +116,45 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
     try {
       const patientData = await getPatientByUuid(patientUuid);
 
+      const handleGeneralDischargePostResponse = async (response: any) => {
+        const savedEncounter = response?.data ?? response;
+        const encounterUuid = savedEncounter?.uuid;
+        let encounterWithObs = savedEncounter;
+
+        if (encounterUuid) {
+          try {
+            const result = await openmrsFetch(`${restBaseUrl}/encounter/${encounterUuid}?v=full`);
+            encounterWithObs = result?.data ?? savedEncounter;
+          } catch (error) {
+            console.error('Failed to load saved discharge encounter:', error);
+          }
+        }
+
+        if (!hasDeceasedOutcome(encounterWithObs)) {
+          return;
+        }
+
+        await launchWorkspace2(
+          'admissions-form-entry',
+          {
+            workspaceTitle: 'Death Reporting Form',
+            formUuid: formUuids.deathReportingFormUuid,
+            patientUuid,
+          },
+          {
+            patient: patientData,
+            patientUuid,
+          },
+        );
+      };
+
       await launchWorkspace2(
         'admissions-form-entry',
         {
           workspaceTitle: 'POC Inpatient Discharge Form v1.0',
           formUuid: generalDischargeFormUuid,
           patientUuid,
+          handlePostResponse: handleGeneralDischargePostResponse,
         },
         {
           patient: patientData,

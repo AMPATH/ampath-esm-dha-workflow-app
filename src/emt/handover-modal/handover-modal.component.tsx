@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { TextInput, Button, ButtonSet, InlineLoading, Tag, ComboBox, Dropdown } from '@carbon/react';
-import { showSnackbar, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, Workspace2, type Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import OTPInput from '../../shared/ui/otp-input/otp-input.component';
 import {
   initiateHandover,
@@ -40,7 +40,7 @@ const normalizeRegulationBody = (value?: string | null): RegulationBody => {
 /** Registration name, shared with whoever launches this workspace. */
 export const EMT_HANDOVER_WORKSPACE = 'emt-handover-workspace';
 
-interface HandoverWorkspaceProps extends Partial<DefaultWorkspaceProps> {
+interface HandoverWorkspaceProps {
   referral: EmtReferralRow;
   locationUuid: string;
   /** Fired after a successful verify — caller refreshes the queue + launches the visit. */
@@ -68,14 +68,12 @@ interface HandoverWorkspaceProps extends Partial<DefaultWorkspaceProps> {
  * A 404 means the referral no longer exists, so the parent is told to drop it
  * rather than leaving the user stuck on a step that can never succeed.
  */
-const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
-  referral,
-  locationUuid,
+const HandoverModal: React.FC<Workspace2DefinitionProps<HandoverWorkspaceProps>> = ({
+  workspaceProps,
   closeWorkspace,
-  promptBeforeClosing,
-  onHandoverComplete,
-  onReferralUnavailable,
 }) => {
+  const { referral, locationUuid, onHandoverComplete, onReferralUnavailable } =
+    workspaceProps ?? ({} as HandoverWorkspaceProps);
   const [step, setStep] = useState<Step>('doctor');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -102,11 +100,6 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
     },
     [],
   );
-
-  // Past the doctor step an OTP may already be in flight — warn before losing that progress.
-  useEffect(() => {
-    promptBeforeClosing?.(() => step !== 'doctor');
-  }, [step, promptBeforeClosing]);
 
   /** Only a HWR hit carrying a registration number yields a usable receiving doctor. */
   const resolvedDoctor: ReceivingDoctor | null = useMemo(() => {
@@ -143,7 +136,7 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
 
   const handleClose = () => {
     reset();
-    closeWorkspace?.();
+    void closeWorkspace();
   };
 
   const showAlert = (kind: 'success' | 'error' | 'info' | 'warning', title: string, subtitle = '') =>
@@ -294,9 +287,8 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
     } catch (err) {
       const message = describeError(err, 'Failed to initiate handover.');
       if (err instanceof EmtApiError && err.status === 404) {
-        promptBeforeClosing?.(() => false);
         onReferralUnavailable(referral, message);
-        closeWorkspace?.();
+        void closeWorkspace({ discardUnsavedChanges: true });
         return;
       }
       setError(message);
@@ -327,20 +319,15 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
         'Handover complete',
         `${referral.patientName} (${referral.case_number}) has been handed over.`,
       );
-      // Bypass the stale promptBeforeClosing test fn (see the 404 branch in
-      // handleInitiate above) so a successful handover closes cleanly, with no
-      // discard-changes prompt.
-      promptBeforeClosing?.(() => false);
       reset();
       onHandoverComplete(referral);
-      closeWorkspace?.();
+      void closeWorkspace({ discardUnsavedChanges: true });
     } catch (err) {
       const message = describeError(err, 'OTP verification failed.');
       if (err instanceof EmtApiError && err.status === 404) {
         // The referral is gone — the workspace closes and the caller drops the row.
-        promptBeforeClosing?.(() => false);
         onReferralUnavailable(referral, message);
-        closeWorkspace?.();
+        void closeWorkspace({ discardUnsavedChanges: true });
         return;
       }
       setError(message);
@@ -360,13 +347,22 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
     await handleInitiate();
   };
 
+  if (!workspaceProps) {
+    return (
+      <Workspace2 title="EMT Handover">
+        <div />
+      </Workspace2>
+    );
+  }
+
   const patientLine = referral.patientName || referral.cr_id;
 
   const modalHeading =
     step === 'doctor' ? 'Select receiving doctor' : step === 'confirm' ? 'Confirm handover' : 'Enter doctor OTP';
 
   return (
-    <div className={styles.container}>
+    <Workspace2 title="EMT Handover" hasUnsavedChanges={step !== 'doctor'}>
+      <div className={styles.container}>
       <h4 className={styles.heading}>{modalHeading}</h4>
       <div className={styles.body}>
         {step === 'doctor' && (
@@ -534,7 +530,8 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
           </>
         )}
       </ButtonSet>
-    </div>
+      </div>
+    </Workspace2>
   );
 };
 

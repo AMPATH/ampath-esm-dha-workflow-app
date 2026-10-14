@@ -1,0 +1,113 @@
+/**
+ * Rendering tests for the telemedicine dashboard's state machine: the
+ * missing-provider and missing-national-ID cards, the error card carrying the
+ * broker's message, and the in-session iframe fed by the minted SSO URL. The
+ * SSO keys on the practitioner's national ID, so the lookup goes to the
+ * session's provider, not the patient. The broker call itself is covered in
+ * `telemedicine.resource.test.ts`.
+ */
+import React from 'react';
+import { render, screen } from '@testing-library/react';
+
+import Telemedicine from './telemedicine.component';
+
+const mockUseSession = jest.fn();
+const mockGetNationalId = jest.fn();
+const mockFetchSession = jest.fn();
+
+jest.mock('@openmrs/esm-framework', () => ({
+  useSession: () => mockUseSession(),
+}));
+
+jest.mock('./telemedicine.resource', () => ({
+  getPractitionerNationalId: (...args: unknown[]) => mockGetNationalId(...args),
+  fetchTelemedicineSession: (...args: unknown[]) => mockFetchSession(...args),
+}));
+
+const PROVIDER_UUID = 'e2bfaf3b-9bcb-4a20-9e9e-8db9dabc8f4e';
+const LOCATION_UUID = '18c343eb-b353-462a-9139-b16606e6b6c2';
+
+beforeEach(() => {
+  jest.resetAllMocks();
+  mockUseSession.mockReturnValue({
+    sessionLocation: { uuid: LOCATION_UUID },
+    currentProvider: { uuid: PROVIDER_UUID },
+  });
+});
+
+describe('Telemedicine dashboard', () => {
+  it('renders the consult iframe from the minted SSO URL, with a reconnect action', async () => {
+    mockGetNationalId.mockResolvedValueOnce('10000000003');
+    mockFetchSession.mockResolvedValueOnce({
+      expires_in: 600,
+      redirect_url: 'https://md-uat.liviaapp.net/#/sso?token=t0k3n',
+    });
+
+    render(<Telemedicine />);
+
+    const iframe = await screen.findByTitle('Telemedicine');
+    expect(iframe).toHaveAttribute('src', 'https://md-uat.liviaapp.net/#/sso?token=t0k3n');
+    // A video consult is useless without camera/mic — the iframe must ask the
+    // browser to delegate them to the framed app.
+    expect(iframe).toHaveAttribute('allow', 'camera; microphone; display-capture; fullscreen');
+    expect(iframe).toHaveAttribute('referrerpolicy', 'strict-origin');
+    expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument();
+    // The broker got the practitioner's national ID and the facility — the
+    // session is the health worker's, scoped to where they logged in.
+    expect(mockGetNationalId).toHaveBeenCalledWith(PROVIDER_UUID);
+    expect(mockFetchSession).toHaveBeenCalledWith({ nationalId: '10000000003', locationUuid: LOCATION_UUID });
+  });
+
+  it('says so when the provider account has no national ID', async () => {
+    mockGetNationalId.mockResolvedValueOnce('');
+
+    render(<Telemedicine />);
+
+    expect(await screen.findByText('No national ID on your provider account')).toBeInTheDocument();
+    expect(mockFetchSession).not.toHaveBeenCalled();
+  });
+
+  it('says so when the session has no provider attached', () => {
+    mockUseSession.mockReturnValue({ sessionLocation: { uuid: LOCATION_UUID }, currentProvider: undefined });
+
+    render(<Telemedicine />);
+
+    expect(screen.getByText("Couldn't identify the logged-in provider")).toBeInTheDocument();
+    expect(mockGetNationalId).not.toHaveBeenCalled();
+  });
+
+  it('shows the broker failure with its message and a retry', async () => {
+    mockGetNationalId.mockResolvedValueOnce('10000000003');
+    mockFetchSession.mockRejectedValueOnce(new Error('No telemedicine facility is configured for this location.'));
+
+    render(<Telemedicine />);
+
+    expect(await screen.findByText('No telemedicine facility is configured for this location.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+  });
+
+  it('fails loudly when the broker answers without a session link', async () => {
+    // A 2xx gateway fallback page parses to no data at all — the tab must
+    // not fall through to an empty "in-session" view.
+    mockGetNationalId.mockResolvedValueOnce('10000000003');
+    mockFetchSession.mockResolvedValueOnce(undefined);
+
+    render(<Telemedicine />);
+
+    expect(await screen.findByText('The telemedicine service did not return a session link.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    expect(screen.queryByTitle('Telemedicine')).not.toBeInTheDocument();
+  });
+
+  it('refuses to start without a login location', () => {
+    mockUseSession.mockReturnValue({
+      sessionLocation: undefined,
+      currentProvider: { uuid: PROVIDER_UUID },
+    });
+
+    render(<Telemedicine />);
+
+    expect(screen.getByText('No login location selected')).toBeInTheDocument();
+    expect(mockGetNationalId).not.toHaveBeenCalled();
+  });
+});

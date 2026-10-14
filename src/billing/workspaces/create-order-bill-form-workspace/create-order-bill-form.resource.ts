@@ -9,7 +9,7 @@ import {
 import { getHieBaseUrl } from "../../../shared/utils/get-base-url";
 import { postJson } from "../../../registry/registry.resource";
 import dayjs from "dayjs";
-import { DrugBatch } from "./types";
+import { DrugBatch, DrugFormulation } from "./types";
 
 /**
  * Billable items for the session facility. Pass `locationUuid: null` in
@@ -205,4 +205,19 @@ export const useInventoryBatches = (drugUuid: string, locationUuid: string) => {
     }>(url, openmrsFetch);
 
     return { isLoadingBatches: isLoading, error, drugBatches: data?.data };
+};
+
+export const useDrugFormulations = (drugName: any, isDrug: boolean) => {
+    const splitDrugName = drugName ? drugName?.split(" ") : [];
+    const query = splitDrugName?.length ? splitDrugName[0] : null;
+    const customRepresentation = "custom:(uuid,display,dosageForm:(uuid,display),concept:(uuid,display))";
+    const url = isDrug && query ? `${restBaseUrl}/drug?s=ampathOrderableDrugs&q=${query}&v=${customRepresentation}` : null;
+
+    const { data, isLoading, error } = useSWR<{
+        data: {
+            results: Array<DrugFormulation>
+        }
+    }>(url, openmrsFetch);
+
+    return { isLoadingDrugFormulations: isLoading, error, drugFormulations: data?.data?.results };
 };

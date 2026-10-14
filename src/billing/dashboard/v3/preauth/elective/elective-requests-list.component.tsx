@@ -14,7 +14,7 @@ import {
   Tag,
 } from '@carbon/react';
 import { Renew } from '@carbon/react/icons';
-import { launchWorkspace, showSnackbar, useConfig } from '@openmrs/esm-framework';
+import { launchWorkspace2, showSnackbar, useConfig } from '@openmrs/esm-framework';
 import dayjs from 'dayjs';
 import {
   fetchShaInterventionByCode,
@@ -180,7 +180,7 @@ const ElectiveRequestsList: React.FC<ElectiveRequestsListProps> = ({ locationUui
         }
       }
 
-      launchWorkspace('preauth-form-workspace', {
+      launchWorkspace2('preauth-form-workspace', {
         consentToken: row.consentToken || '',
         patientUuid: row.patientUuid,
         locationUuid: row.locationUuid || locationUuid,

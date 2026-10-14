@@ -16,7 +16,6 @@ const ClaimDoctors: React.FC<claimDoctorsProps> = ({claimDoctors})=>{
           <TableHead>
             <TableRow>
               <TableHeader>No</TableHeader>
-              <TableHeader>Claim</TableHeader>
               <TableHeader>Doctor Name</TableHeader>
             </TableRow>
           </TableHead>
@@ -27,7 +26,6 @@ const ClaimDoctors: React.FC<claimDoctorsProps> = ({claimDoctors})=>{
                   <>
                     <TableRow key={cd.id}>
                       <TableCell>{index + 1}</TableCell>
-                      <TableCell>{cd.claim}</TableCell>
                       <TableCell>{cd.doctor_name}</TableCell>
                     </TableRow>
                   </>

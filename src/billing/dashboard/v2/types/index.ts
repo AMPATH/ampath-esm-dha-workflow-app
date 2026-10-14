@@ -125,6 +125,7 @@ export type ClaimVisitInvoince = {
 export enum ApplicableDocumentType {
   BIRTH_NOTIFICATION = 'BIRTH_NOTIFICATION',
   CLAIM_FORM = 'CLAIM_FORM',
+  DEATH_NOTICE = 'DEATH_NOTICE',
   DISCHARGE_SUMMARY = 'DISCHARGE_SUMMARY',
   INVOICE = 'INVOICE',
   FINAL_BILL = 'FINAL_BILL',
@@ -238,6 +239,8 @@ export type ClaimsVisit = {
   created_by_name: string;
   updated_by_name: string;
   notes: string;
+  reference_number: string;
+  mode_of_arrival: string;
 };
 
 export type ClaimVisitReponse = {
@@ -252,6 +255,7 @@ export type ClaimVisitReponse = {
   visitStart: string;
   authorizationCode: string;
   authorizationGuid: string;
+  totalClaimAmount: string;
   visitResponse: ClaimsVisit;
   createdBy?: string | null;
   dateCreated?: string | null;
@@ -335,6 +339,7 @@ export type SubmitClaimDto = {
   consentToken: string;
   invoiceNumber: string;
   locationUuid: string;
+  dischargeReason?: string;
 };
 
 export enum ClaimCloseReasonType {
@@ -351,6 +356,7 @@ export enum DischargeReasonType {
   RECOVERED = 'RECOVERED',
   REFERRED = 'REFERRED',
   ABSCONDED = 'ABSCONDED',
+  DECEASED = 'DECEASED',
   OTHER = 'OTHER',
 }
 
@@ -478,6 +484,9 @@ export interface PatientBill {
   visit_start_date: string;
   cr_id: string;
   claim_status: string;
+  payer_status: string;
+  total_claim_amount: string;
+  service_type: string;
 }
 
 export interface PendingLineItem {

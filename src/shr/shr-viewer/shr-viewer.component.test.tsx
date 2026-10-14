@@ -91,9 +91,11 @@ function renderViewer() {
       syncedAt="2026-08-26T15:57:00Z"
       isSyncing={false}
       isClosing={false}
+      isSubmittingVisit={false}
       closeError=""
       syncError=""
       onSync={jest.fn()}
+      onSubmitVisit={jest.fn()}
       onCloseVisit={jest.fn()}
     />,
   );

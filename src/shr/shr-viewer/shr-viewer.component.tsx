@@ -27,14 +27,19 @@ import {
   Chemistry,
   Dashboard,
   DocumentBlank,
+  HealthCross,
+  Hospital,
   ListChecked,
   Logout,
   Medication,
   Microscope,
   Renew,
   Report,
+  Send,
   Stethoscope,
+  Tools,
   User,
+  Warning,
 } from '@carbon/react/icons';
 import { useTranslation } from 'react-i18next';
 import type { ShrResourceTypeConfig } from '../../config-schema';
@@ -52,11 +57,21 @@ import styles from './shr-viewer.scss';
  * can't carry a React component.
  */
 
-/** Resource type → tab icon. Anything unmapped (a newly configured category) gets a generic icon. */
+/**
+ * Resource type → tab icon. Anything unmapped (a newly configured category) gets a generic icon.
+ * The three medication-family tabs deliberately share the Medication glyph —
+ * the label, not the icon, tells them apart.
+ */
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  AllergyIntolerance: Warning,
   Condition: Report,
+  Immunization: HealthCross,
   MedicationRequest: Medication,
+  MedicationDispense: Medication,
+  MedicationAdministration: Medication,
+  Procedure: Tools,
   Encounter: Calendar,
+  EpisodeOfCare: Hospital,
   Observation: Chemistry,
   ServiceRequest: ListChecked,
   Specimen: Microscope,
@@ -97,11 +112,15 @@ interface ShrViewerProps {
   syncedAt: string;
   isSyncing: boolean;
   isClosing: boolean;
+  /** Set while a "send visit to SHR" push is in flight. */
+  isSubmittingVisit?: boolean;
   /** Set when a close-visit attempt failed — shown here so the loaded records survive. */
   closeError: string;
   /** Set when a refresh failed — likewise shown here, leaving the records already loaded intact. */
   syncError: string;
   onSync: () => void;
+  /** Pushes the patient's latest closed AMRS visit into the SHR (outcome is reported by the parent). */
+  onSubmitVisit: () => void;
   /** Opens the closure confirmation — closing is never immediate on click. */
   onCloseVisit: () => void;
   /**
@@ -119,10 +138,12 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
   syncedAt,
   isSyncing,
   isClosing,
+  isSubmittingVisit,
   closeError,
   closePanel,
   syncError,
   onSync,
+  onSubmitVisit,
   onCloseVisit,
 }) => {
   const { t } = useTranslation();
@@ -166,6 +187,15 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
           </p>
         </div>
         <div className={styles.headerActions}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Send}
+            onClick={onSubmitVisit}
+            disabled={isSubmittingVisit || isSyncing || isClosing}
+          >
+            {isSubmittingVisit ? t('shrSendingVisitData', 'Sending…') : t('shrSendVisitData', 'Send visit to SHR')}
+          </Button>
           <Button kind="tertiary" size="sm" renderIcon={Renew} onClick={onSync} disabled={isSyncing || isClosing}>
             {isSyncing ? t('syncing', 'Syncing…') : t('syncNow', 'Sync now')}
           </Button>

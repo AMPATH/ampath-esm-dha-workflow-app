@@ -13,6 +13,8 @@ import {
   type RefreshConsentResponse,
   type ShrAnyResource,
   type ShrRecordSet,
+  type ShrVisitSubmissionRequest,
+  type ShrVisitSubmissionResponse,
   type VerifyConsentRequest,
   type VerifyConsentResponse,
 } from './shr.types';
@@ -149,6 +151,40 @@ export async function closeShrVisit(
         body,
       },
     );
+    return response?.data;
+  } catch (err) {
+    throw normalizeError(err);
+  }
+}
+
+/**
+ * Submit the patient's latest closed visit to the SHA as a FHIR collection
+ * bundle — the visit-closed counterpart to `closeShrVisit`: once the OpenMRS
+ * visit has been closed, this pushes its clinical content (encounters, vitals,
+ * diagnoses) into the national Shared Health Record.
+ *
+ * The whole job happens backend-side (hie-saf, `src/shr/visit-submission` —
+ * browsers cannot reach the SHA host through the O3 CSP): given a
+ * `patientUuid` + `locationUuid`, the backend picks the latest closed visit
+ * on the caller's session, maps it to the SHA-IG-conformant bundle shape —
+ * the emergency family (the enforced em-* profiles) or, for routine care,
+ * the clinical family (a base-R4 Encounter; pick via `submissionFamily`,
+ * otherwise the visit type decides) — optionally pre-validates with
+ * `$validate`, and submits through DHA's middleware (`POST /shr/bundles`,
+ * consent-token enforced). This function is just the typed call.
+ *
+ * `skipped` (no closed visit) and `validated` (a `dryRun`) come back on HTTP
+ * 200 alongside `submitted`; only `status: "failed"` is an error state, and it
+ * arrives as a thrown `ShrApiError` carrying the backend's `errors`.
+ */
+export async function submitClosedVisitToShr(payload: ShrVisitSubmissionRequest): Promise<ShrVisitSubmissionResponse> {
+  try {
+    const hieBaseUrl = await getHieBaseUrl();
+    const response = await openmrsFetch<ShrVisitSubmissionResponse>(`${hieBaseUrl}${SHR_BASE}/visit-submission`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
     return response?.data;
   } catch (err) {
     throw normalizeError(err);

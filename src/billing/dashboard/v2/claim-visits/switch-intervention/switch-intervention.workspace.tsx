@@ -14,7 +14,14 @@ import {
   Toggle,
 } from '@carbon/react';
 import { Renew, WarningAltFilled } from '@carbon/react/icons';
-import { showSnackbar, useConfig, useSession, useVisit, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import {
+  showSnackbar,
+  useConfig,
+  useSession,
+  useVisit,
+  Workspace2,
+  type Workspace2DefinitionProps,
+} from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import styles from './switch-intervention.workspace.scss';
 import { type SwitchInterventionDto, type VisitIntervention } from '../../types';
@@ -34,7 +41,7 @@ import { createSwitchInterventionOrder } from './switch-intervention.resource';
 
 type ServicePrice = { uuid: string; name: string; price: number; paymentMode?: { uuid: string; name: string } };
 
-interface SwitchInterventionWorkspaceProps extends DefaultWorkspaceProps {
+interface SwitchInterventionWorkspaceProps {
   consentToken: string;
   currentInterventions: VisitIntervention[];
   patientId?: string;
@@ -43,6 +50,8 @@ interface SwitchInterventionWorkspaceProps extends DefaultWorkspaceProps {
   billDate?: string;
   onSwitchSuccess?: () => void;
 }
+
+type SwitchInterventionFormProps = SwitchInterventionWorkspaceProps & Pick<Workspace2DefinitionProps, 'closeWorkspace'>;
 
 // A claim intervention is switchable only while its workflow_state is ACTIVE;
 // INACTIVE (e.g. already switched out) interventions are hidden.
@@ -58,9 +67,8 @@ const toIso = (value?: string | Date): string => {
   return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 };
 
-const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
+const SwitchInterventionForm: React.FC<SwitchInterventionFormProps> = ({
   closeWorkspace,
-  promptBeforeClosing,
   consentToken,
   currentInterventions,
   patientId,
@@ -202,8 +210,7 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
       // Refresh again now that the order + bill are actually in place, on
       // top of the earlier refresh right after the switch itself succeeded.
       onSwitchSuccess?.();
-      promptBeforeClosing(() => false);
-      closeWorkspace();
+      await closeWorkspace({ discardUnsavedChanges: true });
     } catch (error) {
       setBillItemError(typeof error === 'string' ? error : (error as Error)?.message ?? 'Failed to create bill item.');
       showSnackbar({
@@ -262,15 +269,13 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
   );
   const hasUnsavedSelection = Boolean(targetCode) && (!switchCompleted || !orderNumber || !billItemCreated);
 
-  useEffect(() => {
-    promptBeforeClosing(() => hasUnsavedSelection);
-  }, [promptBeforeClosing, hasUnsavedSelection]);
-
   if (!activeInterventions.length) {
     return (
-      <div className={styles.emptyState}>
-        <p>{t('noInterventionsToSwitch', 'This claim has no active interventions to switch.')}</p>
-      </div>
+      <Workspace2 title={t('switchIntervention', 'Switch Intervention')}>
+        <div className={styles.emptyState}>
+          <p>{t('noInterventionsToSwitch', 'This claim has no active interventions to switch.')}</p>
+        </div>
+      </Workspace2>
     );
   }
 
@@ -350,16 +355,16 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
   };
 
   return (
-    <Form className={styles.form} onSubmit={(e) => e.preventDefault()}>
-      <div className={styles.body}>
-        {/* Step 1 — intervention to switch from */}
-        <section className={styles.section}>
-          <h5 className={styles.sectionTitle}>{t('switchFrom', 'Intervention to switch')}</h5>
+    <Workspace2 title={t('switchIntervention', 'Switch Intervention')} hasUnsavedChanges={hasUnsavedSelection}>
+      <Form className={styles.form} onSubmit={(e) => e.preventDefault()}>
+        <div className={styles.body}>
+          {/* Step 1 — intervention to switch from */}
+          <section className={styles.section}>
+            <h5 className={styles.sectionTitle}>{t('switchFrom', 'Intervention to switch')}</h5>
           {activeInterventions.length > 1 ? (
             <RadioButtonGroup
               legendText={t('whichToSwitch', 'Which intervention do you want to switch?')}
               name="current-intervention"
-              valueSelected={selectedCurrentCode}
               orientation="vertical"
               onChange={(value) => pickCurrent(value as string)}
             >
@@ -617,9 +622,9 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
             </div>
           </div>
         ) : null}
-      </div>
+        </div>
 
-      <ButtonSet className={styles.buttonSet}>
+        <ButtonSet className={styles.buttonSet}>
         <Button kind="secondary" onClick={() => closeWorkspace()} disabled={submitting}>
           {t('cancel', 'Cancel')}
         </Button>
@@ -630,15 +635,26 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
         >
           {t('switchIntervention', 'Switch intervention')}
         </Button>
-      </ButtonSet>
-    </Form>
+        </ButtonSet>
+      </Form>
+    </Workspace2>
   );
 };
 
 // Remount the whole form when the workspace is reused for a different claim /
 // patient, so no selection, fetched data, or Carbon widget state carries over.
-const SwitchInterventionWorkspace: React.FC<SwitchInterventionWorkspaceProps> = (props) => (
-  <SwitchInterventionForm key={`${props.consentToken}::${props.patientId ?? ''}`} {...props} />
-);
+const SwitchInterventionWorkspace: React.FC<Workspace2DefinitionProps<SwitchInterventionWorkspaceProps>> = ({
+  workspaceProps,
+  closeWorkspace,
+}) => {
+  const props = workspaceProps ?? ({} as SwitchInterventionWorkspaceProps);
+  return (
+    <SwitchInterventionForm
+      key={`${props.consentToken}::${props.patientId ?? ''}`}
+      {...props}
+      closeWorkspace={closeWorkspace}
+    />
+  );
+};
 
 export default SwitchInterventionWorkspace;

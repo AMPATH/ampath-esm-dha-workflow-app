@@ -5,7 +5,7 @@ import { Button, OverflowMenu, OverflowMenuItem, Table, TableBody, TableCell, Ta
 import { formatDate, parseDate } from "@openmrs/esm-framework";
 import AddClaimDiagnosisModal from "../modals/add-claim-diagnosis/add-claim-diagnosis.modal";
 import { useInvalidateProviderClaimPreview } from "../../../../billing-claims.resource";
-import { ClaimsVisit } from "../../types";
+import { type ClaimsVisit } from "../../types";
 
 interface visitDiagnosisDetailsProps {
   amrsVisitDiagnosis: AmrsVisitDiagnosis[];
@@ -46,6 +46,11 @@ const VisitDiagnosisDetails: React.FC<visitDiagnosisDetailsProps> = ({ amrsVisit
             <TableHeader>Encounter Date</TableHeader>
             <TableHeader>Encounter Type</TableHeader>
             <TableHeader>ICD11 Diagnosis</TableHeader>
+            <TableHeader>Diagnosis Name</TableHeader>
+            <TableHeader>Diagnosis Type</TableHeader>
+            <TableHeader>Practitioner</TableHeader>
+            <TableHeader>Practitioner Speciality</TableHeader>
+            <TableHeader>Regulatory Body</TableHeader>
             <TableHeader>Actions</TableHeader>
           </TableRow>
         </TableHead>
@@ -59,6 +64,11 @@ const VisitDiagnosisDetails: React.FC<visitDiagnosisDetailsProps> = ({ amrsVisit
                     <TableCell>{formatDate(parseDate(d.encounter_datetime))}</TableCell>
                     <TableCell>{d.encounter_type}</TableCell>
                     <TableCell>{d.icd11_code}</TableCell>
+                    <TableCell>{d?.concept_name}</TableCell>
+                    <TableCell>{d?.diagnosis_type}</TableCell>
+                    <TableCell>{d?.provider_name}</TableCell>
+                    <TableCell>{d?.practitioner_speciality}</TableCell>
+                    <TableCell>{d?.practitioner_body}</TableCell>
                     <TableCell>
                       {claimsVisit && claimsVisit.workflow_state === 'DRAFT' && !diagnosisAddedToClaim(d) && (
                         <Button size="sm" kind="tertiary" onClick={() => handleDiagnosisSelection(d)}>Add Claim Diagnosis</Button>

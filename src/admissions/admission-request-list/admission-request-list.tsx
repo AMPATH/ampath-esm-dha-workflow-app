@@ -17,7 +17,7 @@ import {
   type LocationAttribute,
 } from '../types';
 import AdmitPatientModal from '../modal/admit-patient/admit-patient.modal';
-import { formatDate, launchWorkspace, showSnackbar, useSession, type Visit } from '@openmrs/esm-framework';
+import { formatDate, launchWorkspace2, showSnackbar, useSession, type Visit } from '@openmrs/esm-framework';
 import CancelAdmissionRequestModal from '../modal/cancel-admission-request/cancel-admission-request';
 import { fetchLocationDetails } from '../admissions.resource';
 import { createVisit } from '../../resources/visit.resource';
@@ -94,7 +94,7 @@ const AdmissionsRequestList: React.FC<AdmissionListProps> = ({ admissionRequests
       // The claim panel is an OpenMRS workspace now, so it is launched rather than
       // rendered — the visit it is for has only just been created, hence opening it here
       // rather than from the row that asked for it.
-      launchWorkspace(SEND_TO_QUEUE_WORKSPACE, {
+      await launchWorkspace2(SEND_TO_QUEUE_WORKSPACE, {
         workspaceTitle: 'Initiate SHA claim',
         patientUuid: admissionRequest?.patient_uuid,
         visitUuid: resp?.uuid,

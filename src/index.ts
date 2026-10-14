@@ -8,7 +8,6 @@ import { pharmacyDashboardMeta } from './dashboard-meta/pharmacy-dashboard.meta'
 import { triageDashboardMeta } from './dashboard-meta/triage-dashboard.meta';
 import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboard.meta';
 import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
-import { accountingDashboardMeta } from './dashboard-meta/accounting-dashboard.meta';
 import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
@@ -17,6 +16,8 @@ import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
 import { emtDashboardMeta } from './dashboard-meta/emt-dashboard.meta';
 import { electivePreauthMeta } from './dashboard-meta/elective-preauth.meta';
 import { shrDashboardMeta } from './dashboard-meta/shr-dashboard.meta';
+import { telemedicineDashboardMeta } from './dashboard-meta/telemedicine-dashboard.meta';
+import { telemedicinePatientChartMeta } from './dashboard-meta/telemedicine-patient-chart.meta';
 import { claimsAdminDashboardMeta } from './dashboard-meta/claims-admin.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
@@ -103,9 +104,6 @@ export const dhaWorkflowDashboardLink = getSyncLifecycle(createDashboardLink(dha
 
 export const dhaWorkflowDashboard = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
 
-export const accountingDashboardLink = getSyncLifecycle(createDashboardLink(accountingDashboardMeta), options);
-
-export const accountingDashboard = getAsyncLifecycle(() => import('./accounting/accounting.component'), options);
 
 export const bookingsDashboardLink = getSyncLifecycle(createDashboardLink(bookingsDashboardMeta), options);
 
@@ -247,7 +245,7 @@ export const payCashWorkspace = getAsyncLifecycle(
 );
 
 export const sendToQueueWorkspace = getAsyncLifecycle(
-  () => import('./registry/modal/send-to-triage/send-to-queue.modal'),
+  () => import('./registry/modal/send-to-triage/send-to-queue.workspace'),
   options,
 );
 
@@ -270,6 +268,20 @@ export const shrDashboardLink = getSyncLifecycle(openMrsCreateDashboardLink(shrD
 
 export const sharedHealthRecord = getAsyncLifecycle(() => import('./shr/shr.component'), options);
 
+export const telemedicineDashboardLink = getSyncLifecycle(createDashboardLink(telemedicineDashboardMeta), options);
+
+export const telemedicineDashboard = getAsyncLifecycle(() => import('./telemedicine/telemedicine.component'), options);
+
+export const telemedicinePatientChartLink = getSyncLifecycle(
+  openMrsCreateDashboardLink(telemedicinePatientChartMeta as any),
+  options,
+);
+
+export const telemedicinePatientChart = getAsyncLifecycle(
+  () => import('./telemedicine/telemedicine-patient-chart.component'),
+  options,
+);
+
 export const shrConsentWorkspace = getAsyncLifecycle(
   () => import('./shr/workspaces/shr-consent-workspace/shr-consent.workspace'),
   options,
@@ -281,5 +293,15 @@ export const CriticalCareUnitRoot = getAsyncLifecycle(() => import('./critical-c
 
 export const criticalCareUnitDashboardLink = getAsyncLifecycle(
   () => import('./side-nav-menu/critical-care-nav-links'),
+  options,
+);
+
+export const deathReportingFormButton = getAsyncLifecycle(
+  () => import('./death-reporting/death-reporting-form-button.component'),
+  options,
+);
+
+export const accountingDashboardLink = getAsyncLifecycle(
+  () => import('./side-nav-menu/accounting-nav-links'),
   options,
 );

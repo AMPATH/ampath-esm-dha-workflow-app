@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, ButtonSet, Form, InlineLoading, Select, SelectItem, Stack, TextInput } from '@carbon/react';
-import { showSnackbar, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, Workspace2, type Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import styles from './bill-item-payment.workspace.scss';
 import { type PatientFacilityBillDetails } from '../../../types';
 import { type PaymentMode } from '../../../../../../shared/types';
 import { fetchPaymentModes } from '../../../../../../shared/services/billing.resource';
 import { payBillItem } from '../../../../../billing-claims.resource';
 
-interface BillItemPaymentWorkspaceProps extends DefaultWorkspaceProps {
+interface BillItemPaymentWorkspaceProps {
   billItem: PatientFacilityBillDetails;
   onPay?: () => void;
 }
 
-const BillItemPaymentWorkspace: React.FC<BillItemPaymentWorkspaceProps> = ({ billItem, onPay, closeWorkspace }) => {
+const BillItemPaymentWorkspace: React.FC<Workspace2DefinitionProps<BillItemPaymentWorkspaceProps>> = ({
+  workspaceProps,
+  closeWorkspace,
+}) => {
+  const { billItem, onPay } = workspaceProps ?? ({} as BillItemPaymentWorkspaceProps);
   const [amountToPay, setAmountToPay] = useState<number>(0);
   const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
   const [selectedPaymentModeUuid, setSelectedPaymentModeUuid] = useState<string>('');
@@ -28,6 +32,14 @@ const BillItemPaymentWorkspace: React.FC<BillItemPaymentWorkspaceProps> = ({ bil
       fetchPaymentModes().then(setPaymentModes);
     }
   }, [billItem]);
+
+  if (!workspaceProps) {
+    return (
+      <Workspace2 title="Bill item payment">
+        <div />
+      </Workspace2>
+    );
+  }
 
   // Either the scheme resolves its own payment mode, or the user picks one.
   const resolvedPaymentModeUuid = billItemPaymentMode?.uuid ?? selectedPaymentModeUuid;
@@ -63,7 +75,8 @@ const BillItemPaymentWorkspace: React.FC<BillItemPaymentWorkspaceProps> = ({ bil
   }
 
   return (
-    <Form className={styles.form} onSubmit={payForBillItem}>
+    <Workspace2 title="Bill item payment">
+      <Form className={styles.form} onSubmit={payForBillItem}>
       <div className={styles.formContent}>
         <Stack gap={5}>
           <TextInput id="bill-item" labelText="Billable item" value={billItem.billable_service ?? '—'} readOnly />
@@ -102,7 +115,8 @@ const BillItemPaymentWorkspace: React.FC<BillItemPaymentWorkspaceProps> = ({ bil
           {submitting ? <InlineLoading description="Paying..." /> : 'Pay'}
         </Button>
       </ButtonSet>
-    </Form>
+      </Form>
+    </Workspace2>
   );
 };
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Button, ButtonSet, Form, InlineLoading, InlineNotification, Stack, TextInput } from '@carbon/react';
-import { showSnackbar, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, Workspace2, type Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import styles from './add-claim-line.workspace.scss';
 import { type AddClaimLineDto, type PatientFacilityBillDetails } from '../../../types';
 import { addClaimItem } from '../../../../../billing-claims.resource';
@@ -8,7 +8,7 @@ import { ensureInterventionOnVisit } from '../../../../../../claims/intervention
 import { extractPreauthStatus, getPreauthPreview } from '../../../../../../claims/claims.resource';
 import { asBool, getStoredPreauthCode, needsNormalPreauth } from '../../../preauth/preauth.resource';
 
-interface AddClaimLineWorkspaceProps extends DefaultWorkspaceProps {
+interface AddClaimLineWorkspaceProps {
   billItem: PatientFacilityBillDetails;
   locationUuid: string;
   /** Visit claim token — bill lines often have consent_token null */
@@ -37,20 +37,21 @@ function errorMessage(error: unknown): string {
   return 'An error occurred while adding the claim line. Kindly retry or contact support.';
 }
 
-const AddClaimLineWorkspace: React.FC<AddClaimLineWorkspaceProps> = ({
-  billItem,
-  locationUuid,
-  consentToken: consentTokenProp,
-  onSuccess,
+const AddClaimLineWorkspace: React.FC<Workspace2DefinitionProps<AddClaimLineWorkspaceProps>> = ({
+  workspaceProps,
   closeWorkspace,
 }) => {
+  const { billItem, locationUuid, consentToken: consentTokenProp, onSuccess } =
+    workspaceProps ?? ({} as AddClaimLineWorkspaceProps);
   const [loading, setLoading] = useState(false);
   const [checkingPreauth, setCheckingPreauth] = useState(false);
   const [preauthBlocked, setPreauthBlocked] = useState(false);
   const [preauthCode, setPreauthCode] = useState<string | undefined>();
-  const resolvedToken = (consentTokenProp || billItem.consent_token || '').trim();
+
+  const resolvedToken = (consentTokenProp || billItem?.consent_token || '').trim();
 
   useEffect(() => {
+    if (!workspaceProps) return;
     if (!needsNormalPreauth(billItem) || !resolvedToken) {
       setPreauthBlocked(false);
       setPreauthCode(getStoredPreauthCode(resolvedToken, billItem.intervention_code));
@@ -85,6 +86,14 @@ const AddClaimLineWorkspace: React.FC<AddClaimLineWorkspaceProps> = ({
       cancelled = true;
     };
   }, [billItem, resolvedToken, locationUuid]);
+
+  if (!workspaceProps) {
+    return (
+      <Workspace2 title="Add claim line">
+        <div />
+      </Workspace2>
+    );
+  }
 
   function getClaimLineDto(): AddClaimLineDto {
     const dto: AddClaimLineDto = {
@@ -164,7 +173,8 @@ const AddClaimLineWorkspace: React.FC<AddClaimLineWorkspaceProps> = ({
   }
 
   return (
-    <Form className={styles.form} onSubmit={handleAddClaimLineItem}>
+    <Workspace2 title="Add claim line">
+      <Form className={styles.form} onSubmit={handleAddClaimLineItem}>
       <div className={styles.formContent}>
         <Stack gap={5}>
           {preauthBlocked ? (
@@ -216,7 +226,8 @@ const AddClaimLineWorkspace: React.FC<AddClaimLineWorkspaceProps> = ({
           )}
         </Button>
       </ButtonSet>
-    </Form>
+      </Form>
+    </Workspace2>
   );
 };
 

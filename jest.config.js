@@ -23,6 +23,10 @@ module.exports = {
     'lodash-es': 'lodash',
     '^dexie$': require.resolve('dexie'),
     '^dayjs$': require.resolve('dayjs'),
+    // `temporal-polyfill/global` (pulled in by @carbon/react's date picker) has
+    // no `require` condition in its exports map, so jest resolves the ESM build
+    // and dies on the `export` statement. Map the CJS build directly.
+    '^temporal-polyfill/global$': path.join(path.dirname(require.resolve('temporal-polyfill')), 'global.js'),
   },
   setupFilesAfterEnv: [path.resolve(__dirname, 'tools', 'setup-tests.ts')],
   testPathIgnorePatterns: [path.resolve(__dirname, 'e2e')],

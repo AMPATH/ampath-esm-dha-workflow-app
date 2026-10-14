@@ -23,12 +23,17 @@ const ClaimsStatsDashboard: React.FC<ClaimsStatsDashboardProps> = ({ locationUui
     [claimVisits],
   );
   const submittedClaims: ClaimVisit[] = useMemo(() => getClaimByType(ClaimProviderStatus.Submitted), [claimVisits]);
+  const failedToSubmit: ClaimVisit[] = useMemo(() => getClaimByType(ClaimProviderStatus.FailedToSubmit), [claimVisits]);
   const rejectedClaims: ClaimVisit[] = useMemo(
     () => getClaimByType(ClaimProviderStatus.Submitted, ClaimPayerStatus.Rejected),
     [claimVisits],
   );
   const approvedClaims: ClaimVisit[] = useMemo(
-    () => getClaimByType(ClaimProviderStatus.Submitted, ClaimPayerStatus.Approved),
+    () => [
+      ...getClaimByType(ClaimProviderStatus.Submitted, ClaimPayerStatus.Approved),
+      ...getClaimByType(ClaimProviderStatus.SubmissionReady, ClaimPayerStatus.Approved),
+      ...getClaimByType(ClaimProviderStatus.FailedToSubmit, ClaimPayerStatus.Approved),
+    ],
     [claimVisits],
   );
   const paidClaims: ClaimVisit[] = useMemo(
@@ -120,38 +125,48 @@ const ClaimsStatsDashboard: React.FC<ClaimsStatsDashboardProps> = ({ locationUui
           <h4>Claim Statistics</h4>
         </div>
         <div className={styles.summaryRow}>
-          <ClaimStat title="Total" count={claimVisits.length} onStatClick={handleIndicatorSelection} />
+          <ClaimStat title="Total" 
+          claimVisits={claimVisits} 
+          onStatClick={handleIndicatorSelection} />
           <ClaimStat
             title={ClaimProviderStatus.Draft}
-            count={draftClaims.length}
+            claimVisits={draftClaims}
             onStatClick={handleIndicatorSelection}
           />
           <ClaimStat
             title={ClaimProviderStatus.Closed}
-            count={closedClaims.length}
+            claimVisits={closedClaims}
             onStatClick={handleIndicatorSelection}
           />
           <ClaimStat
             title={ClaimProviderStatus.SubmissionReady}
-            count={submissionReadyClaims.length}
+            claimVisits={submissionReadyClaims}
+            onStatClick={handleIndicatorSelection}
+          />
+          <ClaimStat
+            title={ClaimProviderStatus.FailedToSubmit}
+            claimVisits={failedToSubmit}
             onStatClick={handleIndicatorSelection}
           />
           <ClaimStat
             title={ClaimProviderStatus.Submitted}
-            count={submittedClaims.length}
+            claimVisits={submittedClaims}
             onStatClick={handleIndicatorSelection}
           />
           <ClaimStat
             title={ClaimPayerStatus.Approved}
-            count={approvedClaims.length}
+            claimVisits={approvedClaims}
             onStatClick={handleIndicatorSelection}
           />
           <ClaimStat
             title={ClaimPayerStatus.Rejected}
-            count={rejectedClaims.length}
+            claimVisits={rejectedClaims}
             onStatClick={handleIndicatorSelection}
           />
-          <ClaimStat title={ClaimPayerStatus.Paid} count={paidClaims.length} onStatClick={handleIndicatorSelection} />
+          <ClaimStat 
+          title={ClaimPayerStatus.Paid} 
+          claimVisits={paidClaims} 
+          onStatClick={handleIndicatorSelection} />
         </div>
       </div>
       {showClaimsListModal && selectedIndicator && (

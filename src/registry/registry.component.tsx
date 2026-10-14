@@ -545,7 +545,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
           elective_preauth: Boolean(interventionResult?.needsManualPreauthApproval && electivePreauth),
           patient_uuid: amrsPatient?.uuid,
           ...(details?.protocolCode && {
-            protocol_code: details.protocolCode,
+            protocal_code: details.protocolCode,
           }),
           ...(applicableDocumentTypes.length > 0 && {
             applicable_document_types: applicableDocumentTypes.join(','),
@@ -834,6 +834,13 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                                     {maskExceptFirstAndLast(dependant.first_name)}{' '}
                                     {maskExceptFirstAndLast(dependant.middle_name)}{' '}
                                     {maskExceptFirstAndLast(dependant.last_name)}
+                                    
+                                  </span>
+                                  <span className={styles.optionName}>
+                                    {
+                                      dependant?.date_of_birth && <>({dependant?.date_of_birth ?? ''})</>
+                                    }
+                                      
                                   </span>
                                   <Tag type="teal" size="sm">
                                     {relationship || 'Dependant'}

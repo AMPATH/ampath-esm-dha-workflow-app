@@ -12,7 +12,7 @@ import { buildDiagnosisRecords } from '../claim-diagnosis-details/claim-diagnosi
 import ClaimDoctors from '../claim-doctors/claim-doctors';
 import ClaimHistory from '../claim-history/claim-history.component';
 import RecordTable from '../shared/record-table.component';
-import { formatDate, launchWorkspace, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
+import { formatDate, launchWorkspace2, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
 import { Button, ButtonSkeleton, Tooltip } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
 import SubmitClaimModal from '../modal/submit-claim/submit-claim.modal';
@@ -195,7 +195,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     if (!canSwitchIntervention) {
       return;
     }
-    launchWorkspace('switch-intervention-workspace', {
+    launchWorkspace2('switch-intervention-workspace', {
       consentToken: claimsVisit.authorization_code,
       currentInterventions: [intervention],
       patientId: patientBillDetails?.cr_no ?? claimsVisit.patient_number,
@@ -258,7 +258,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
       }
     }
 
-    launchWorkspace('preauth-form-workspace', {
+    launchWorkspace2('preauth-form-workspace', {
       consentToken,
       patientUuid,
       locationUuid,

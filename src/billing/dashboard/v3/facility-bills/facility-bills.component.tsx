@@ -228,8 +228,10 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
                     <TableHeader>No</TableHeader>
                     <TableHeader>Date</TableHeader>
                     <TableHeader>Patient</TableHeader>
-                    <TableHeader> Claim Status</TableHeader>
-                    <TableHeader> Cash Status</TableHeader>
+                    <TableHeader>Provider Status</TableHeader>
+                    <TableHeader>Payer Status</TableHeader>
+                    <TableHeader>Service Type</TableHeader>
+                    <TableHeader>Cash Status</TableHeader>
                     <TableHeader>Identifier</TableHeader>
                   </TableRow>
                 </TableHead>
@@ -249,6 +251,12 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
                         </TableCell>
                         <TableCell>
                           <Tag type={getTagTypeByStatus(fb?.claim_status ?? '')}>{fb.claim_status}</Tag>
+                        </TableCell>
+                         <TableCell>
+                          { fb.payer_status }
+                        </TableCell>
+                         <TableCell>
+                          { fb.service_type }
                         </TableCell>
                         <TableCell>
                           {(() => {

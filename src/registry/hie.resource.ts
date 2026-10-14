@@ -3,9 +3,8 @@ import {
   type OTPWhitelistRequest,
   type BiometricsStatus,
   type Authorization,
-  type HieAccessTokenResponse,
 } from './hie.types';
-import { type HieClient } from './types';
+import { type HieClientEligibility, type HieClient } from './types';
 import { getHieBaseUrl } from '../shared/utils/get-base-url';
 import { openmrsFetch } from '@openmrs/esm-framework';
 
@@ -461,4 +460,22 @@ export async function cancelAllPendingAuthorizations(locationUuid: string, crId:
   const pending = authorizations.filter((auth) => auth.status === 'PENDING');
 
   await Promise.all(pending.map((auth) => cancelPendingAuthorizations(auth.token, locationUuid)));
+}
+export async function fetchClientEligibilityData(
+  identifier: string,
+  identifierType: string,
+  locationUuid: string,
+): Promise<HieClientEligibility> {
+  const hieBaseUrl = await getHieBaseUrl();
+  const url = `${hieBaseUrl}/eligibility/claims-eligibility?identificationNumber=${identifier}&identificationType=${identifierType}&locationUuid=${locationUuid}`;
+  const response = await openmrsFetch(url);
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorText = data.message || 'Failed to fetch client eligibility status';
+    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+  }
+
+  return data;
 }

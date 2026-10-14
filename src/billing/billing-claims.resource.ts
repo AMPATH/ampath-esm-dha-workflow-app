@@ -36,14 +36,16 @@ import {
   type AmrsVisitDiagnosisResponse,
   type BedOccupancy,
   type PayerPreviewResponse,
-  PayerPreviewResult,
-  ClaimVisit,
-  FetchClaimVisitDto,
+  type ClaimVisit,
+  type FetchClaimVisitDto,
+  type ClaimsReportSummaryDto,
+  type ClaimSummary,
+  type ClaimsReportSummaryListDto,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { type VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
-import { ClaimsDashboardStatsData, ClaimsDashboardStatsDataResp, type PatientBillVisit } from './dashboard/v3/types';
+import { DischargeReasonType, type ClaimsDashboardStatsData, type PatientBillVisit } from './dashboard/v3/types';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -628,8 +630,9 @@ export async function closeClaim(closeClaimDto: CloseClaimDto) {
 export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: string = 'INPATIENT') {
   const { hieBaseUrl } = await getHieBaseUrl();
   let claimUrl = `${hieBaseUrl}/claim-submission`;
-  if (visitType === 'INPATIENT') {
-    submitClaimDto['dischargeDate'] = new Date().toISOString();
+  const submitClaimPayload = submitClaimDto as SubmitClaimDto & Record<string, string | undefined>;
+  if (visitType === 'INPATIENT' || visitType === 'EMERGENCY' || submitClaimDto["dischargeReason"] == DischargeReasonType.DECEASED) {
+    submitClaimPayload['dischargeDate'] = new Date().toISOString();
     claimUrl = `${hieBaseUrl}/claim-submission/inpatient`;
   }
   const response = await openmrsFetch(claimUrl, {
@@ -637,7 +640,7 @@ export async function submitClaim(submitClaimDto: SubmitClaimDto, visitType: str
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(submitClaimDto),
+    body: JSON.stringify(submitClaimPayload),
   });
   const data = (await response.json()) as ClaimVisitReponse;
   return data ?? null;
@@ -817,29 +820,30 @@ export async function fetchPatientDiagnosesForBilling(
     maternityResult.status === 'fulfilled'
       ? (maternityResult.value ?? [])
         .filter((r) => r?.uuid != null)
-        .map(
-          (v): AmrsVisitDiagnosis => ({
-            patient_id: Number(v.patient_id) || 0,
-            encounter_id: v.encounter_id,
-            encounter_datetime: v.encounter_datetime,
-            facility: v.facility ?? '',
-            encounter_type: v.encounter_type,
-            concept_id: v.concept_id != null ? Number(v.concept_id) : null,
-            value_coded: v.value_coded != null ? Number(v.value_coded) : null,
-            dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
-            concept_source_name: v.concept_source_name,
-            hl7_code: v.hl7_code,
-            icd11_code: v.icd11_code,
-            provider_id: '',
-            national_id: v.practioner_nat_id ?? '',
-            speciality: v.practitioner_speciality ?? null,
-            uuid: v.uuid,
-            practioner_nat_id: v.practioner_nat_id,
-            practitioner_speciality: v.practitioner_speciality,
-            practitioner_identifier_type: 'National ID',
-            practitioner_body: v.practitioner_body,
-          }),
-        )
+        .map((v): AmrsVisitDiagnosis => ({
+          patient_id: Number(v.patient_id) || 0,
+          encounter_id: v.encounter_id,
+          encounter_datetime: v.encounter_datetime,
+          facility: v.facility ?? '',
+          encounter_type: v.encounter_type,
+          concept_id: v.concept_id != null ? Number(v.concept_id) : null,
+          value_coded: v.value_coded != null ? Number(v.value_coded) : null,
+          dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
+          concept_name: v?.concept_name ?? '',
+          diagnosis_type: v?.diagnosis_type ?? '',
+          provider_name: v?.provider_name ?? '',
+          concept_source_name: v.concept_source_name,
+          hl7_code: v.hl7_code,
+          icd11_code: v.icd11_code,
+          provider_id: '',
+          national_id: v.practioner_nat_id ?? '',
+          speciality: v.practitioner_speciality ?? null,
+          uuid: v.uuid,
+          practioner_nat_id: v.practioner_nat_id,
+          practitioner_speciality: v.practitioner_speciality,
+          practitioner_identifier_type: 'National ID',
+          practitioner_body: v.practitioner_body,
+        }))
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
@@ -959,8 +963,8 @@ export function usePatientBillDetails(visitUuid: string) {
 
   const { data, error, isLoading, isValidating } = useSWR<{
     data: {
-      results: Array<PatientFacilityBillDetails>
-    }
+      results: Array<PatientFacilityBillDetails>;
+    };
   }>(url, openmrsFetch);
 
   const results = data?.data?.results || [];
@@ -1042,7 +1046,9 @@ export async function fethClaimVisits(fetchClaimVisitDto: FetchClaimVisitDto): P
 }
 
 export const useBill = (billUuid: string) => {
-  const url = billUuid ? `${restBaseUrl}/billing/bill/${billUuid}?v=custom:(uuid,patient:(uuid),lineItems,status)` : null;
+  const url = billUuid
+    ? `${restBaseUrl}/billing/bill/${billUuid}?v=custom:(uuid,patient:(uuid),lineItems,status)`
+    : null;
 
   const {
     data,
@@ -1052,13 +1058,13 @@ export const useBill = (billUuid: string) => {
     mutate: mutated,
   } = useSWR<{
     data: {
-      uuid: string,
+      uuid: string;
       patient: {
-        uuid: string
-      },
-      lineItems: Array<any>,
-      status: string
-    }
+        uuid: string;
+      };
+      lineItems: Array<any>;
+      status: string;
+    };
   }>(url, openmrsFetch, {
     errorRetryCount: 2,
   });
@@ -1073,3 +1079,34 @@ export const useBill = (billUuid: string) => {
     mutated,
   };
 };
+
+export async function fethClaimSummaryReport(claimsReportSummaryDto: ClaimsReportSummaryDto): Promise<ClaimSummary[]> {
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const url = `${hieBaseUrl}/claims-report/summary`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(claimsReportSummaryDto),
+  });
+
+  const data = await response.json() as ClaimSummary[];
+
+  return data ?? [];
+}
+export async function fethClaimSummaryReportList(claimsReportSummaryListDto: ClaimsReportSummaryListDto): Promise<ClaimVisit[]>{
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const url = `${hieBaseUrl}/claims-report/claims-list`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(claimsReportSummaryListDto),
+  });
+
+  const data = await response.json();
+
+  return data ?? [];
+}

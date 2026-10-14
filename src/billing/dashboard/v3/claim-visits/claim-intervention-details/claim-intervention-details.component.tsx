@@ -1,5 +1,5 @@
 import React from 'react';
-import { type PatientFacilityBillDetails, type VisitIntervention } from '../../types';
+import { ApplicableDocumentType, type PatientFacilityBillDetails, type VisitIntervention } from '../../types';
 import {
   MenuButton,
   MenuItem,
@@ -11,7 +11,7 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { launchWorkspace, showSnackbar, useSession } from '@openmrs/esm-framework';
+import { launchWorkspace2, showSnackbar, useSession } from '@openmrs/esm-framework';
 
 import { invalidatePreauthPreview, parseDocTypes, readSpecialtyFlags } from '../../../v2/preauth/preauth.resource';
 import { resolvePatientUuidFromCr } from '../../preauth/preauth.resource';
@@ -31,6 +31,7 @@ interface claimInterventionDetailsProps {
   canSwitchIntervention?: boolean;
   onSwitchSuccess?: () => void;
   billingDate: string;
+  hasDeathReportingFormEncounter?: boolean;
 }
 
 const isActiveIntervention = (iv: VisitIntervention) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE';
@@ -44,6 +45,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   canSwitchIntervention = false,
   onSwitchSuccess,
   billingDate,
+  hasDeathReportingFormEncounter
 }) => {
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
@@ -54,7 +56,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   }
 
   const handleAddAttachment = (ci: any) => {
-    launchWorkspace('upload-intervention-attachments-workspace', {
+    launchWorkspace2('upload-intervention-attachments-workspace', {
       consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
@@ -62,7 +64,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   };
 
   const handleGenerateAttachment = (ci: any) => {
-    launchWorkspace('generate-intervention-attachments-workspace', {
+    launchWorkspace2('generate-intervention-attachments-workspace', {
       consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
@@ -97,7 +99,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     if (!canSwitchFor(intervention)) {
       return;
     }
-    launchWorkspace('switch-intervention-workspace', {
+    launchWorkspace2('switch-intervention-workspace', {
       consentToken: consentToken,
       currentInterventions: [intervention],
       patientId: patientBillDetails?.cr_no,
@@ -161,7 +163,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     }
 
     // Fresh raise and failure-state resubmit both reopen the same preauth form.
-    launchWorkspace('preauth-form-workspace', {
+    launchWorkspace2('preauth-form-workspace', {
       consentToken,
       patientUuid,
       locationUuid,
@@ -188,12 +190,25 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       },
     });
   };
+  function formatDocuments(documentTypes: ApplicableDocumentType[]){
+    if(!documentTypes || documentTypes.length === 0){
+       return;
+    }
+       return <>
+         <ul>
+            { documentTypes?.map((d)=>{
+          return <li>{d}</li>
+       })}
+         </ul>
+       </>  
+  }
 
   return (
     <>
       <Table size="sm">
         <TableHead>
           <TableRow>
+            <TableHeader>No</TableHeader>
             <TableHeader>Code</TableHeader>
             <TableHeader>Payment Mechanism</TableHeader>
             <TableHeader>Name</TableHeader>
@@ -202,18 +217,20 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
             <TableHeader>State</TableHeader>
             <TableHeader>Sub Benefit Code</TableHeader>
             <TableHeader>Fund</TableHeader>
+            <TableHeader>Applicable Documents</TableHeader>
             <TableHeader>Attachments</TableHeader>
             <TableHeader>Actions</TableHeader>
           </TableRow>
         </TableHead>
         <TableBody>
           {claimInterventions &&
-            claimInterventions.map((ci) => {
+            claimInterventions.map((ci,index) => {
               const canSwitch = canSwitchFor(ci);
               const canRaise = canRaisePreauthFor(ci);
-              const hasAttachments = (ci.applicable_document_types ?? []).length > 0;
+              const hasAttachments = (ci.applicable_document_types ?? []).length > 0 || hasDeathReportingFormEncounter;
               return (
                 <TableRow key={ci.id}>
+                  <TableCell>{index + 1}</TableCell>
                   <TableCell>{ci.intervention_code}</TableCell>
                   <TableCell>{ci.intervention_payment_mechanism}</TableCell>
                   <TableCell>{ci.intervention_name}</TableCell>
@@ -222,6 +239,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
                   <TableCell>{ci.workflow_state}</TableCell>
                   <TableCell>{ci.sub_benefit_code}</TableCell>
                   <TableCell>{ci.intervention_fund}</TableCell>
+                  <TableCell>{formatDocuments(ci.applicable_document_types)}</TableCell>
                   <TableCell>
                     {hasAttachments ? (
                       <MenuButton label="Attachments" kind="ghost" size="sm">

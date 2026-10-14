@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { usePendingClearanceVisits } from './active-visits.resource';
 import { Button, DataTable, type DataTableRow, DataTableSkeleton, Pagination, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
-import { launchWorkspace, usePagination, type Visit } from '@openmrs/esm-framework';
+import { launchWorkspace2, usePagination, type Visit } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import styles from "./active-visits.scss";
 import dayjs from 'dayjs';
@@ -133,7 +133,7 @@ const ActiveVisits: React.FC<{ date?: string, onDateChange?: (value: string) => 
                 rowVisitTypeUuid = cell.value;
             }
         });
-        launchWorkspace(SEND_TO_QUEUE_WORKSPACE, {
+                void launchWorkspace2(SEND_TO_QUEUE_WORKSPACE, {
             workspaceTitle: 'Initiate SHA claim',
             patientUuid: rowPatientUuid,
             visitUuid: row.id,

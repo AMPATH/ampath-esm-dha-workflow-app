@@ -14,12 +14,10 @@ import {
   Tile,
 } from '@carbon/react';
 
-import { closeWorkspace, showSnackbar } from '@openmrs/esm-framework';
+import { showSnackbar, Workspace2, type Workspace2DefinitionProps } from '@openmrs/esm-framework';
 import { type PendingLineItem } from '../types';
 
 import styles from './pay-cash.scss';
-import { updateBillItemStatus } from '../../../api/billing.api';
-import { Snackbar } from '@openmrs/esm-styleguide/src/snackbars/snackbar.component';
 import { payBillItem } from '../../../billing-claims.resource';
 import { getCashPaymentModeUuid } from '../../../../shared/utils/get-base-url';
 
@@ -30,12 +28,11 @@ interface PayCashComponentProps {
   onPaymentSuccess?: () => void;
 }
 
-const PayCashComponent: React.FC<PayCashComponentProps> = ({
-  lineItems = [],
-  billUuid,
-  cashModeUuid,
-  onPaymentSuccess,
+const PayCashComponent: React.FC<Workspace2DefinitionProps<PayCashComponentProps>> = ({
+  workspaceProps,
+  closeWorkspace,
 }) => {
+  const { lineItems = [], billUuid, cashModeUuid, onPaymentSuccess } = workspaceProps ?? ({} as PayCashComponentProps);
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [amountTendered, setAmountTendered] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -65,7 +62,7 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({
 
   const onCancel = () => {
     if (isProcessing) return;
-    closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
+    void closeWorkspace();
   };
   const payForBillItem = async (billItem: PendingLineItem) => {
     const cashPaymentModeUuid = await getCashPaymentModeUuid();
@@ -92,9 +89,7 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({
       //   selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
       // );
 
-      closeWorkspace('pay-cash-workspace', {
-        ignoreChanges: true,
-      });
+      await closeWorkspace({ discardUnsavedChanges: true });
 
       showSnackbar({
         kind: 'success',
@@ -117,7 +112,8 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({
   };
 
   return (
-    <div>
+    <Workspace2 title="Pay Cash">
+      <div>
       <Table aria-label="Pending cash bill items" size="sm">
         <TableHead>
           <TableRow>
@@ -196,7 +192,8 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({
           </div>
         </Tile>
       )}
-    </div>
+      </div>
+    </Workspace2>
   );
 };
 export default PayCashComponent;

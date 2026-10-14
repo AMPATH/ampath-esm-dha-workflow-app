@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Button, ButtonSet, Form, Modal, Select, SelectItem, Tag, TextInput } from '@carbon/react';
-import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import {
+  showSnackbar,
+  useSession,
+  Workspace2,
+  type Workspace2DefinitionProps,
+} from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import styles from './attachments.scss';
 import { type VisitIntervention } from '../../types';
@@ -8,17 +13,16 @@ import { type UploadedFile } from './type';
 import AttachmentComponent from './attachment.component';
 import { sendClaimAttachment } from '../../../../../registry/hie.resource';
 
-interface AddInterventionAttachmentWorkspaceProps extends DefaultWorkspaceProps {
+interface AddInterventionAttachmentWorkspaceProps {
   consentToken: string;
   claimInterventions: VisitIntervention;
 }
 
-const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWorkspaceProps> = ({
+const AddInterventionAttachmentsWorkspace: React.FC<Workspace2DefinitionProps<AddInterventionAttachmentWorkspaceProps>> = ({
   closeWorkspace,
-  promptBeforeClosing,
-  claimInterventions,
-  consentToken,
+  workspaceProps,
 }) => {
+  const { claimInterventions, consentToken } = workspaceProps ?? ({} as AddInterventionAttachmentWorkspaceProps);
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -88,7 +92,7 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
     closeWorkspace();
   };
 
-  if (!claimInterventions) return null;
+  if (!claimInterventions || !consentToken) return null;
 
   const docTypes = Array.from(
     new Map(
@@ -154,7 +158,8 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
   const totalFiles = attachments.reduce((count, attachment) => count + attachment.files.length, 0);
 
   return (
-    <>
+    <Workspace2 title={t('uploadAttachments', 'Upload Attachments')}>
+      <>
       <Form className={styles.form}>
         <div
           style={{
@@ -221,7 +226,8 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
           />
         )}
       </Modal>
-    </>
+      </>
+    </Workspace2>
   );
 };
 

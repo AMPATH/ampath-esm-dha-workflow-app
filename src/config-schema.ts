@@ -199,11 +199,18 @@ export const configSchema = {
       'FHIR resource types to request from the SHR patient-records endpoint, and how ' +
       'to label them as tabs in the viewer. Order controls tab order. Observation ' +
       'categories not listed here still appear, labelled from the payload — see ' +
-      'categoryCode.',
+      'categoryCode. The defaults cover every patient-record type the SHR holds; ' +
+      'Medication (the drug-catalogue resource) is deliberately left to config.',
     _default: [
+      { resourceType: 'AllergyIntolerance', label: 'Allergies' },
       { resourceType: 'Condition', label: 'Conditions' },
+      { resourceType: 'Immunization', label: 'Immunizations' },
       { resourceType: 'MedicationRequest', label: 'Medications' },
+      { resourceType: 'MedicationDispense', label: 'Dispensed' },
+      { resourceType: 'MedicationAdministration', label: 'Administered' },
       { resourceType: 'Encounter', label: 'Encounters' },
+      { resourceType: 'EpisodeOfCare', label: 'Episodes of care' },
+      { resourceType: 'Procedure', label: 'Procedures' },
       { resourceType: 'Observation', label: 'Vitals', categoryCode: 'vital-signs' },
       { resourceType: 'Observation', label: 'Exam findings', categoryCode: 'exam' },
       { resourceType: 'Observation', label: 'Lab results', categoryCode: 'laboratory' },
@@ -253,6 +260,37 @@ export const configSchema = {
       _default: '',
     },
   },
+  formEncounterTypes: {
+    clinicalEncounterTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Clinical Encounter type UUID',
+      _default: '81166f83-1ee6-486e-8f56-aca528fc0fc0',
+    },
+    inpatientDischargeEncounterTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Inpatient Discharge Encounter type UUID',
+      _default: '7649d97d-ac9f-444d-877c-7468ef286e7e',
+    },
+    deathReportingEncounterTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Death Reporting Encounter type UUID',
+      _default: '9ff78ba9-1338-446c-917a-c49368a102e8'
+    }
+  },
+  observationValueCodableConcepts: {
+    deceasedUuid: {
+      _type: Type.UUID,
+      _description: 'Deceased outcome',
+      _default: 'a89335d6-1350-11df-a1f1-0026b9348838'
+    }
+  },
+  formUuids: {
+    deathReportingFormUuid: {
+      _type: Type.UUID,
+      _description: 'Death reporting form',
+      _default: 'b7750932-7fcb-3d1c-9561-faf6772d4d71'
+    }
+  }
 };
 
 /** One SHR record-viewer category: a FHIR resource type plus its clinician-facing tab label. */
@@ -352,6 +390,17 @@ export interface ConfigObject {
     plannedServiceObsConceptUuid: string;
   };
   emergencyConceptUuid: string;
+  formEncounterTypes: {
+    clinicalEncounterTypeUuid: Type.UUID;
+    inpatientDischargeEncounterTypeUuid: Type.UUID;
+    deathReportingEncounterTypeUuid: Type.UUID;
+  },
+  observationValueCodableConcepts: {
+    deceasedUuid: Type.UUID;
+  }
+  formUuids: {
+    deathReportingFormUuid: Type.UUID;
+  }
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
