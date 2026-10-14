@@ -1519,9 +1519,14 @@ export function isPreauthTerminalFailure(status: string): boolean {
   return false;
 }
 
-/** Failure, cancellation, expiry, or clarification — provider may reopen and raise again. */
+/** SHA left the preauth in DRAFT — created but never submitted, so it can be raised again. */
+export function isPreauthDraft(status: string): boolean {
+  return (status || '').toUpperCase() === 'DRAFT';
+}
+
+/** Failure, cancellation, expiry, clarification, or draft — provider may reopen and raise again. */
 export function isPreauthResubmittable(status: string): boolean {
-  return isPreauthTerminalFailure(status) || isPreauthNeedsClarification(status);
+  return isPreauthTerminalFailure(status) || isPreauthNeedsClarification(status) || isPreauthDraft(status);
 }
 
 /** Statuses that mean the preauth was accepted by HIE — form can close. */
@@ -1567,7 +1572,7 @@ export function readPreauthCheck(preview: unknown, interventionCode?: string | n
   if (isPreauthFinalised(status)) {
     return { status: 'FINALISED', preview, kind: 'finalised', preauthCode, notes };
   }
-  if (isPreauthTerminalFailure(status)) {
+  if (isPreauthTerminalFailure(status) || isPreauthDraft(status)) {
     return { status, preview, kind: 'failed', preauthCode, notes };
   }
   // Clarification stays `pending` for status-tag colouring ("Needs clarification"),
@@ -1707,6 +1712,9 @@ export async function pollPreauthUntilSubmitted(
   }: { intervalMs?: number; maxAttempts?: number; signal?: AbortSignal } = {},
 ): Promise<{ status: string; preview: unknown; preauthCode?: string }> {
   const code = (interventionCode ?? '').trim();
+  // SHA can report DRAFT briefly right after the POST; only give up once it lingers.
+  const MAX_DRAFT_POLLS = 5;
+  let draftPolls = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     if (signal?.aborted) {
       throw new Error('Preauth poll cancelled');
@@ -1722,6 +1730,14 @@ export async function pollPreauthUntilSubmitted(
     }
     if (status && isPreauthTerminalFailure(status)) {
       throw new Error(`Preauth ${status}`);
+    }
+    if (isPreauthDraft(status)) {
+      draftPolls += 1;
+      if (draftPolls >= MAX_DRAFT_POLLS) {
+        throw new Error('Preauth is in DRAFT on SHA and was not submitted. Resubmit preauth.');
+      }
+    } else {
+      draftPolls = 0;
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
