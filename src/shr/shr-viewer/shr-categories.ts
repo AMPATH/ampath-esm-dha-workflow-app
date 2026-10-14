@@ -33,11 +33,24 @@ export interface ShrCategory {
   resources: ShrAnyResource[];
 }
 
-/** Every category coding on a resource that carries an actual code, in order. */
+/**
+ * Every category coding on a resource that carries an actual code, in order.
+ *
+ * Two element shapes occur: `Observation.category` is CodeableConcept[], but
+ * `AllergyIntolerance.category` is an array of plain FHIR codes
+ * (`"medication"`, `"environment"` — R4 binds it to a code, not a concept). A
+ * site splitting either type by `categoryCode` must have both work, so bare
+ * strings are read as codings of their own.
+ */
 export function categoryCodings(resource: ShrAnyResource): ShrCoding[] {
-  const concepts = (resource as any)?.category as ShrCodeableConcept[] | undefined;
+  const concepts = (resource as any)?.category as Array<ShrCodeableConcept | string> | undefined;
   return (concepts ?? [])
-    .flatMap((concept) => concept?.coding ?? [])
+    .flatMap((concept) => {
+      if (typeof concept === 'string') {
+        return concept ? [{ code: concept }] : [];
+      }
+      return concept?.coding ?? [];
+    })
     .filter((coding): coding is ShrCoding => Boolean(coding?.code));
 }
 

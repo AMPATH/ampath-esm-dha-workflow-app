@@ -504,13 +504,150 @@ export interface ShrMedicationRequest extends ShrResourceBase {
   dispenseRequest?: ShrDispenseRequest;
 }
 
+/** One `AllergyIntolerance.reaction` entry — what happened when exposed. */
+export interface ShrReaction {
+  substance?: ShrCodeableConcept;
+  manifestation?: ShrCodeableConcept[];
+  /** mild | moderate | severe. */
+  severity?: string;
+  note?: ShrAnnotation[];
+}
+
 /**
- * Any resource the SHR may hand back. The union covers the seven confirmed
- * types; the index signature keeps a site-configured extra category (once the
- * backend confirms one) from being a type error rather than a config change.
+ * Confirmed against live SHR payloads (the `erx-ke-allergy-intolerance`
+ * profile). Unlike the seven types the viewer shipped with, AllergyIntolerance
+ * carries no `status` — its workflow state lives on `clinicalStatus`, and its
+ * `category` is an array of plain FHIR codes, not CodeableConcepts.
+ */
+export interface ShrAllergyIntolerance extends ShrResourceBase {
+  resourceType: 'AllergyIntolerance';
+  clinicalStatus?: ShrCodeableConcept;
+  verificationStatus?: ShrCodeableConcept;
+  /** allergy | intolerance. */
+  type?: string;
+  /** Plain codes — medication | environment | food | biologic — NOT CodeableConcepts. */
+  category?: string[];
+  /** low | high | unable-to-assess. */
+  criticality?: string;
+  /** What the patient reacts to. */
+  code?: ShrCodeableConcept;
+  patient?: ShrReference;
+  encounter?: ShrReference;
+  onsetDateTime?: string;
+  recordedDate?: string;
+  recorder?: ShrReference;
+  lastOccurrence?: string;
+  reaction?: ShrReaction[];
+}
+
+/** The `ke-episode-of-care` shape the SHR serves (visit-level grouping). */
+export interface ShrEpisodeOfCare extends ShrResourceBase {
+  resourceType: 'EpisodeOfCare';
+  status?: string;
+  statusHistory?: Array<{ status?: string; period?: ShrPeriod }>;
+  type?: ShrCodeableConcept[];
+  patient?: ShrReference;
+  managingOrganization?: ShrReference;
+  period?: ShrPeriod;
+  careManager?: ShrReference;
+}
+
+/**
+ * Vaccination record. `occurrence[x]` is dateTime OR string — the string form
+ * exists for "sometime in childhood" style dates, so date rendering must
+ * tolerate a non-date.
+ */
+export interface ShrImmunization extends ShrResourceBase {
+  resourceType: 'Immunization';
+  status?: string;
+  statusReason?: ShrCodeableConcept;
+  vaccineCode?: ShrCodeableConcept;
+  occurrenceDateTime?: string;
+  occurrenceString?: string;
+  recorded?: string;
+  lotNumber?: string;
+  manufacturer?: ShrReference;
+  site?: ShrCodeableConcept;
+  doseQuantity?: ShrQuantity;
+  performer?: Array<{ actor?: ShrReference }>;
+  encounter?: ShrReference;
+  note?: ShrAnnotation[];
+}
+
+/** A clinical action carried out on the patient. `performed[x]` is dateTime | Period | string. */
+export interface ShrProcedure extends ShrResourceBase {
+  resourceType: 'Procedure';
+  status?: string;
+  statusReason?: ShrCodeableConcept;
+  category?: ShrCodeableConcept[];
+  code?: ShrCodeableConcept;
+  subject?: ShrReference;
+  encounter?: ShrReference;
+  performedDateTime?: string;
+  performedPeriod?: ShrPeriod;
+  performedString?: string;
+  performer?: Array<{ actor?: ShrReference; function?: ShrCodeableConcept }>;
+  reasonCode?: ShrCodeableConcept[];
+  asserter?: ShrReference;
+  recordedDate?: string;
+  recorder?: ShrReference;
+  note?: ShrAnnotation[];
+}
+
+/** What pharmacy handed to the patient, against a MedicationRequest. */
+export interface ShrMedicationDispense extends ShrResourceBase {
+  resourceType: 'MedicationDispense';
+  status?: string;
+  statusReason?: ShrCodeableConcept;
+  medicationCodeableConcept?: ShrCodeableConcept;
+  subject?: ShrReference;
+  encounter?: ShrReference;
+  performer?: Array<{ actor?: ShrReference }>;
+  authorizingPrescription?: ShrReference;
+  quantity?: ShrQuantity;
+  daysSupply?: ShrQuantity;
+  whenPrepared?: string;
+  whenHandedOver?: string;
+  dosageInstruction?: ShrDosageInstruction[];
+  note?: ShrAnnotation[];
+}
+
+/** A dose actually given (or deliberately not given — `status: not-done` + statusReason). */
+export interface ShrMedicationAdministration extends ShrResourceBase {
+  resourceType: 'MedicationAdministration';
+  status?: string;
+  /** Array on Administration (singular CodeableConcept on Dispense). */
+  statusReason?: ShrCodeableConcept[];
+  medicationCodeableConcept?: ShrCodeableConcept;
+  subject?: ShrReference;
+  encounter?: ShrReference;
+  effectiveDateTime?: string;
+  effectivePeriod?: ShrPeriod;
+  performer?: Array<{ actor?: ShrReference }>;
+  dosage?: { text?: string; dose?: ShrQuantity; rateQuantity?: ShrQuantity };
+  note?: ShrAnnotation[];
+}
+
+/**
+ * Any resource the SHR may hand back. The union covers the resource types the
+ * SHR's documented record set holds (plus Patient, which rides along); the
+ * index signature keeps a site-configured extra category from being a type
+ * error rather than a config change.
  */
 export type ShrKnownResource =
-  ShrPatient | ShrEncounter | ShrCondition | ShrServiceRequest | ShrObservation | ShrSpecimen | ShrMedicationRequest;
+  | ShrPatient
+  | ShrEncounter
+  | ShrCondition
+  | ShrServiceRequest
+  | ShrObservation
+  | ShrSpecimen
+  | ShrMedicationRequest
+  | ShrAllergyIntolerance
+  | ShrEpisodeOfCare
+  | ShrImmunization
+  | ShrProcedure
+  | ShrMedicationDispense
+  | ShrMedicationAdministration;
 
 export type ShrAnyResource = ShrKnownResource | (ShrResourceBase & Record<string, any>);
 

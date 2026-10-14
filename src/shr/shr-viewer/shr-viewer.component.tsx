@@ -27,6 +27,8 @@ import {
   Chemistry,
   Dashboard,
   DocumentBlank,
+  HealthCross,
+  Hospital,
   ListChecked,
   Logout,
   Medication,
@@ -35,7 +37,9 @@ import {
   Report,
   Send,
   Stethoscope,
+  Tools,
   User,
+  Warning,
 } from '@carbon/react/icons';
 import { useTranslation } from 'react-i18next';
 import type { ShrResourceTypeConfig } from '../../config-schema';
@@ -53,11 +57,21 @@ import styles from './shr-viewer.scss';
  * can't carry a React component.
  */
 
-/** Resource type → tab icon. Anything unmapped (a newly configured category) gets a generic icon. */
+/**
+ * Resource type → tab icon. Anything unmapped (a newly configured category) gets a generic icon.
+ * The three medication-family tabs deliberately share the Medication glyph —
+ * the label, not the icon, tells them apart.
+ */
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  AllergyIntolerance: Warning,
   Condition: Report,
+  Immunization: HealthCross,
   MedicationRequest: Medication,
+  MedicationDispense: Medication,
+  MedicationAdministration: Medication,
+  Procedure: Tools,
   Encounter: Calendar,
+  EpisodeOfCare: Hospital,
   Observation: Chemistry,
   ServiceRequest: ListChecked,
   Specimen: Microscope,
