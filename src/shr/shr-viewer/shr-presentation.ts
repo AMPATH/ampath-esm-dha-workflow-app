@@ -4,10 +4,19 @@ import type {
   ShrAnyResource,
   ShrCodeableConcept,
   ShrCondition,
+  ShrDosageInstruction,
   ShrEncounter,
+  ShrEpisodeOfCare,
+  ShrAllergyIntolerance,
+  ShrImmunization,
+  ShrMedicationAdministration,
+  ShrMedicationDispense,
   ShrMedicationRequest,
   ShrObservation,
   ShrPatient,
+  ShrProcedure,
+  ShrQuantity,
+  ShrReaction,
   ShrReference,
   ShrServiceRequest,
   ShrSpecimen,
@@ -142,10 +151,25 @@ function fields(entries: Array<[string, string]>): ShrDetailField[] {
   return entries.filter(([, value]) => Boolean(value?.trim())).map(([label, value]) => ({ label, value }));
 }
 
-/** Carbon `Tag` colour for a status word, used for the status column. */
+/**
+ * Carbon `Tag` colour for a status word, used for the status column.
+ *
+ * Allergy criticality rides the same tag slot (the allergy presenter tags its
+ * Criticality column — the safety signal an allergy list exists to surface),
+ * so its words are mapped first: `high` is the danger word.
+ */
 export function statusTagType(status: string): 'green' | 'blue' | 'red' | 'gray' | 'teal' | 'purple' {
   const s = status.trim().toLowerCase();
   if (!s) {
+    return 'gray';
+  }
+  if (s === 'high') {
+    return 'red';
+  }
+  if (s === 'unable-to-assess') {
+    return 'purple';
+  }
+  if (s === 'low') {
     return 'gray';
   }
   if (/(^active|completed|final|confirmed|available|fulfilled|resolved)/.test(s)) {
@@ -195,8 +219,75 @@ const conditionPresenter: ResourcePresenter = {
   }),
 };
 
+/** The manifestations across reactions, for the table's Reaction column. */
+function reactionSummary(reactions?: ShrReaction[]): string {
+  return (reactions ?? [])
+    .map((reaction) => conceptList(reaction?.manifestation))
+    .filter(Boolean)
+    .join('; ');
+}
+
+/**
+ * Reactions for the detail panel: one passage per reaction — manifestations
+ * (or, failing those, the reacting substance), then the severity in brackets —
+ * joined with a middle dot. A reaction carrying only a severity still shows
+ * ("(Severe)"), and an allergy with no reactions at all yields '' so `fields`
+ * drops the row entirely.
+ */
+function reactionLines(reactions?: ShrReaction[]): string {
+  return (reactions ?? [])
+    .map((reaction) => {
+      const what = conceptList(reaction?.manifestation) || conceptText(reaction?.substance);
+      const severity = reaction?.severity ? `(${humanise(reaction.severity)})` : '';
+      return [what, severity].filter(Boolean).join(' ');
+    })
+    .filter(Boolean)
+    .join(' · ');
+}
+
+const allergyIntolerancePresenter: ResourcePresenter = {
+  columns: [
+    { key: 'allergy', header: 'Allergy' },
+    { key: 'status', header: 'Status' },
+    { key: 'criticality', header: 'Criticality' },
+    { key: 'reaction', header: 'Reaction' },
+    { key: 'recorded', header: 'Recorded' },
+  ],
+  // Criticality is the tagged column rather than status: a high-criticality
+  // allergy is the one thing this list exists to shout about, and statusTagType
+  // maps it to red. Clinical status reads fine as plain text beside it.
+  statusColumn: 'criticality',
+  // recordedDate is when the allergy was entered; onset/lastOccurrence are the
+  // clinical dates it may carry instead, in that order of authority.
+  sortDate: (r: ShrAllergyIntolerance) => firstDate(r.recordedDate, r.onsetDateTime, r.lastOccurrence),
+  present: (r: ShrAllergyIntolerance) => ({
+    cells: {
+      allergy: conceptText(r.code),
+      // AllergyIntolerance has no `status` — its workflow state is clinicalStatus.
+      status: humanise(conceptText(r.clinicalStatus)),
+      criticality: humanise(r.criticality),
+      reaction: reactionSummary(r.reaction),
+      recorded: formatDay(r.recordedDate),
+    },
+    details: fields([
+      ['Allergy to', conceptText(r.code)],
+      ['Kind', humanise(r.type)],
+      ['Category', (r.category ?? []).map(humanise).filter(Boolean).join(', ')],
+      ['Status', humanise(conceptText(r.clinicalStatus))],
+      ['How certain', humanise(conceptText(r.verificationStatus))],
+      ['Criticality', humanise(r.criticality)],
+      ['Reactions', reactionLines(r.reaction)],
+      ['Started', formatMoment(r.onsetDateTime)],
+      ['Last reaction', formatMoment(r.lastOccurrence)],
+      ['Recorded by', referenceName(r.recorder)],
+      ['Recorded during', referenceName(r.encounter)],
+      ['Date recorded', formatMoment(r.recordedDate)],
+    ]),
+  }),
+};
+
 /** "500 mg, 3 times daily for 7 days" assembled from whatever the SHR sent. */
-function dosageSummary(r: ShrMedicationRequest): string {
+function dosageSummary(r: { dosageInstruction?: ShrDosageInstruction[] }): string {
   const instruction = r.dosageInstruction?.[0];
   if (!instruction) {
     return '';
@@ -283,6 +374,173 @@ const encounterPresenter: ResourcePresenter = {
           .filter(Boolean)
           .join(', '),
       ],
+    ]),
+  }),
+};
+
+/**
+ * The episode's facility. Episodes reference organizations by bare
+ * `Organization/FID-…` references with no display name (unlike this SHR's
+ * encounters, which carry one), so fall through to the id segment — a facility
+ * code is meaningful on its own where a bare encounter id would not be.
+ */
+function episodeFacility(r: ShrEpisodeOfCare): string {
+  return referenceName(r.managingOrganization) || r.managingOrganization?.reference?.split('/').pop() || '';
+}
+
+const episodeOfCarePresenter: ResourcePresenter = {
+  columns: [
+    { key: 'episode', header: 'Episode' },
+    { key: 'status', header: 'Status' },
+    { key: 'facility', header: 'Facility' },
+    { key: 'started', header: 'Started' },
+    { key: 'ended', header: 'Ended' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrEpisodeOfCare) => firstDate(r.period?.start, r.period?.end),
+  present: (r: ShrEpisodeOfCare) => ({
+    cells: {
+      episode: conceptList(r.type),
+      status: humanise(r.status),
+      facility: episodeFacility(r),
+      started: formatDay(r.period?.start),
+      ended: formatDay(r.period?.end),
+    },
+    details: fields([
+      ['Episode', conceptList(r.type)],
+      ['Status', humanise(r.status)],
+      ['Facility', episodeFacility(r)],
+      ['Started', formatMoment(r.period?.start)],
+      ['Ended', formatMoment(r.period?.end)],
+      ['Care manager', referenceName(r.careManager)],
+    ]),
+  }),
+};
+
+/** A quantity with its unit when one was sent: "10 tablets". */
+function quantityText(quantity?: ShrQuantity): string {
+  return quantity?.value != null ? `${quantity.value}${quantity?.unit ? ` ${quantity.unit}` : ''}` : '';
+}
+
+const immunizationPresenter: ResourcePresenter = {
+  columns: [
+    { key: 'vaccine', header: 'Vaccine' },
+    { key: 'status', header: 'Status' },
+    { key: 'date', header: 'Given' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrImmunization) => r.occurrenceDateTime ?? '',
+  present: (r: ShrImmunization) => ({
+    cells: {
+      vaccine: conceptText(r.vaccineCode),
+      status: humanise(r.status),
+      // occurrence[x] may be a bare string ("sometime in childhood") — show it
+      // as-is rather than as a mis-formatted date.
+      date: formatDay(r.occurrenceDateTime) || r.occurrenceString || '',
+    },
+    details: fields([
+      ['Vaccine', conceptText(r.vaccineCode)],
+      ['Status', humanise(r.status)],
+      ['Not given because', conceptText(r.statusReason)],
+      ['Dose', quantityText(r.doseQuantity)],
+      ['Batch', r.lotNumber ?? ''],
+      ['Manufacturer', referenceName(r.manufacturer)],
+      ['Given at', referenceName(r.encounter)],
+      ['Given by', referenceNames(r.performer?.map((p) => p?.actor))],
+      ['Date given', formatMoment(r.occurrenceDateTime) || r.occurrenceString || ''],
+      ['Notes', noteText(r.note)],
+    ]),
+  }),
+};
+
+const procedurePresenter: ResourcePresenter = {
+  columns: [
+    { key: 'procedure', header: 'Procedure' },
+    { key: 'status', header: 'Status' },
+    { key: 'when', header: 'When' },
+    { key: 'doneBy', header: 'Done by' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrProcedure) => firstDate(r.performedDateTime, r.performedPeriod?.start),
+  present: (r: ShrProcedure) => ({
+    cells: {
+      procedure: conceptText(r.code),
+      status: humanise(r.status),
+      // performed[x] may be a bare string — show it as-is, like immunizations.
+      when: formatDay(firstDate(r.performedDateTime, r.performedPeriod?.start)) || r.performedString || '',
+      doneBy: referenceNames(r.performer?.map((p) => p?.actor)),
+    },
+    details: fields([
+      ['Procedure', conceptText(r.code)],
+      ['Status', humanise(r.status)],
+      ['Not done because', conceptText(r.statusReason)],
+      ['Grouping', conceptList(r.category)],
+      ['Reason', conceptList(r.reasonCode)],
+      ['When', formatMoment(firstDate(r.performedDateTime, r.performedPeriod?.start)) || r.performedString || ''],
+      ['Done by', referenceNames(r.performer?.map((p) => p?.actor))],
+      ['Reported by', referenceName(r.asserter)],
+      ['Recorded during', referenceName(r.encounter)],
+      ['Date recorded', formatMoment(r.recordedDate)],
+      ['Notes', noteText(r.note)],
+    ]),
+  }),
+};
+
+const medicationDispensePresenter: ResourcePresenter = {
+  columns: [
+    { key: 'medication', header: 'Medication' },
+    { key: 'status', header: 'Status' },
+    { key: 'quantity', header: 'Quantity' },
+    { key: 'handedOver', header: 'Handed over' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrMedicationDispense) => firstDate(r.whenHandedOver, r.whenPrepared),
+  present: (r: ShrMedicationDispense) => ({
+    cells: {
+      medication: conceptText(r.medicationCodeableConcept),
+      status: humanise(r.status),
+      quantity: quantityText(r.quantity),
+      handedOver: formatDay(r.whenHandedOver),
+    },
+    details: fields([
+      ['Medication', conceptText(r.medicationCodeableConcept)],
+      ['Status', humanise(r.status)],
+      ['Not dispensed because', conceptText(r.statusReason)],
+      ['Quantity', quantityText(r.quantity)],
+      ['Days supply', quantityText(r.daysSupply)],
+      ['Dosage', dosageSummary(r)],
+      ['Handed over', formatMoment(r.whenHandedOver)],
+      ['Prepared on', formatMoment(r.whenPrepared)],
+      ['Dispensed by', referenceNames(r.performer?.map((p) => p?.actor))],
+      ['Notes', noteText(r.note)],
+    ]),
+  }),
+};
+
+const medicationAdministrationPresenter: ResourcePresenter = {
+  columns: [
+    { key: 'medication', header: 'Medication' },
+    { key: 'status', header: 'Status' },
+    { key: 'given', header: 'Given' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrMedicationAdministration) => firstDate(r.effectiveDateTime, r.effectivePeriod?.start),
+  present: (r: ShrMedicationAdministration) => ({
+    cells: {
+      medication: conceptText(r.medicationCodeableConcept),
+      status: humanise(r.status),
+      given: formatDay(firstDate(r.effectiveDateTime, r.effectivePeriod?.start)),
+    },
+    details: fields([
+      ['Medication', conceptText(r.medicationCodeableConcept)],
+      ['Status', humanise(r.status)],
+      // Array on Administration (a CodeableConcept on Dispense) — several
+      // reasons can come back together.
+      ['Not given because', conceptList(r.statusReason)],
+      ['Dosage', r.dosage?.text ?? quantityText(r.dosage?.dose)],
+      ['Given at', formatMoment(firstDate(r.effectiveDateTime, r.effectivePeriod?.start))],
+      ['Given by', referenceNames(r.performer?.map((p) => p?.actor))],
+      ['Notes', noteText(r.note)],
     ]),
   }),
 };
@@ -506,15 +764,19 @@ const fallbackPresenter: ResourcePresenter = {
   present: (r: any) => {
     const summary = genericSummary(r);
     const date = genericDate(r);
+    // `status` covers every workflow-statused type; clinicalStatus covers the
+    // kinds whose state lives there (AllergyIntolerance-shaped ones — its own
+    // presenter handles it, this is for the next such type still on fallback).
+    const status = r?.status ?? conceptText(r?.clinicalStatus);
     return {
       cells: {
         summary,
-        status: humanise(r?.status),
+        status: humanise(status),
         date: formatDay(date),
       },
       details: fields([
         ['Record', summary],
-        ['Status', humanise(r?.status)],
+        ['Status', humanise(status)],
         ['Date', formatMoment(date)],
       ]),
     };
@@ -537,20 +799,35 @@ function genericSummary(r: any): string {
 function genericDate(r: any): string {
   return firstDate(
     r?.recordedDate,
+    r?.onsetDateTime,
     r?.authoredOn,
     r?.effectiveDateTime,
+    r?.effectivePeriod?.start,
     r?.occurrenceDateTime,
+    r?.occurrencePeriod?.start,
+    r?.performedDateTime,
+    r?.performedPeriod?.start,
+    r?.whenHandedOver,
+    r?.whenPrepared,
+    r?.lastOccurrence,
     r?.date,
     r?.period?.start,
     r?.issued,
+    r?.recorded,
     r?.meta?.lastUpdated,
   );
 }
 
 const PRESENTERS: Record<string, ResourcePresenter> = {
+  AllergyIntolerance: allergyIntolerancePresenter,
   Condition: conditionPresenter,
+  Immunization: immunizationPresenter,
   MedicationRequest: medicationRequestPresenter,
+  MedicationDispense: medicationDispensePresenter,
+  MedicationAdministration: medicationAdministrationPresenter,
+  Procedure: procedurePresenter,
   Encounter: encounterPresenter,
+  EpisodeOfCare: episodeOfCarePresenter,
   Observation: observationPresenter,
   ServiceRequest: serviceRequestPresenter,
   Specimen: specimenPresenter,

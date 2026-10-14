@@ -52,6 +52,16 @@ describe('categoryCodings / hasCategoryCode', () => {
     expect(hasCategoryCode(observation('o2'), 'exam')).toBe(false);
     expect(categoryCodings({ resourceType: 'Observation', category: [{ coding: [{}] }] } as any)).toEqual([]);
   });
+
+  it('reads AllergyIntolerance categories, which are plain codes rather than CodeableConcepts', () => {
+    // R4 binds AllergyIntolerance.category to `code`, not CodeableConcept —
+    // `["medication"]`, not `[{ coding: [...] }]`. A site splitting allergies
+    // by categoryCode must not silently get an empty match.
+    const allergy = { resourceType: 'AllergyIntolerance', id: 'a1', category: ['medication'] } as any;
+    expect(categoryCodings(allergy).map((c) => c.code)).toEqual(['medication']);
+    expect(hasCategoryCode(allergy, 'medication')).toBe(true);
+    expect(hasCategoryCode(allergy, 'environment')).toBe(false);
+  });
 });
 
 describe('buildCategories', () => {
@@ -202,5 +212,30 @@ describe('buildCategories', () => {
 
     expect(categories.every((c) => c.resourceType !== 'Patient')).toBe(true);
     expect(categories.reduce((sum, c) => sum + c.resources.length, 0)).toBe(0);
+  });
+
+  it('splits a site-configured AllergyIntolerance category tab, with an unconfigured one still discovered', () => {
+    const allergyConfig: ShrResourceTypeConfig[] = [
+      { resourceType: 'AllergyIntolerance', label: 'Drug allergies', categoryCode: 'medication' },
+      { resourceType: 'AllergyIntolerance', label: 'Other allergies' },
+    ];
+    const categories = buildCategories(
+      [
+        { resourceType: 'AllergyIntolerance', id: 'a1', category: ['medication'] } as any,
+        { resourceType: 'AllergyIntolerance', id: 'a2', category: ['environment'] } as any,
+        { resourceType: 'AllergyIntolerance', id: 'a3' } as any,
+      ],
+      allergyConfig,
+      UNCATEGORISED,
+    );
+
+    // The same rules as the Observation splits: the configured code claims its
+    // matches, an unconfigured code gets its own discovered tab, and only a
+    // category-less resource lands on the configured catch-all.
+    expect(counts(categories)).toEqual([
+      ['Drug allergies', 1],
+      ['Other allergies', 1],
+      ['Environment', 1],
+    ]);
   });
 });

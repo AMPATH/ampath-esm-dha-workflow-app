@@ -199,11 +199,18 @@ export const configSchema = {
       'FHIR resource types to request from the SHR patient-records endpoint, and how ' +
       'to label them as tabs in the viewer. Order controls tab order. Observation ' +
       'categories not listed here still appear, labelled from the payload — see ' +
-      'categoryCode.',
+      'categoryCode. The defaults cover every patient-record type the SHR holds; ' +
+      'Medication (the drug-catalogue resource) is deliberately left to config.',
     _default: [
+      { resourceType: 'AllergyIntolerance', label: 'Allergies' },
       { resourceType: 'Condition', label: 'Conditions' },
+      { resourceType: 'Immunization', label: 'Immunizations' },
       { resourceType: 'MedicationRequest', label: 'Medications' },
+      { resourceType: 'MedicationDispense', label: 'Dispensed' },
+      { resourceType: 'MedicationAdministration', label: 'Administered' },
       { resourceType: 'Encounter', label: 'Encounters' },
+      { resourceType: 'EpisodeOfCare', label: 'Episodes of care' },
+      { resourceType: 'Procedure', label: 'Procedures' },
       { resourceType: 'Observation', label: 'Vitals', categoryCode: 'vital-signs' },
       { resourceType: 'Observation', label: 'Exam findings', categoryCode: 'exam' },
       { resourceType: 'Observation', label: 'Lab results', categoryCode: 'laboratory' },
