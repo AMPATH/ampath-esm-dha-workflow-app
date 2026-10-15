@@ -92,7 +92,7 @@ const ClaimSummaryData: React.FC<claimSummaryProps> = ({ claimSummary, locationU
               <TableBody>
                 {claimSummary.map((cs, index) => {
                   return (
-                    <TableRow key={cs.provider_status}>
+                    <TableRow>
                       <TableCell>{index + 1}</TableCell>
                       <TableCell>{cs?.provider_status ?? ''}</TableCell>
                       <TableCell>{cs?.payer_status ?? ''}</TableCell>
