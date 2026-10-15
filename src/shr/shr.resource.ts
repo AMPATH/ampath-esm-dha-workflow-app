@@ -171,7 +171,8 @@ export async function closeShrVisit(
  * the clinical family (a base-R4 Encounter; pick via `submissionFamily`,
  * otherwise the visit type decides) — optionally pre-validates with
  * `$validate`, and submits through DHA's middleware (`POST /shr/bundles`,
- * consent-token enforced). This function is just the typed call.
+ * which requires no consent token — one is attached when the backend can
+ * resolve it). This function is just the typed call.
  *
  * `skipped` (no closed visit) and `validated` (a `dryRun`) come back on HTTP
  * 200 alongside `submitted`; only `status: "failed"` is an error state, and it
