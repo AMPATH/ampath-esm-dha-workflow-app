@@ -23,6 +23,10 @@ import styles from './patient-visit.scss';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
 import { type AmrsMaternityDiagnosisDto, type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis } from '../../../types';
+import PaymentReconciliation from '../../reconciliation/payment-reconciliation/payment-reconciliation';
+import  { mockReconciliationBundle } from '../../reconciliation/data/index';
+import PaymentNotice from '../../reconciliation/payment-notice/payment-notice';
+import { ReconciliationBundle } from '../../reconciliation/types';
 
 interface PatientVisitDetailsComponentProps {
   patientUuid: string;
@@ -52,6 +56,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   const [encounterDiagnosisLoading, setEncounterDiagnosisLoading] = useState<boolean>(true);
   const diagnosisLoading = visitDiagnosisLoading || maternityDiagnosisLoading || encounterDiagnosisLoading;
   const [consentToken, setConsentToken] = useState<string>('');
+  const [paymentReconciliationBundle,setPaymentReconciliationBundle] = useState<ReconciliationBundle | null>(null);
 
   const { results: patientBillDetails, isLoading, isValidating } = usePatientBillDetails(selectedVisitUuid);
   const invalidatePatientBillDetails = useInvalidatePatientBillDetails();
@@ -93,6 +98,9 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     if (claimVisit) {
       setClaimsVisit(claimVisit);
     }
+  }
+  function getPaymentReconciliationBundle(){
+
   }
 
   async function getPatientPayments() {
@@ -216,6 +224,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
             <TabList scrollDebounceWait={200}>
               <Tab>Bill Details</Tab>
               <Tab>Claim</Tab>
+              <Tab>Payment Reconciliation</Tab>
             </TabList>
             <TabPanels>
               <TabPanel>
@@ -245,6 +254,11 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
                   <></>
                 )}
               </TabPanel>
+               <TabPanel>
+              
+                
+                <PaymentReconciliation prResource={mockReconciliationBundle.entry[0].resource as any}/>
+               </TabPanel>
             </TabPanels>
           </Tabs>
         )}

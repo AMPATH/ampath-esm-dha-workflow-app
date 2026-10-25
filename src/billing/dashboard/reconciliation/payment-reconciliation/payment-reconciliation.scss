@@ -1,0 +1,45 @@
+.prLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background: #FFF;
+    row-gap: 5px;
+    padding: 10px;
+    .prHeader{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        background-color: #f4f4f4;
+    }
+}
+
+.prHeaderInfo{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    flex-wrap: wrap;
+    padding: 5px;
+}
+.prHeaderInfo li{
+    width: 25%;
+    display: flex;
+    flex-direction: column;
+}
+.infoTitle{
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #6f6f6f;
+}
+.infoDetails{   
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #161616;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
+    padding-top: 5px;
+}
