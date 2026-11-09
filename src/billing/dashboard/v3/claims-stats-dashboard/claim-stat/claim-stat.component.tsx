@@ -16,10 +16,11 @@ const ClaimStat: React.FC<claimStat> = ({title,onStatClick,claimVisits})=>{
   function calculateTotal(claimVisits: ClaimVisit[]) {
   if (!Array.isArray(claimVisits)) return 0;
 
-  return claimVisits.reduce((sum, item: ClaimVisit) => {
+  const total = claimVisits.reduce((sum, item: ClaimVisit) => {
     const amount = Number(item?.totalClaimAmount) || 0;
     return sum + amount;
   }, 0);
+  return total.toFixed(2);
 }
   
   return <>
