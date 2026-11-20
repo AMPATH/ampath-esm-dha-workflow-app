@@ -305,3 +305,5 @@ export const accountingDashboardLink = getAsyncLifecycle(
   () => import('./side-nav-menu/accounting-nav-links'),
   options,
 );
+
+export const eventAlerts = getAsyncLifecycle(() => import('./event-alerts/event-alerts.component'), options);
