@@ -468,6 +468,12 @@
       "slot": "critical-care-unit-dashboard-slot",
       "privileges": [
       ]
+    },
+    {
+      "component": "eventAlerts",
+      "name": "event-alert",
+      "slot": "hie-health-event-slot",
+      "privileges": []
     }
   ],
   "workspaces2": [
