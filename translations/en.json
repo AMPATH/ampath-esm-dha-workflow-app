@@ -50,7 +50,6 @@
   "noPatientSelected": "No patient selected",
   "noPreauth": "None",
   "normalPreauth": "Normal",
-  "openBill": "Open bill",
   "orderNumber": "Order #",
   "otpCode": "OTP code",
   "patientGetterExplainer": "Try clicking the button below to fetch a patient from the backend",

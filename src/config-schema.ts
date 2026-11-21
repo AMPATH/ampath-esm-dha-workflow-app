@@ -1,4 +1,4 @@
-import { Type, validator, validators } from '@openmrs/esm-framework';
+import { Type, validator } from '@openmrs/esm-framework';
 
 export const configSchema = {
   concepts: {
@@ -290,31 +290,7 @@ export const configSchema = {
       _description: 'Death reporting form',
       _default: 'b7750932-7fcb-3d1c-9561-faf6772d4d71'
     }
-  },
-  logo: {
-    src: {
-      _type: Type.String,
-      _default: '',
-      _description: 'The path or URL to the logo image. If set to an empty string, the alt text will be used.',
-      _validators: [validators.isUrl],
-    },
-    alt: {
-      _type: Type.String,
-      _default: '',
-      _description:
-        'The alternative text for the logo image, displayed when the image cannot be loaded or on hover. If not provided and src is empty, the default OpenMRS SVG sprite will be used.',
-    },
-  },
-  country: {
-    _type: Type.String,
-    _description: 'The text that gets printed on the top right of the invoice, typically the name of the country',
-    _default: 'Kenya',
-  },
-  defaultCurrency: {
-    _type: Type.String,
-    _description: 'The default currency for the application. Specify the currency code (e.g., KES, UGX, GBP).',
-    _default: 'KES',
-  },
+  }
 };
 
 /** One SHR record-viewer category: a FHIR resource type plus its clinician-facing tab label. */
@@ -424,13 +400,7 @@ export interface ConfigObject {
   }
   formUuids: {
     deathReportingFormUuid: Type.UUID;
-  },
-  logo: {
-    src: string;
-    alt: string;
-  };
-  country: string;
-  defaultCurrency: string;
+  }
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
