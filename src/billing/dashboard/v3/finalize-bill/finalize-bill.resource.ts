@@ -1,4 +1,4 @@
-import { openmrsFetch, restBaseUrl } from "@openmrs/esm-framework";
+import { openmrsFetch, restBaseUrl, SessionLocation, useSession } from "@openmrs/esm-framework";
 import { BillStatus, MappedBill, PatientInvoice, PaymentRequestPayload } from "./types";
 import useSWR from "swr";
 import { parsePatientDisplay } from "./helpers";
@@ -61,3 +61,8 @@ export const mapBillProperties = (bill: PatientInvoice): MappedBill => {
       .reduce((prev, curr) => prev + curr, 0),
   };
 };
+
+export function useDefaultFacility(): { data: SessionLocation | null } {
+  const { sessionLocation } = useSession();
+  return { data: sessionLocation };
+}

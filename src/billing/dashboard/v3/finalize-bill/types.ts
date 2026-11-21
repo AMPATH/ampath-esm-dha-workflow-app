@@ -239,3 +239,10 @@ export const RefundStatus = {
   COMPLETED: 'COMPLETED',
 } as const;
 export type RefundStatus = (typeof RefundStatus)[keyof typeof RefundStatus];
+
+export interface PatientDetails {
+  name: string;
+  birthDate: string;
+  gender: string;
+  address: string;
+}
