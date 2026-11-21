@@ -711,14 +711,6 @@
     {
       "name": "sign-off-queue-entry-modal",
       "component": "signOffModal"
-    },
-    {
-      "name": "finalize-bill-modal",
-      "component": "finalizeBillModal"
-    },
-    {
-      "name": "finalize-bill-confirmation-modal",
-      "component": "finalizeBillConfirmationModal"
     }
   ]
 }
