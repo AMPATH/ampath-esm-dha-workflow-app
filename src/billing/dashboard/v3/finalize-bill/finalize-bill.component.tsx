@@ -4,7 +4,7 @@ import { Button, InlineLoading, Modal, ModalBody, ModalFooter, ModalHeader, Numb
 import { useTranslation } from 'react-i18next';
 import BillLineItems from './bill-line-items/bill-line-items.component';
 import Payments from './payments/payments.component';
-import PrintReceipt from './payments/printable-invoice/print-receipt.component';
+import { InvoicePreview, ReceiptPreview } from './payments/printable-invoice/bill-document-preview.component';
 import { formatDate, parseDate, showModal, showSnackbar } from '@openmrs/esm-framework';
 import { convertToCurrency } from './helpers';
 import { BillStatus } from './types';
@@ -24,6 +24,7 @@ const FinalizeBill: React.FC<FinalizeBillProps> = ({ billUuid, closeModal }) => 
   const [discountPercentage, setDiscountPercentage] = useState('');
   const [discountAmount, setDiscountAmount] = useState('');
   const [isApplyingDiscount, setIsApplyingDiscount] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState<'invoice' | 'receipt' | null>(null);
 
   const handleFinalizeBill = () => {
     let dispose: () => void;
@@ -172,14 +173,26 @@ const FinalizeBill: React.FC<FinalizeBillProps> = ({ billUuid, closeModal }) => 
                     <span className={styles.summaryValue}>{convertToCurrency(amountDue, 'KES')}</span>
                   </div>
                 </div>
-                <div className={styles.receiptActions}>
-                  {amountDue > 0 && !isPaid ? (
-                    <Button kind="secondary" onClick={() => setIsDiscountModalOpen(true)}>
-                      {t('applyDiscount', 'Apply Discount')}
-                    </Button>
-                  ) : null}
-                  {isPaid ? <PrintReceipt billUuid={billUuid} /> : null}
-                </div>
+              </div>
+              <div className={styles.receiptActions}>
+                {mappedBill.status === BillStatus.PENDING && (
+                  <Button kind="primary" onClick={handleFinalizeBill}>
+                    {t('finalizeBill', 'Finalize bill')}
+                  </Button>
+                )}
+                {amountDue > 0 && !isPaid ? (
+                  <Button kind="secondary" onClick={() => setIsDiscountModalOpen(true)}>
+                    {t('applyDiscount', 'Apply Discount')}
+                  </Button>
+                ) : null}
+                <Button kind="ghost" onClick={() => setDocumentPreview('invoice')}>
+                  {t('printInvoice', 'Print invoice')}
+                </Button>
+                {isPaid || tenderedAmount > 0 ? (
+                  <Button kind="ghost" onClick={() => setDocumentPreview('receipt')}>
+                    {t('printReceipt', 'Print receipt')}
+                  </Button>
+                ) : null}
               </div>
             </div>
 
@@ -254,6 +267,10 @@ const FinalizeBill: React.FC<FinalizeBillProps> = ({ billUuid, closeModal }) => 
           />
         )}
       </Modal>
+      {documentPreview === 'invoice' && mappedBill && (
+        <InvoicePreview bill={mappedBill} onClose={() => setDocumentPreview(null)} />
+      )}
+      {documentPreview === 'receipt' && <ReceiptPreview billUuid={billUuid} onClose={() => setDocumentPreview(null)} />}
     </>
   );
 };
