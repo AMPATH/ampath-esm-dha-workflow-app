@@ -22,7 +22,7 @@ type PrintableInvoiceProps = {
   bill: MappedBill;
   patient: fhir.Patient;
   componentRef: React.RefObject<HTMLDivElement>;
-  defaultFacility: SessionLocation;
+  defaultFacility: SessionLocation | null;
 };
 
 const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ bill, patient, componentRef, defaultFacility }) => {
@@ -74,8 +74,8 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ bill, patient, comp
         return {
           no: index + 1,
           id: `${payment.uuid}-${index}`,
-          paymentMethod: payment.instanceType.name,
-          amountPaid: `${defaultCurrency} ${payment.amountTendered.toFixed(2)}`,
+          paymentMethod: payment.instanceType?.name ?? '--',
+          amountPaid: `${defaultCurrency} ${(payment.amountTendered ?? 0).toFixed(2)}`,
           dateCreated: formatDate(new Date(payment.dateCreated)),
         };
       });
@@ -89,7 +89,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ bill, patient, comp
     const formattedAddress = addressParts.join(', ');
 
     return {
-      name: `${patient?.name?.[0]?.given?.join(' ')} ${patient?.name?.[0].family}`,
+      name: [patient?.name?.[0]?.given?.join(' '), patient?.name?.[0]?.family].filter(Boolean).join(' '),
       birthDate: patient?.birthDate,
       gender: getGender(patient?.gender, t),
       address: formattedAddress,
@@ -207,7 +207,7 @@ const PrintableInvoice: React.FC<PrintableInvoiceProps> = ({ bill, patient, comp
             <span className={styles.itemHeading}>{t('balance', 'Balance')}:</span>
             <span className={styles.itemLabel}>
               <strong>
-                {defaultCurrency} {bill?.netAmount - bill?.tenderedAmount}
+                {defaultCurrency} {(bill?.netAmount ?? 0) - (bill?.tenderedAmount ?? 0)}
               </strong>
             </span>
           </div>

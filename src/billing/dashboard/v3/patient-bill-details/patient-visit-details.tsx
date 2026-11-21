@@ -239,7 +239,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
         {billUuids.length > 0 ? (
           <div className={styles.billFinalizationActions}>
             {billUuids.map((billUuid) => (
-              <Button key={billUuid} kind="tertiary" size="sm" onClick={() => openBillFinalization(billUuid)}>
+              <Button key={billUuid} kind="primary" size="sm" onClick={() => openBillFinalization(billUuid)}>
                 {t('openBill', 'Open bill')}
               </Button>
             ))}
