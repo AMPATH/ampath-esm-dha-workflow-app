@@ -13,6 +13,9 @@ const FacilityAndWorkerSlot: React.FC<facilityAndWorkerSlotProps> = ()=>{
               <ExtensionSlot name="health-worker-hie-header-slot" />
           </div>
      </div>
+      <div className={styles.hieEventSlotSlot}>
+          <ExtensionSlot name="hie-health-event-slot" />
+      </div>
   </div>
   </>
 }

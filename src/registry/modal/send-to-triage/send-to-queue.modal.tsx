@@ -33,6 +33,7 @@ import {
   fetchBillableServices,
   fetchCashPoints,
   fetchPaymentModes,
+  updateBillLineItem,
 } from '../../../shared/services/billing.resource';
 import {
   type PayableBillableService,
@@ -61,7 +62,7 @@ import {
 import { getServiceType } from '../../../shared/services/claims.resource';
 import PaymentMethodComponent from './payment-method.component';
 import ClaimsConsentExtension from '../otp-verification-modal/extension/claims-consent.extension';
-import { Order } from '@openmrs/esm-patient-common-lib';
+import { type Order } from '@openmrs/esm-patient-common-lib';
 
 /** Registration name, shared with whoever opens this panel. */
 export const SEND_TO_QUEUE_WORKSPACE = 'send-to-queue-workspace';
@@ -119,6 +120,11 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
   const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
   const [patientBills, setPatientBills] = useState<Bill[]>([]);
   const [billCreated, setBillCreated] = useState<boolean>(false);
+  const [createdBillResponse, setCreatedBillResponse] = useState<{
+    uuid: string;
+    lineItems?: Array<{ uuid: string }>;
+  } | null>(null);
+  const [billOrderLinked, setBillOrderLinked] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [claimResult, setClaimResult] = useState<ClaimResult>();
   const [intervention, setIntervention] = useState<Intervention>();
@@ -351,27 +357,56 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     });
   }
 
+  async function payForBillItem(lineItemUuid?: string) {
+    if (!lineItemUuid) {
+      throw new Error('Bill line item could not be resolved');
+    }
+
+    const response = await updateBillLineItem(lineItemUuid, {
+      status: 'PAID',
+    });
+    if (!response) {
+      throw new Error('Cash payment could not be recorded');
+    }
+  }
+
   const sendToTriage = async () => {
+    const shouldCreateBill = isCash || selectedPaymentDetail === PaymentDetail.Paying;
     try {
+      if (shouldCreateBill && !selectedServicePrice) {
+        showAlert('error', 'Please select a billable service', '');
+        return;
+      }
+      if (shouldCreateBill && !selectedCashPoint) {
+        showAlert('error', 'Please select a cash point', '');
+        return;
+      }
+
       const newVisit: Visit = await createPatientVisit();
       if (newVisit) {
-        if (isPerdiem) {
+        if (isPerdiem && !isCash) {
           setBillCreated(true);
           showAlert('success', 'Bill succesfully updated', '');
           dismiss(true);
           return;
         }
-        // add bill if it was a paying client
-        let createBillResp = null;
-        if (selectedPaymentDetail === PaymentDetail.Paying) {
-          const createBillDto = generateCreateBillDto();
-          if (isValidCreateBillDto(createBillDto) && !billCreated) {
+        // Cash visits always need a bill, even if the visit is marked non-paying.
+        let createBillResp = createdBillResponse;
+        if (shouldCreateBill) {
+          const createBillDto = generateCreateBillDto(newVisit.uuid);
+          if (!isValidCreateBillDto(createBillDto)) {
+            return false;
+          }
+          if (!createBillResp) {
             createBillResp = await createBill(createBillDto);
-            if (createBillResp) {
-              setBillCreated(true);
-              showAlert('success', 'Bill succesfully created', '');
+            if (!createBillResp?.uuid) {
+              throw new Error('Bill could not be created');
             }
+            setCreatedBillResponse(createBillResp);
+            showAlert('success', 'Bill succesfully created', '');
+          }
 
+          if (!billOrderLinked) {
             if (order) {
               const billOrderDto = await generateBillOrderDto(createBillResp);
               if (billOrderDto) {
@@ -384,12 +419,23 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                 await createOrderBillInHie(billOrderDto);
               }
             }
-          } else {
-            return false;
+            setBillOrderLinked(true);
           }
+
+          if (isCash) {
+            const amount = selectedServicePrice.price * (quantity ?? 1);
+            if (amount > 0) {
+              await payForBillItem(createBillResp.lineItems?.[0]?.uuid);
+              showAlert('success', 'Cash payment recorded', '');
+            }
+          }
+          setBillCreated(true);
         }
 
-        if ((PaymentDetail.Paying && (createBillResp || billCreated)) || PaymentDetail.NonPaying) {
+        if (
+          (shouldCreateBill && (createBillResp || billCreated)) ||
+          (!shouldCreateBill && selectedPaymentDetail === PaymentDetail.NonPaying)
+        ) {
           dismiss(true);
         }
       }
@@ -577,18 +623,18 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     setServicePrices(sp);
   }
 
-  function generateCreateBillDto(): CreateBillDto {
+  function generateCreateBillDto(visitUuid: string): CreateBillDto {
     const payload: CreateBillDto = {
       lineItems: [
         {
           quantity: quantity ?? 1,
           priceUuid: selectedServicePrice.uuid,
-          status: (selectedServicePrice.price === 0 || isCash) ? 'PAID' : 'PENDING',
+          status: selectedServicePrice?.price === 0 ? 'PAID' : 'PENDING',
         },
       ],
       cashPoint: selectedCashPoint.uuid,
       patient: patientUuid,
-      visit: activeVisit?.uuid ?? '',
+      visit: visitUuid,
       status: 'PENDING',
       payments: [],
     };

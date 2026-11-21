@@ -1,0 +1,13 @@
+.documentModal:global(.cds--modal) {
+  // The OpenMRS modal host uses z-index 9001; previews must be above it.
+  z-index: 9002;
+
+  :global(.cds--modal-container) {
+    position: relative;
+    inset: auto;
+    block-size: auto;
+    max-block-size: calc(100vh - 2rem);
+    max-inline-size: calc(100vw - 2rem);
+    margin: 0;
+  }
+}
