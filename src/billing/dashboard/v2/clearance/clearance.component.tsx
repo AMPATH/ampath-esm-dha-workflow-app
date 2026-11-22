@@ -210,7 +210,7 @@ const Clearance: React.FC<{
           {/* The explanation lives on the dashboard's own "Pending clearance" tab, which
               is the one you arrive through — see PENDING_HINT there. */}
           {pendingTab ? <Tab>Start SHA Visit{countPill(pendingLoading, pendingCount)}</Tab> : null}
-          <Tab>Generate Cash Invoice{countPill(loadingCashPatientsCount, cashPatientsCount)}</Tab>
+          <Tab>Cash Payments{countPill(loadingCashPatientsCount, cashPatientsCount)}</Tab>
         </TabList>
         <TabPanels>
           {pendingTab ? <TabPanel>{pendingTab}</TabPanel> : null}
