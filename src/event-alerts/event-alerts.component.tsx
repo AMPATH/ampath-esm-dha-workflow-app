@@ -17,10 +17,12 @@ function EventAlerts() {
 
   async function getDetectedIssues(){
     const payload = getDetectedIssuesPayload();
+    /*
     const resp = await fetchDetectedIssues(payload);
     if(resp){
       setEventBundleEntry(resp);
     }
+      */
   }
   function getDetectedIssuesPayload(): DetetectedIssesDto{
     return {
