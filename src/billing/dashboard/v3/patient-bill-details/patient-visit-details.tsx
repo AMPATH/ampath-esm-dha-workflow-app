@@ -16,13 +16,24 @@ import {
   useInvalidatePatientBillDetails,
   usePatientBillDetails,
 } from '../../../billing-claims.resource';
-import { InlineLoading, RadioButton, RadioButtonGroup, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
-import { formatDate, parseDate, showSnackbar } from '@openmrs/esm-framework';
+import {
+  Button,
+  InlineLoading,
+  RadioButton,
+  RadioButtonGroup,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+} from '@carbon/react';
+import { formatDate, parseDate, showModal, showSnackbar } from '@openmrs/esm-framework';
 
 import styles from './patient-visit.scss';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
 import { type AmrsMaternityDiagnosisDto, type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis } from '../../../types';
+import { useTranslation } from 'react-i18next';
 
 interface PatientVisitDetailsComponentProps {
   patientUuid: string;
@@ -35,6 +46,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   locationUuid,
   billingDate,
 }) => {
+  const { t } = useTranslation();
   const [patientVisits, setPatientVisits] = useState<PatientBillVisit[]>([]);
   const [selectedVisitUuid, setSelectedVisitUuid] = useState<string>('');
   const [claimDetails, setClaimDetails] = useState([]);
@@ -55,6 +67,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
 
   const { results: patientBillDetails, isLoading, isValidating } = usePatientBillDetails(selectedVisitUuid);
   const invalidatePatientBillDetails = useInvalidatePatientBillDetails();
+  const billUuids = Array.from(new Set((patientBillDetails ?? []).map((bill) => bill.bill_uuid).filter(Boolean)));
 
   const getPatientVisits = async () => {
     const res = await fetchPatientVisits(patientUuid, billingDate, locationUuid);
@@ -193,11 +206,19 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     return <InlineLoading description="Refreshing bill details ..." />;
   }
 
-  function formatVisitDate(visitDateTime: string){
-      if(!visitDateTime){
-         return '';
-      }
-      return new Date(visitDateTime).toISOString().slice(0, 16).replace('T', ' ') ?? '';
+  function formatVisitDate(visitDateTime: string) {
+    if (!visitDateTime) {
+      return '';
+    }
+    return new Date(visitDateTime).toISOString().slice(0, 16).replace('T', ' ') ?? '';
+  }
+
+  function openBillFinalization(billUuid: string) {
+    const dispose = showModal('finalize-bill-modal', {
+      billUuid,
+      closeModal: () => dispose(),
+      size: 'lg',
+    });
   }
 
   return (
@@ -207,10 +228,24 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
           {patientVisits &&
             patientVisits?.map((v) => {
               return (
-                <RadioButton id={v.visit_uuid} labelText={`${v.visit_type}: ${formatVisitDate(v.date_started)}`} value={v.visit_uuid} />
+                <RadioButton
+                  id={v.visit_uuid}
+                  labelText={`${v.visit_type}: ${formatVisitDate(v.date_started)}`}
+                  value={v.visit_uuid}
+                />
               );
             })}
         </RadioButtonGroup>
+        {billUuids.length > 0 ? (
+          <div className={styles.billFinalizationActions}>
+            {billUuids.map((billUuid) => (
+              <Button key={billUuid} kind="primary" size="sm" onClick={() => openBillFinalization(billUuid)}>
+                {t('openBill', 'Open bill')}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+
         {selectedVisitUuid && (
           <Tabs>
             <TabList scrollDebounceWait={200}>

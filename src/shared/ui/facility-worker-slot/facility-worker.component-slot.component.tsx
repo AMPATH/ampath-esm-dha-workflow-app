@@ -5,6 +5,9 @@ interface facilityAndWorkerSlotProps {}
 const FacilityAndWorkerSlot: React.FC<facilityAndWorkerSlotProps> = ()=>{
   return <>
   <div className={styles.fhwrSlotLayout}>
+     <div className={styles.hieEventSlotSlot}>
+          <ExtensionSlot name="hie-health-event-slot" />
+     </div>
      <div className={styles.fhwrSlotContent}>
           <div className={styles.fhwrSlot}>
               <ExtensionSlot name="facility-hie-header-slot" />

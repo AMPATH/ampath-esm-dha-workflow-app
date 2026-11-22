@@ -104,7 +104,6 @@ export const dhaWorkflowDashboardLink = getSyncLifecycle(createDashboardLink(dha
 
 export const dhaWorkflowDashboard = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
 
-
 export const bookingsDashboardLink = getSyncLifecycle(createDashboardLink(bookingsDashboardMeta), options);
 
 export const bookings = getAsyncLifecycle(() => import('./bookings/bookings.component'), options);
@@ -162,10 +161,7 @@ export const emtHandoverWorkspace = getAsyncLifecycle(
 
 export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
 
-export const electivePreauthLink = getSyncLifecycle(
-  openMrsCreateDashboardLink(electivePreauthMeta as any),
-  options,
-);
+export const electivePreauthLink = getSyncLifecycle(openMrsCreateDashboardLink(electivePreauthMeta as any), options);
 
 export const electivePreauth = getAsyncLifecycle(
   () => import('./billing/dashboard/v3/preauth/elective/elective-preauth.component'),
@@ -259,6 +255,16 @@ export const payerPreviewWorkspace = getAsyncLifecycle(
   options,
 );
 
+export const finalizeBillModal = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/finalize-bill/finalize-bill.component'),
+  options,
+);
+
+export const finalizeBillConfirmationModal = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/finalize-bill/finalize-bill-confirmation.modal'),
+  options,
+);
+
 export const electivePreauthRequestWorkspace = getAsyncLifecycle(
   () => import('./billing/dashboard/v3/preauth/elective/elective-preauth-request.workspace'),
   options,
@@ -305,3 +311,5 @@ export const accountingDashboardLink = getAsyncLifecycle(
   () => import('./side-nav-menu/accounting-nav-links'),
   options,
 );
+
+export const eventAlerts = getAsyncLifecycle(() => import('./event-alerts/event-alerts.component'), options);

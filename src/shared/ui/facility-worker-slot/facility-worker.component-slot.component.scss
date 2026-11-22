@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  padding: 5px 5px;
 }
 
 .fhwrSlotContent {
@@ -35,5 +36,10 @@
     padding-top: 0.25rem;
     padding-bottom: 0.25rem;
     min-height: 0;
+  }
+  .hieEventSlotSlot{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
   }
 }

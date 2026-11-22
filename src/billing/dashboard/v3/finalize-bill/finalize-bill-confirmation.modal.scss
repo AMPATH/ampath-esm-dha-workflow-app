@@ -1,0 +1,11 @@
+:global(.omrs-modals-container) > :global(.cds--modal-container) {
+  position: fixed !important;
+  inset: 50% auto auto 50% !important;
+  max-block-size: calc(100vh - 2rem) !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+}
+
+.modalBody {
+  box-sizing: border-box;
+}

@@ -1,43 +1,51 @@
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
 import { launchWorkspace2, useSession } from '@openmrs/esm-framework';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { type PendingBillLineItems, type ActiveCashVisit } from '../types';
-import { getActiveCashVisits, getFacilityBillLineItems } from '../../../billing-claims.resource';
-import SendToQueueModal from '../../../../registry/modal/send-to-triage/send-to-queue.modal';
+import { getActiveCashVisits } from '../../../billing-claims.resource';
+import { SEND_TO_QUEUE_WORKSPACE } from '../../../../registry/modal/send-to-triage/send-to-queue.modal';
 import styles from './cash-patients.scss';
 
 interface CashPatientsProps {
   billingDate: string;
+  onCountChange: (count: number) => void;
+  onLoadingChange: (loading: boolean) => void;
 }
 
-const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
+const CashPatients: React.FC<CashPatientsProps> = ({ billingDate, onCountChange, onLoadingChange }) => {
   const [cashPatients, setCashPatients] = useState<ActiveCashVisit[]>([]);
   const [pendingBillItems, setPendingBillItems] = useState<PendingBillLineItems[]>([]);
-  const [patientUuid, setPatientUuid] = useState<string | null>('');
-  const [visitUuid, setVisitUuid] = useState<string | null>('');
-  const [visitTypeUuid, setVisitTypeUuid] = useState('');
 
   const session = useSession();
 
   const locationUuid = session.sessionLocation?.uuid;
 
-  const fetchAll = async () => {
-    if (!locationUuid) return;
+  const fetchAll = useCallback(async () => {
+    if (!locationUuid) {
+      onLoadingChange(false);
+      return;
+    }
+    onLoadingChange(true);
     try {
-      const [visitsRes, pendingRes] = await Promise.all([
-        getActiveCashVisits(locationUuid, billingDate),
-        getFacilityBillLineItems(locationUuid, billingDate),
-      ]);
-      setCashPatients(visitsRes?.results ?? []);
-      setPendingBillItems(pendingRes ?? []);
+      const data = await getActiveCashVisits(locationUuid, billingDate);
+      // const [visitsRes, pendingRes] = await Promise.all([
+      //   getActiveCashVisits(locationUuid, billingDate),
+      //   // getFacilityBillLineItems(locationUuid, billingDate),
+      // ]);
+      const patients = data?.results ?? [];
+      setCashPatients(patients);
+      onCountChange(patients.length);
+      // setPendingBillItems(pendingRes ?? []);
     } catch (err) {
       console.error(err);
+    } finally {
+      onLoadingChange(false);
     }
-  };
+  }, [billingDate, locationUuid, onCountChange, onLoadingChange]);
 
   useEffect(() => {
     fetchAll();
-  }, [billingDate, locationUuid, patientUuid, visitUuid]);
+  }, [fetchAll]);
 
   const mergedPatients: (ActiveCashVisit | PendingBillLineItems)[] = (() => {
     const pendingByVisitUuid = new Map(pendingBillItems.map((item) => [item.visit_uuid, item]));
@@ -53,7 +61,7 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     return result;
   })();
 
-  const handleGenerateBill = async (
+  const handleGenerateBill = (
     visit: ActiveCashVisit | PendingBillLineItems,
     patientUuid: string,
     visitTypeUuid: string,
@@ -61,23 +69,30 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     billUuid: string,
     cashModeUuid: string,
   ) => {
-    if ('line_item_date' in visit) {
+    if ('cash_point' in visit) {
       launchWorkspace2('pay-cash-workspace', {
-        lineItems: (visit as PendingBillLineItems).pending_line_items,
+        lineItems: visit.pending_line_items,
         billUuid: billUuid,
         cashModeUuid: cashModeUuid,
         onPaymentSuccess: fetchAll,
       });
       return;
     }
-    setPatientUuid(patientUuid);
-    setVisitTypeUuid(visitTypeUuid);
-    setVisitUuid(visitUuid);
+
+    void launchWorkspace2(SEND_TO_QUEUE_WORKSPACE, {
+      workspaceTitle: 'Cash billing',
+      patientUuid,
+      visitUuid,
+      visitTypeUuid,
+      isCash: true,
+      onModalClose,
+    });
   };
 
-  function onModalClose({ success }: { success: boolean }): void {
-    setPatientUuid(null);
-    setVisitUuid(null);
+  function onModalClose(result?: { success: boolean }): void {
+    if (result?.success) {
+      void fetchAll();
+    }
   }
   return (
     <>
@@ -128,16 +143,6 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
           </TableBody>
         </Table>
       </div>
-
-      {patientUuid && visitUuid && (
-        <SendToQueueModal
-          patientUuid={patientUuid}
-          visitUuid={visitUuid}
-          visitTypeUuid={visitTypeUuid}
-          onModalClose={onModalClose}
-          isCash={true}
-        />
-      )}
     </>
   );
 };
