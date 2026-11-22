@@ -8,9 +8,11 @@ import styles from './cash-patients.scss';
 
 interface CashPatientsProps {
   billingDate: string;
+  onCountChange: (count: number) => void;
+  onLoadingChange: (loading: boolean) => void;
 }
 
-const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
+const CashPatients: React.FC<CashPatientsProps> = ({ billingDate, onCountChange, onLoadingChange }) => {
   const [cashPatients, setCashPatients] = useState<ActiveCashVisit[]>([]);
   const [pendingBillItems, setPendingBillItems] = useState<PendingBillLineItems[]>([]);
 
@@ -19,19 +21,27 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
   const locationUuid = session.sessionLocation?.uuid;
 
   const fetchAll = useCallback(async () => {
-    if (!locationUuid) return;
+    if (!locationUuid) {
+      onLoadingChange(false);
+      return;
+    }
+    onLoadingChange(true);
     try {
       const data = await getActiveCashVisits(locationUuid, billingDate);
       // const [visitsRes, pendingRes] = await Promise.all([
       //   getActiveCashVisits(locationUuid, billingDate),
       //   // getFacilityBillLineItems(locationUuid, billingDate),
       // ]);
-      setCashPatients(data?.results ?? []);
+      const patients = data?.results ?? [];
+      setCashPatients(patients);
+      onCountChange(patients.length);
       // setPendingBillItems(pendingRes ?? []);
     } catch (err) {
       console.error(err);
+    } finally {
+      onLoadingChange(false);
     }
-  }, [billingDate, locationUuid]);
+  }, [billingDate, locationUuid, onCountChange, onLoadingChange]);
 
   useEffect(() => {
     fetchAll();

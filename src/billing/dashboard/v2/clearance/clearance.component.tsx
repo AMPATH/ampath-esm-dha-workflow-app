@@ -159,6 +159,8 @@ const Clearance: React.FC<{
   const [counts, setCounts] = useState<{ awaiting: number }>({ awaiting: 0 });
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [tabIndex, setTabIndex] = useState(0);
+  const [cashPatientsCount, setCashPatientsCount] = useState(0);
+  const [loadingCashPatientsCount, setLoadingCashPatientsCount] = useState(true);
   // SHA visits awaiting clearance — drives the Pending clearance tab count.
   const { count: pendingCount, isLoading: pendingLoading } = usePendingClearanceVisits(date);
 
@@ -207,14 +209,17 @@ const Clearance: React.FC<{
         <TabList aria-label="Clearance">
           {/* The explanation lives on the dashboard's own "Pending clearance" tab, which
               is the one you arrive through — see PENDING_HINT there. */}
-          {pendingTab ? <Tab>Pending clearance (SHA){countPill(pendingLoading, pendingCount)}</Tab> : null}
-          <Tab>Awaiting payment (CASH){countPill(loadingCounts, counts.awaiting)}</Tab>
+          {pendingTab ? <Tab>Start SHA Visit{countPill(pendingLoading, pendingCount)}</Tab> : null}
+          <Tab>Generate Cash Invoice{countPill(loadingCashPatientsCount, cashPatientsCount)}</Tab>
         </TabList>
         <TabPanels>
           {pendingTab ? <TabPanel>{pendingTab}</TabPanel> : null}
           <TabPanel>
-            <CashPatients billingDate={date} />
-            {/* <ClearanceTable status="AWAITING_PAYMENT" locationUuid={locationUuid} reloadKey={reloadKey} onCleared={refresh} date={date} /> */}
+            <CashPatients
+              billingDate={date}
+              onCountChange={setCashPatientsCount}
+              onLoadingChange={setLoadingCashPatientsCount}
+            />
           </TabPanel>
         </TabPanels>
       </Tabs>
