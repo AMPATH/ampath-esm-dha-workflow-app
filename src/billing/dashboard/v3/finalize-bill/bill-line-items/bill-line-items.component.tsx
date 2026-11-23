@@ -32,7 +32,12 @@ const BillLineItems: React.FC<BillLineItemsProps> = ({ lineItems }) => {
             lineItems?.map((item, index) => ({
                 no: `${index + 1}`,
                 id: `${item.uuid}`,
-                billItem: item.billableService ? item.billableService : item?.item,
+                billItem:
+                    item.billableService ||
+                    item.billableDrug ||
+                    item.item ||
+                    item.billableDrugObj?.display ||
+                    item.billableDrugObj?.name,
                 status: item.status,
                 quantity: item.quantity,
                 price: convertToCurrency(item.price, defaultCurrency),

@@ -79,6 +79,77 @@ describe('PaymentForm grouped line items', () => {
     ]);
   });
 
+  it('resolves a service bill item by its billableService name and priceName', () => {
+    const lineItems: LineItem[] = [
+      {
+        uuid: 'service-item-1',
+        billableService: 'Kesses Consultation',
+        priceName: 'SHA',
+        status: BillLineItemStatus.PENDING,
+        price: 100,
+        quantity: 1,
+      },
+    ];
+    const services = [
+      {
+        uuid: 'service-1',
+        name: 'Kesses Consultation',
+        servicePrices: [
+          {
+            uuid: 'service-price-sha',
+            name: 'SHA',
+            price: 100,
+            paymentMode: { uuid: 'payment-mode-sha', name: 'SHA' },
+          },
+        ],
+      },
+    ] as unknown as BillableService[];
+
+    const resolved = resolveLineItemPaymentModes(lineItems, services);
+    expect(groupLineItemsByPaymentMode(resolved)).toEqual([
+      expect.objectContaining({
+        paymentModeUuid: 'payment-mode-sha',
+        paymentModeName: 'SHA',
+        amount: 100,
+      }),
+    ]);
+  });
+
+  it('resolves a drug payment mode from billableDrugObj.drugPrices', () => {
+    const lineItems: LineItem[] = [
+      {
+        uuid: 'drug-item-1',
+        billableService: '',
+        billableDrug: 'METFORMIN TABLETS 500MG BLISTER PACKS',
+        billableDrugObj: {
+          uuid: 'billable-drug-1',
+          name: 'METFORMIN TABLETS 500MG BLISTER PACKS',
+          drugPrices: [
+            {
+              uuid: 'drug-price-sha',
+              name: 'SHA',
+              price: 5,
+              paymentMode: { uuid: 'payment-mode-sha', name: 'SHA' },
+            },
+          ],
+        },
+        priceName: 'SHA',
+        status: BillLineItemStatus.PENDING,
+        price: 5,
+        quantity: 60,
+      },
+    ];
+
+    const resolved = resolveLineItemPaymentModes(lineItems);
+    expect(groupLineItemsByPaymentMode(resolved)).toEqual([
+      expect.objectContaining({
+        paymentModeUuid: 'payment-mode-sha',
+        paymentModeName: 'SHA',
+        amount: 300,
+      }),
+    ]);
+  });
+
   it('groups bill line items by their payment-mode UUID and subtracts recorded payments', () => {
     const lineItems: LineItem[] = [
       {
