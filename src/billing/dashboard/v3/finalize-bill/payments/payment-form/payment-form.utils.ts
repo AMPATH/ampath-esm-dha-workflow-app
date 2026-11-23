@@ -14,32 +14,47 @@ const toMinorUnits = (amount: number) => Math.round((Number.isFinite(amount) ? a
 const isGroupableLineItem = (item: LineItem) =>
   !item.voided && !['CANCELLED', 'REFUNDED'].includes((item.status ?? '').toUpperCase());
 
-/** Resolve the line item's price UUID/name to the payment mode stored on its service price. */
+const normalize = (value?: string) => value?.trim().toLowerCase();
+
+/** Resolve the line item's price UUID/name to the payment mode stored on its service or drug price. */
 export function resolveLineItemPaymentModes(
   lineItems: LineItem[] = [],
   billableServices: BillableService[] = [],
 ): LineItem[] {
   return lineItems.map((item) => {
-    const service = billableServices.find(
-      (candidate) =>
-        candidate.uuid === item.billableService ||
-        candidate.name?.trim().toLowerCase() === item.billableService?.trim().toLowerCase(),
-    );
-    const servicePrices = service?.servicePrices ?? [];
-    const servicePrice = servicePrices.find(
+    const isDrug = Boolean(item.billableDrugObj || item.billableDrug?.trim());
+    const service = isDrug
+      ? undefined
+      : billableServices.find(
+          (service) =>
+            service.uuid === item.billableService ||
+            normalize(service.name) === normalize(item.billableService) ||
+            normalize(service.display) === normalize(item.billableService) ||
+            normalize(service.shortName) === normalize(item.billableService),
+        );
+    const prices = isDrug ? item.billableDrugObj?.drugPrices ?? [] : service?.servicePrices ?? [];
+    const price = prices.find(
       (price) =>
         price.uuid === item.priceUuid ||
-        price.name?.trim().toLowerCase() === item.priceName?.trim().toLowerCase() ||
-        price.paymentMode?.name?.trim().toLowerCase() === item.priceName?.trim().toLowerCase(),
+        price.paymentMode?.uuid === item.priceUuid ||
+        normalize(price.name) === normalize(item.priceName) ||
+        normalize(price.paymentMode?.name) === normalize(item.priceName),
     );
-    const paymentModeUuid = item.paymentModeUuid || servicePrice?.paymentMode?.uuid || '';
-    const paymentModeName = item.paymentModeName || servicePrice?.paymentMode?.name || item.priceName || '';
+    const fallbackServicePrice =
+      !isDrug && !price && item.priceName
+        ? billableServices
+        .flatMap((service) => service.servicePrices ?? [])
+        .find((servicePrice) => normalize(servicePrice.paymentMode?.name) === normalize(item.priceName))
+        : undefined;
+    const resolvedPaymentMode = price?.paymentMode ?? fallbackServicePrice?.paymentMode;
+    const paymentModeUuid = item.paymentModeUuid || resolvedPaymentMode?.uuid || '';
+    const paymentModeName = item.paymentModeName || resolvedPaymentMode?.name || item.priceName || '';
 
     return {
       ...item,
       paymentModeUuid,
       paymentModeName,
-      ...(servicePrice?.price != null ? { price: servicePrice.price } : {}),
+      ...(price?.price != null ? { price: price.price } : {}),
     };
   });
 }

@@ -101,6 +101,18 @@ export interface LineItem {
   item?: string;
   status: BillLineItemStatus;
   billableService?: string;
+  billableDrug?: string;
+  billableDrugObj?: {
+    uuid: string;
+    name?: string;
+    display?: string;
+    drugPrices?: Array<{
+      uuid: string;
+      name?: string;
+      price?: number;
+      paymentMode?: { uuid: string; name: string };
+    }>;
+  } | null;
   quantity: number;
   price: number;
   priceName?: string;
