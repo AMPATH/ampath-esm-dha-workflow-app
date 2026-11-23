@@ -1336,6 +1336,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                     >
                       <RadioButton id="method-insurance" labelText="Insurance" value="insurance" />
                       <RadioButton id="method-cash" labelText="Cash" value="cash" />
+                      <RadioButton id="method-mpesa" labelText="MPESA" value="mpesa" />
                     </RadioButtonGroup>
 
                     {method === 'cash' && hasCashMode === false ? (
