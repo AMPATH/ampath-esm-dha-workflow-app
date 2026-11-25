@@ -79,6 +79,7 @@ import { IdentifierTypesUuids } from '../../../resources/identifier-types';
 import { formatPhoneNumberForOTP } from '../../utils/phone-number-formatter';
 import OtpVerificationModal from '../otp-verification-modal/otp-verification-modal';
 import ClientDetailsModal from '../client-details-modal/client-details-modal';
+import { useRegistrationBillableServices } from 'src/shared/services/registration-billable-services.resource';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -147,13 +148,14 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const next = () => setStep((s) => s + 1);
   const previous = () => setStep((s) => s - 1);
   const {
-    registrationBillableServices,
     cashConsulationConceptUuid,
     shaConsulationConceptUuid,
     outPatientCareSettingUuid,
     orderEncounterTypeUuid,
     registrationServicequeues,
   } = useConfig<ConfigObject>();
+  const { registrationBillableServices,error, isLoading} = useRegistrationBillableServices({ locationUuid: locationUuid ?? ''});
+  const registrationBillableServicesUuid = registrationBillableServices?.map((r)=>r.billableServiceUuid) ?? [];
 
   const { patient } = usePatient();
 
@@ -531,7 +533,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       if (sp.paymentMode) {
         if (
           sp.paymentMode.uuid === paymentMode.uuid &&
-          registrationBillableServices.includes(sp.billableService.uuid)
+           registrationBillableServicesUuid.includes(sp.billableService.uuid)
         ) {
           paymentBillableServices.push(sp);
         }
