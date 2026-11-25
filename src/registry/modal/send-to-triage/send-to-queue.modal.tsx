@@ -53,7 +53,7 @@ import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/servic
 import { createOrderEncounter, getOrder } from '../../../shared/services/encounters.resource';
 import { type ConfigObject } from '../../../config-schema';
 import {
-  ClientSubBenefit,
+  type ClientSubBenefit,
   PreExistingIntervention,
   type ClaimResult,
   type Intervention,
@@ -63,6 +63,7 @@ import { getServiceType } from '../../../shared/services/claims.resource';
 import PaymentMethodComponent from './payment-method.component';
 import ClaimsConsentExtension from '../otp-verification-modal/extension/claims-consent.extension';
 import { type Order } from '@openmrs/esm-patient-common-lib';
+import { useRegistrationBillableServices } from '../../../shared/services/registration-billable-services.resource';
 
 /** Registration name, shared with whoever opens this panel. */
 export const SEND_TO_QUEUE_WORKSPACE = 'send-to-queue-workspace';
@@ -143,7 +144,6 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
   const userPickedService = useRef(false);
 
   const {
-    registrationBillableServices,
     cashConsulationConceptUuid,
     shaConsulationConceptUuid,
     outPatientCareSettingUuid,
@@ -152,6 +152,9 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     shaVariantPaymentModeUuids,
   } = useConfig<ConfigObject>();
 
+  const { registrationBillableServices,error, isLoading} = useRegistrationBillableServices({ locationUuid: locationUuid ?? ''});
+  const registrationBillableServicesUuid = registrationBillableServices?.map((r)=>r.billableServiceUuid) ?? [];
+  
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
 
   const visitType: VisitType = useMemo(() => {
@@ -486,7 +489,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
         if (sp.billableService.uuid === billableItem.uuid) {
           paymentBillableServices.push(sp);
         }
-      } else if (registrationBillableServices.includes(sp.billableService.uuid)) {
+      } else if (registrationBillableServicesUuid.includes(sp.billableService.uuid)) {
         paymentBillableServices.push(sp);
       }
     });

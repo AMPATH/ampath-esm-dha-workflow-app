@@ -154,3 +154,12 @@ export type CreateOrderEncounterDto = {
   orders: Order[];
   encounterDatetime?: string;
 };
+
+export type RegistrationBillableService = {
+    billableServiceName: string;
+    billableServiceUuid: string;
+    locationUuid: string;
+}
+export type RegistrationBillableServiceDto = {
+     locationUuid: string;
+}
